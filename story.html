@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Clawd studio · story</title>
+<style>
+  html, body { margin: 0; background: #1b1820; color: #eee; font: 13px system-ui, sans-serif; }
+  main { padding: 12px; display: grid; gap: 8px; justify-items: start; }
+  #out { height: min(86vh, 1920px); width: auto; background: #F3EBDC; }
+  .p5Canvas { display: none !important; }
+  .bar { display: flex; gap: 10px; align-items: center; width: min(100%, 560px); }
+  #scrub { flex: 1; }
+  #tt { font-variant-numeric: tabular-nums; min-width: 190px; }
+</style>
+<script src="node_modules/p5/lib/p5.min.js"></script>
+<script src="node_modules/p5.brush/dist/p5.brush.js"></script>
+<script>
+  // story.html?story=<id> plays src/stories/<id>/: its config.js (size, length, audio) replaces src/config.js.
+  const STORY_ID = (new URLSearchParams(location.search).get('story') || 'one_message').replace(/[^\w-]/g, '');
+  const storyFile = f => document.write(`<script src="src/stories/${STORY_ID}/${f}"><\/script>`);
+  storyFile('config.js');
+</script>
+</head>
+<body>
+<main>
+  <canvas id="out" width="1080" height="1920"></canvas>
+  <div class="bar"><input id="scrub" type="range" min="0" max="15" step="0.0417" value="0"><span id="tt">loading…</span></div>
+</main>
+<!-- engine (clawd.js only for heartPts, used by the presets' heart shape) -->
+<script src="src/core.js"></script>
+<script src="src/clawd.js"></script>
+<script src="src/timeline.js"></script>
+<!-- motion presets -->
+<script src="src/presets/index.js"></script>
+<script src="src/presets/camera.js"></script>
+<script src="src/presets/pop.js"></script>
+<script src="src/presets/morph.js"></script>
+<script src="src/presets/wipe.js"></script>
+<script src="src/presets/reveal.js"></script>
+<script src="src/presets/burst.js"></script>
+<script src="src/presets/scene.js"></script>
+<!-- the story: its drawings, then its data (which calls playStory) -->
+<script>storyFile('art.js'); storyFile('story.js');</script>
+</body>
+</html>

@@ -222,6 +222,7 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 | `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
 | `src/presets/` | motion presets: `preset()`, the six presets, `presetShot()` (shots as data), the gallery loops |
+| `story.html`, `src/stories/` | data-driven stories on their own canvas size (e.g. vertical), see "Stories" |
 | `src/scenes/preset_example.js` | a 9-second story built only from presets (`?loop=example`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
@@ -323,6 +324,10 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 | `particleBurst` | hash-seeded confetti on arcs with gravity and a flash | `count`, `pSize`, `shape` (or `mix`), `colors`, `angle`, `arc`, `gravity`, `glow`, `spin`, `seed` |
 
 `presetShot(spec)` builds a shot from data: `{ bg, ground: { y, color }, camera: {cameraMove options}, layers: [...], after: [...] }`. A layer is `['presetName', opts]` (opts may be `dur => opts`, to time things from the shot's end) or your own `fn(lt, dur)`, such as a `clawd()` call. `after` layers are drawn in screen space, after the camera (transitions). Register shots with `shots([[0, shotA], [4.5, shotB]])`, as usual. [src/scenes/preset_example.js](src/scenes/preset_example.js) is the template. Presets don't replace the rules: a shot built from them still needs an event, timed reads and acting.
+
+### Stories (data-driven, any canvas size)
+
+`story.html?story=<id>` plays `src/stories/<id>/` instead of the demo: its `config.js` (canvas `width`/`height`, `duration`, `audio`), its drawings (`art.js`) and its data (`story.js`, which ends with `playStory(STORY)`). `STORY` is `{ narration: [{ at, end, text }], shots: [{ at, ...presetShot spec }] }`; narration is timing reference for the voiceover and is never drawn. Render with `--story=<id>` on any `render.mjs` command. [src/stories/one_message/](src/stories/one_message/) (vertical 1080 × 1920) is the template: retime it by editing its `CUE` table; add shapes for the presets with `SHAPES.name = (x, y, r) => pts`. `cameraMove` also takes `keys: [[t, [x, y, zoom, rot?]], ...]`, and `presetShot`'s `bg` may be `(lt, dur) => colour` for a colour arc.
 
 ---
 
