@@ -16,7 +16,9 @@ function presetShot(spec) {
   const run = (L, lt, dur) => typeof L === 'function' ? L(lt, dur) : preset(L[0], lt, typeof L[1] === 'function' ? L[1](dur) : L[1]);
   return (t, lt, dur) => {
     const world = () => {
-      if (spec.bg) { boilSeed('bg'); paint(rectPts(-600, -400, W + 1200, H + 800), { wash: spec.bg, ink: null }); }
+      // A flat, opaque background looks the same as a wash at 255, but a frame whose first wash is the full background
+      // can composite it through the previous frame's mask (p5.brush 2.2.3): a ghost of the last shape, the rest bare.
+      if (spec.bg) background(spec.bg);
       if (spec.ground) { boilSeed('ground'); paint(rectPts(-600, spec.ground.y, W + 1200, H + 400 - spec.ground.y), { wash: spec.ground.color, ink: PAL.ink, sw: 1 }); }
       (spec.layers || []).forEach(L => run(L, lt, dur));
     };

@@ -288,7 +288,6 @@ function draw() {
   BOILN = Math.floor(T * BOIL); CLAWD_N = 0; boilSeed('frame'); noiseSeed(77);
   image(paperG, 0, 0);
   drawWorld(T);
-  flushBrush();   // composite the last wash now, or it lands on the next frame (in the wrong place)
   pop();
 }
 function composite(t) {

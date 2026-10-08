@@ -14,7 +14,7 @@ definePreset('brushWipe', {
     brushWipe(lerp(a, b, presetK(t, o)), o.colors);
   },
   demo: {
-    layers: [(lt) => { paint(rectPts(-600, -400, W + 1200, H + 800), { wash: lt < 1.3 ? PAL.sky : PAL.cream, ink: null }); clawd(960, 860, 26, feel(lt < 1.3 ? 'neutral' : 'happy', lt)); }],
+    layers: [(lt) => { background(lt < 1.3 ? PAL.sky : PAL.cream); clawd(960, 860, 26, feel(lt < 1.3 ? 'neutral' : 'happy', lt)); }],
     after: [['brushWipe', { part: 'full', at: .6, dur: 1.4 }]],
   },
 });
