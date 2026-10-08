@@ -9,6 +9,7 @@ The person prompting you decides **what** the video is about. This guide decides
 Look at the model sheets first:
 - [docs/emotions.jpg](docs/emotions.jpg): all 31 emotions.
 - [docs/views.jpg](docs/views.jpg): the five key views, the motion helpers and the hats.
+- [docs/presets.jpg](docs/presets.jpg): the motion presets (see "Motion presets"): reuse them before writing new motion.
 
 ---
 
@@ -220,6 +221,8 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 | `src/clawd.js` | Clawd: views, emotions, eyes, mouths, hats, emotes, moves |
 | `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
+| `src/presets/` | motion presets: `preset()`, the six presets, `presetShot()` (shots as data), the gallery loops |
+| `src/scenes/preset_example.js` | a 9-second story built only from presets (`?loop=example`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
 | `render.mjs` | headless renderer: sheets, strips, crops, stills, PNG loops, MP4 |
@@ -303,6 +306,23 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
   - `letter(txt, x, y, size, colour, {pop, rot, alpha, screen})`
   - `sfx(txt, x, y, size, colour, age)`
   - Both are composited at `flushLetters()`, after the shot. If a wipe or iris must cover them, call it yourself first.
+
+### Motion presets
+
+Reusable, configurable moves in [src/presets/](src/presets/), built on the helpers above. **Reach for a preset before writing new motion code**, and add a new one (`definePreset` in its own file, plus a script tag in `studio.html`) when a move will be reused. Preview them at `studio.html?loop=presets` (a titled tour) or `?loop=preset_<name>`.
+
+`preset(name, t, opts, inner)` draws one at shot-local time `t`. Every preset takes `at`, `dur` and `ease` (an easing name: `linear`, `ease`, `easeIn`, `easeOut`, `backOut`, `elasticOut`). Object presets also take `x, y, size, color` and `shape` (`star`, `circle`, `heart`, `square`), or `draw(size)` to animate your own content around (0, 0).
+
+| preset | does | its own options |
+|---|---|---|
+| `cameraMove` | pan and zoom; wraps `inner` in `camBegin`/`camEnd` | `from`/`to` `[x, y, zoom]`, `rot`, `drift`, `shake` |
+| `popBounce` | pops in with overshoot, wobbles, hops (`jump`) | `hops`, `hopH`, `hopGap`, `wobble`, `beat` |
+| `shapeMorph` | one shape melts through several, colours blending | `shapes`, `colors`, `hold`, `spin` |
+| `brushWipe` | `brushWipe()` timed as a preset | `part` (`cover` at a shot's end, `reveal` at the next one's start, `full`), `colors` |
+| `objectReveal` | arrives on an arc from off-screen (or grows), lands with a wobble and a glow | `from` (`below` `above` `left` `right` `center`), `dist`, `arc`, `glow`, `glowR`, `wobble` |
+| `particleBurst` | hash-seeded confetti on arcs with gravity and a flash | `count`, `pSize`, `shape` (or `mix`), `colors`, `angle`, `arc`, `gravity`, `glow`, `spin`, `seed` |
+
+`presetShot(spec)` builds a shot from data: `{ bg, ground: { y, color }, camera: {cameraMove options}, layers: [...], after: [...] }`. A layer is `['presetName', opts]` (opts may be `dur => opts`, to time things from the shot's end) or your own `fn(lt, dur)`, such as a `clawd()` call. `after` layers are drawn in screen space, after the camera (transitions). Register shots with `shots([[0, shotA], [4.5, shotB]])`, as usual. [src/scenes/preset_example.js](src/scenes/preset_example.js) is the template. Presets don't replace the rules: a shot built from them still needs an event, timed reads and acting.
 
 ---
 

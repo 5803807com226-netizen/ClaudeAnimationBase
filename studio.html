@@ -28,11 +28,29 @@
 <script src="src/timeline.js"></script>
 <!-- reference sheets (standalone loops) -->
 <script src="src/sheets.js"></script>
+<!-- motion presets (src/presets): reusable, configurable moves; previews at ?loop=presets -->
+<script src="src/presets/index.js"></script>
+<script src="src/presets/camera.js"></script>
+<script src="src/presets/pop.js"></script>
+<script src="src/presets/morph.js"></script>
+<script src="src/presets/wipe.js"></script>
+<script src="src/presets/reveal.js"></script>
+<script src="src/presets/burst.js"></script>
+<script src="src/presets/scene.js"></script>
+<script src="src/presets/gallery.js"></script>
+<script src="src/scenes/preset_example.js"></script>
 <!-- your video: add a script per scene file, in order -->
 <script src="src/scenes/demo.js"></script>
 <script>
   // Open studio.html?loop=emotions (or views) to scrub a standalone loop instead of the video.
   const q = new URLSearchParams(location.search).get('loop'); if (q && LOOPS[q]) window.LOOP = LOOPS[q];
+  // Links to the preset gallery and the example story (studio only, not in renders).
+  if (!location.search.includes('render')) {
+    const nav = document.createElement('nav'); nav.className = 'bar';
+    nav.innerHTML = ['', 'presets', ...Object.keys(PRESETS).map(n => 'preset_' + n), 'example']
+      .map(n => `<a href="?${n ? 'loop=' + n : ''}" style="color:${n === (q || '') ? '#fff' : '#9ab'}">${n || 'video'}</a>`).join(' ');
+    document.querySelector('main').append(nav);
+  }
 </script>
 </body>
 </html>
