@@ -26,19 +26,14 @@
     for (let i = 0; i < 900; i++) { const x = V[0] + gauss() * 500, y = V[1] + gauss() * 450, f = Math.exp(-((x - V[0]) ** 2 + (y - V[1]) ** 2) / (2 * 340 * 340));
       lx.lineWidth = .7 + R(); lx.strokeStyle = `rgba(22,28,66,${.1 * f})`; strokePath(lx, trace(x, y, 120, .3)); }
     blurInto(ctx, l, .6, 'multiply'); }
-  // the message dissolving: wet-in-wet coral plumes rising off the drop, widening and paling as they are wound into
-  // the vortex (soft blooms, blurred), with a few fine filaments for detail
-  { const [l, lx] = layer(), [f, fx] = layer(); fx.lineCap = 'round';
-    for (let i = 0; i < 240; i++) {
-      const p = trace(SRC[0] + gauss() * 120, SRC[1] - 90 + gauss() * 30, 170 + R() * 150, 1.2, 1.2), n = p.length, warm = R() < .25;
-      for (let j = 0; j < n; j += 3) {
-        const k = j / n, r = 3 + k * 26 * (.6 + R() * .8), sp = 8 + k * 110;    // diffusing sideways as it travels
-        lx.fillStyle = `rgba(${warm ? '240,165,150' : '226,118,104'},${.09 * Math.sin(Math.PI * Math.min(1, k * 1.15)) ** .8})`;
-        lx.beginPath(); lx.arc(p[j][0] + gauss() * sp, p[j][1] + gauss() * sp, r, 0, TAU); lx.fill();   // faint at the drop, fullest mid-rise
-      }
-      if (i % 8 === 0) { fx.lineWidth = .8; fx.strokeStyle = 'rgba(205,95,75,.16)'; strokePath(fx, p.slice(0, Math.floor(n * .7))); }
+  // the message dissolving: coral threads from the drop, rising and wound into the vortex
+  { const [l, lx] = layer(), [hz, hx] = layer(); lx.lineCap = hx.lineCap = 'round';
+    for (let i = 0; i < 700; i++) {
+      const p = trace(SRC[0] + gauss() * 150, SRC[1] - 70 + gauss() * 40, 90 + R() * 120, .9, 1.25), n = p.length, w0 = 1.5 + R() * 5;
+      for (let j = 1; j < n; j++) { lx.lineWidth = w0 * Math.pow(1 - j / n, 1.2) + .3; lx.strokeStyle = i % 6 ? 'rgba(224,102,79,.06)' : 'rgba(246,170,145,.09)'; lx.beginPath(); lx.moveTo(...p[j - 1]); lx.lineTo(...p[j]); lx.stroke(); }
+      if (i % 2) { hx.lineWidth = 20; hx.strokeStyle = 'rgba(224,102,79,.012)'; strokePath(hx, p.slice(0, 90)); }
     }
-    blurInto(ctx, l, 10, 'source-over', .68); blurInto(ctx, l, 2, 'source-over', .22); blurInto(ctx, f, .6, 'multiply', .8); }   // built with normal blending: overlaps saturate to coral, never darker
+    blurInto(ctx, hz, 18, 'multiply'); blurInto(ctx, l, 1.2, 'multiply'); }
   { const [l, lx] = layer();   // the drop itself: crisp at the top, its lower edge already breaking up into the water
     bubblePath(lx, SRC[0], SRC[1], 300, 176, 52); lx.fillStyle = '#E0664F'; lx.fill();
     const lg = lx.createLinearGradient(0, SRC[1] - 90, 0, SRC[1] + 90); lg.addColorStop(0, 'rgba(255,215,195,.45)'); lg.addColorStop(1, 'rgba(255,215,195,0)');
