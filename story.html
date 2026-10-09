@@ -17,7 +17,8 @@
 <script>
   // story.html?story=<id> plays src/stories/<id>/: its config.js (size, length, audio) replaces src/config.js.
   const STORY_ID = (new URLSearchParams(location.search).get('story') || 'one_message').replace(/[^\w-]/g, '');
-  const storyFile = f => document.write(`<script src="src/stories/${STORY_ID}/${f}"><\/script>`);
+  // A path starting with src/ is from the project root (shared characters, another story's art); others are the story's own.
+  const storyFile = f => document.write(`<script src="${f.startsWith('src/') ? f : `src/stories/${STORY_ID}/${f}`}"><\/script>`);
   storyFile('config.js');
 </script>
 </head>
@@ -39,7 +40,14 @@
 <script src="src/presets/reveal.js"></script>
 <script src="src/presets/burst.js"></script>
 <script src="src/presets/scene.js"></script>
-<!-- the story: its drawings, then its data (which calls playStory) -->
-<script>storyFile('art.js'); storyFile('story.js');</script>
+<!-- cutout characters -->
+<script src="src/rig/cutout.js"></script>
+<!-- motion systems: acting, path & cartoon physics, procedural world & parallax, particle trails & FX -->
+<script src="src/systems/motion.js"></script>
+<script src="src/systems/acting.js"></script>
+<script src="src/systems/world.js"></script>
+<script src="src/systems/fx.js"></script>
+<!-- the story: PROJECT.files in its config.js (default: its art.js, then its story.js, which calls playStory) -->
+<script>(PROJECT.files || ['art.js', 'story.js']).forEach(storyFile);</script>
 </body>
 </html>

@@ -325,6 +325,19 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 
 `presetShot(spec)` builds a shot from data: `{ bg, ground: { y, color }, camera: {cameraMove options}, layers: [...], after: [...] }`. A layer is `['presetName', opts]` (opts may be `dur => opts`, to time things from the shot's end) or your own `fn(lt, dur)`, such as a `clawd()` call. `after` layers are drawn in screen space, after the camera (transitions). Register shots with `shots([[0, shotA], [4.5, shotB]])`, as usual. [src/scenes/preset_example.js](src/scenes/preset_example.js) is the template. Presets don't replace the rules: a shot built from them still needs an event, timed reads and acting.
 
+### Motion systems (Phase 1)
+
+Four libraries in [src/systems/](src/systems/), loaded by `story.html`. They are pure functions of time that return numbers or call painters you pass in. They never fix a look, so any character, world or art style can use them, and several can drive one scene. [src/stories/phase1_demo/](src/stories/phase1_demo/) uses all four (`story.html?story=phase1_demo`).
+
+| system | file | main calls |
+|---|---|---|
+| Path follow & cartoon physics | `motion.js` | `travel(t, [[t, x, v], ...])` acceleration/deceleration · `hops(t, jumps)` crouch, flight, stretch, landing squash · `footfalls()` contact events · `makePath()` + `follow()` curves · `ballistic()` · `velocity()` |
+| Character acting | `acting.js` | `track(t, keys)` pose keyframes as data · `react(t, t0, 'take' / 'flinch' / 'joy' / 'relief' / 'nod')` · `merge()` · `gait()` · `lean()`; plus the rig's `lookAt`, `saccade`, `blinkAt`, `bump` |
+| Procedural world & parallax | `world.js` | `makeWorld({ ground, reveal, layers })` · `drawLayers(world, t, pick)` tiled layers at any depth, props from per-tile randomness, an optional reveal front (the world draws itself ahead; props grow in) · `groundShape()` · `followCam()` |
+| Particle trails & motion FX | `fx.js` | `emit()` continuous emitters from a moving source · `puffs(t, events)` dust · `impactLines()` · `trail()` ribbons · `speedLines()` |
+
+Characters are built on the cutout rig [src/rig/cutout.js](src/rig/cutout.js), as painter parts or transparent PNG layers (`img`), with IK and follow-through (`drag`). See [src/characters/pip.js](src/characters/pip.js). Worlds are themes of tile painters, such as [src/worlds/meadow.js](src/worlds/meadow.js). A story lists the files it needs in its `config.js` `files`.
+
 ### Stories (data-driven, any canvas size)
 
 `story.html?story=<id>` plays `src/stories/<id>/` instead of the demo: its `config.js` (canvas `width`/`height`, `duration`, `audio`), its drawings (`art.js`) and its data (`story.js`, which ends with `playStory(STORY)`). `STORY` is `{ narration: [{ at, end, text }], shots: [{ at, ...presetShot spec }] }`; narration is timing reference for the voiceover and is never drawn. Render with `--story=<id>` on any `render.mjs` command. [src/stories/one_message/](src/stories/one_message/) (vertical 1080 × 1920) is the template: retime it by editing its `CUE` table; add shapes for the presets with `SHAPES.name = (x, y, r) => pts`. `cameraMove` also takes `keys: [[t, [x, y, zoom, rot?]], ...]`, and `presetShot`'s `bg` may be `(lt, dur) => colour` for a colour arc.

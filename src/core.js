@@ -278,6 +278,7 @@ async function setup() {
   paperG = makePaper(); grainC = makeGrain(); glowTex = makeGlowTex(); letG = createGraphics(W, H); letG.pixelDensity(1);
   outC = document.getElementById('out'); outC.width = W; outC.height = H; outX = outC.getContext('2d');
   await document.fonts.load('100px "Permanent Marker"');
+  for (const load of window.PRELOAD || []) await load();   // artwork (e.g. cutout character PNGs) before the first frame
   window.ready = true;
   if (!location.search.includes('render')) devUI();
 }
