@@ -59,3 +59,39 @@ Report back:
 - the two final MP4s;
 - `out/pipeline/*/report.json`;
 - any dialog error.
+
+## Story → Opus Director → shot manifest (patch v2)
+
+`patches/autocinematic_shot_director_v2.patch` applies on top of v1. It adds:
+- `autocinematic/shot_director.py`;
+- `prompts/opus_shot_director.txt`;
+- a **Generate Shot Manifest** button, first in the Motion Plan dialog.
+
+`hybrid_ui.py` (Hybrid Export and Plan Only) is not changed.
+
+What the button does:
+1. Reads `story/story_package.json`. It is never changed.
+2. Takes per-shot timing from the measured voice (`voice/voice_manifest.json` + `exports/narration_master.wav`) when its shot ids and narration match the story. Otherwise it uses the story's planned durations, and the timing is labelled provisional.
+3. **Yes = Opus Director:** one Opus call through the app's `ModelRunner`. The live, verified-only capability catalog goes in as a stable prefix (about 11 k characters) and the compact story follows (about 10 k characters for 19 shots). Opus picks the treatment, camera and layers per shot.
+   **No = no-AI test layout:** the shot's caption as kinetic type over a slow camera move, for testing the pipeline only.
+4. Validates with the engine compiler in dry-run mode, under a separate `_candidate` plan id, so the current plan's reports are not touched. The dialog shows blocked shots and any substitution, for example a shot Opus left out that was filled with the test layout.
+5. Saves to `production/shot_manifest.json` only after you confirm. An existing manifest is first renamed to `shot_manifest.<time>.bak.json`.
+
+No LTX or ComfyUI call is made at any step.
+
+### Install on Windows
+
+```
+cd C:\Users\User\ClaudeAnimationBase
+git pull
+cd D:\AI\AutoCinematic_Story_Studio_V12.9.36.3_PDF_RESEARCH_FULL_WITH_RUNNER
+git apply --check C:\Users\User\ClaudeAnimationBase\patches\autocinematic_shot_director_v2.patch
+git apply C:\Users\User\ClaudeAnimationBase\patches\autocinematic_shot_director_v2.patch
+```
+
+Test it in the app:
+1. Open a project that has a story.
+2. Go to Hybrid Export, then **Motion Plan (JS Engine)…**.
+3. Pick 9:16 or 16:9, then **Generate Shot Manifest**.
+4. Answer **No** first, for the no-AI test. Then use **Generate Motion**, and **Render Selected Scene** on one shot.
+5. Repeat with **Yes** to make the one Opus call.

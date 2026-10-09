@@ -1,0 +1,323 @@
+diff --git a/autocinematic/motion_plan_ui.py b/autocinematic/motion_plan_ui.py
+index b161480..fb26de8 100644
+--- a/autocinematic/motion_plan_ui.py
++++ b/autocinematic/motion_plan_ui.py
+@@ -2,6 +2,7 @@
+ 
+ Opened from the Hybrid Export dialog. Uses the app's own log and job queue (app.log, app._start_voice_or_queue,
+ app.after) and reads all state from disk, so it survives an application restart. No AI calls.
++  Generate Shot Manifest (story -> Opus or no-AI test -> validated shot_manifest/1) ·
+   Check Engine · Generate Motion (compile) · Preview Scene · Render Selected Scene · Render All Scenes ·
+   Re-render Failed · Open Final · Open Log
+ """
+@@ -203,9 +204,79 @@ def open_motion_plan_dialog(app, animation_root: str | None = None):
+         log = engine().status(pid)["log"] if pid else None
+         _open(log, win) if log and Path(log).is_file() else messagebox.showinfo("Motion Plan", "No log yet.", parent=win)
+ 
++    def generate_manifest():
++        """Story -> shot manifest. Opus (one call) or a no-AI test layout; validated against the live catalog; saved
++        to production/shot_manifest.json only after the user confirms (an existing manifest is backed up)."""
++        from autocinematic.shot_director import build_manifest, save_manifest
++        problems = engine().check()
++        if problems:
++            messagebox.showerror("Generate Shot Manifest", "\n".join(problems), parent=win)
++            return
++        choice = messagebox.askyesnocancel(
++            "Generate Shot Manifest",
++            f"Story: {project.name} · {aspectvar.get()}\n\n"
++            "Yes = Opus Director (one Opus call; chooses capabilities per shot)\n"
++            "No = No-AI test layout from the existing story data\n"
++            "Cancel = stop\n\nStory data is never changed. Nothing is saved until you confirm.", parent=win)
++        if choice is None:
++            return
++        mode, aspect = ("opus" if choice else "test"), aspectvar.get()
++        runner = None
++        if mode == "opus":
++            from autocinematic.model_runner import ModelRunner
++            cfg = _read(root / "config.json")
++            if not isinstance(cfg, dict) or "models" not in cfg:
++                messagebox.showerror("Generate Shot Manifest", "config.json has no models section.", parent=win)
++                return
++            runner = ModelRunner(cfg, log=app.log, controller=getattr(app, "controller", None))
++        result = {}
++
++        def fn():
++            try:
++                result["manifest"], result["report"] = build_manifest(project, engine(), aspect, mode=mode, runner=runner,
++                                                                      app_root=root, log=app.log)
++            except Exception as ex:   # surfaced to the user in finish(); the story and old manifest stay untouched
++                result["error"] = f"{type(ex).__name__}: {ex}"
++
++        def finish():
++            if not win.winfo_exists():
++                return
++            if "error" in result:
++                messagebox.showerror("Generate Shot Manifest", result["error"], parent=win)
++                return
++            rep, man = result["report"], result["manifest"]
++            blocked = [f"{x['id']}: {'; '.join(x['errors'])[:160]}" for x in rep.get("shots", []) if x.get("status") == "blocked"]
++            lines = [f"Director: {man['director']} · {len(man['shots'])} shots · {man['target_seconds']:.1f} s · {aspect}",
++                     f"Timing: {'measured voice' if man['audio']['narration'].get('measured') else 'provisional (no matching voice)'}",
++                     f"Validation: {rep.get('status')}" + (f" — {rep['error']}" if rep.get("error") else "")]
++            lines += [f"Note: {n}" for n in rep.get("notes", [])[:6]]
++            lines += [f"BLOCKED {b}" for b in blocked[:8]]
++            for line in lines:
++                app.log("[Shot Director] " + line)
++            dst = project / "production" / "shot_manifest.json"
++            q = "\n".join(lines) + "\n\n"
++            if rep.get("status") != "compiled":
++                q += "Some shots would NOT render. Save anyway (for review/editing)?\n"
++            q += (f"Overwrite {dst.name}? The current one is kept as a .bak.json backup." if dst.is_file() else f"Save to {dst}?")
++            if not messagebox.askyesno("Generate Shot Manifest", q, parent=win):
++                app.log("[Shot Director] not saved")
++                return
++            saved = save_manifest(project, man)
++            app.log(f"[Shot Director] saved {saved}")
++            manifestvar.set(str(saved))
++            remember()
++
++        def work():
++            try:
++                fn()
++            finally:
++                app.after(0, finish)
++        remember()
++        app._start_voice_or_queue(work, "Motion Plan: shot manifest", "Motion Plan: shot manifest")
++
+     bar = ttk.Frame(frame)
+     bar.pack(fill="x", pady=(6, 0))
+-    for text, cmd in (("Check Engine", check_engine), ("Generate Motion", generate), ("Preview Scene", preview_selected),
++    for text, cmd in (("Generate Shot Manifest", generate_manifest), ("Check Engine", check_engine), ("Generate Motion", generate), ("Preview Scene", preview_selected),
+                       ("Play Scene", play_selected), ("Render Selected Scene", render_selected),
+                       ("Render All Scenes", lambda: render()), ("Re-render Failed", lambda: render(failed_only=True)),
+                       ("Open Final", open_final), ("Open Log", open_log), ("Refresh", refresh)):
+diff --git a/autocinematic/shot_director.py b/autocinematic/shot_director.py
+new file mode 100644
+index 0000000..5a0836c
+--- /dev/null
++++ b/autocinematic/shot_director.py
+@@ -0,0 +1,191 @@
++"""Story -> shot_manifest/1 for the ClaudeAnimationBase Motion Engine (Motion Only: no LTX, no ComfyUI).
++
++  build_manifest(project, engine, aspect, mode="opus" | "test", runner=None) -> (manifest, report)
++      reads story/story_package.json (never modified), takes per-shot timing from the measured voice
++      (voice/voice_manifest.json + exports/narration_master.wav) when it matches the story, otherwise the story's
++      own start/duration (provisional), asks Opus to direct each shot with the LIVE capability catalog
++      (mode "opus", one call) or lays out a deterministic typography plan (mode "test", no AI), and validates the
++      result with the engine's compiler in dry-run mode.
++  save_manifest(project, manifest) -> path   (production/shot_manifest.json; an existing file is backed up first;
++      the caller must ask the user before overwriting)
++Shots map 1:1 to story shots, so narration timing stays aligned. Facts are never invented here: map layers are
++only allowed with sourced `data` that Opus copies from the story; the compiler blocks anything unsourced.
++"""
++from __future__ import annotations
++
++import json
++import re
++import tempfile
++import time
++from pathlib import Path
++from typing import Callable, Optional
++
++from autocinematic.motion_engine import MotionEngine, MotionEngineError, ASPECTS
++from autocinematic.utils import extract_json
++
++PROMPT_FILE = "opus_shot_director.txt"
++SHOT_KEYS = ("story_function", "narration", "visual_concept", "camera", "composition", "transition_in", "sfx_cue")
++
++
++def _read(p: Path, default=None):
++    try:
++        return json.loads(Path(p).read_text(encoding="utf-8"))
++    except (OSError, ValueError):
++        return default
++
++
++def story_shots(project: Path) -> tuple[dict, list]:
++    story = _read(project / "story" / "story_package.json", {}) or {}
++    shots = story.get("shots")
++    if not isinstance(shots, list) or not shots:
++        raise MotionEngineError("No story/story_package.json shots: generate the story first.")
++    ids = [str(s.get("shot_id") or f"S{i:03d}") for i, s in enumerate(shots, 1)]
++    if len(set(ids)) != len(ids) or not all(re.fullmatch(r"[A-Za-z0-9_-]{1,40}", x) for x in ids):
++        raise MotionEngineError("story shot_ids must be unique, letters/digits/_/- only")
++    return story, shots
++
++
++def shot_timing(project: Path, shots: list) -> tuple[list, dict]:
++    """[(start, end)] per shot and the narration block. Measured voice wins when it matches the story text."""
++    voice = _read(project / "voice" / "voice_manifest.json", {}) or {}
++    master = project / "exports" / "narration_master.wav"
++    vs = voice.get("shots") if isinstance(voice, dict) else None
++    if master.is_file() and isinstance(vs, list) and len(vs) == len(shots) and all(
++            str(v.get("shot_id")) == str(s.get("shot_id") or f"S{i:03d}") and
++            str(v.get("narration") or "").strip() == str(s.get("narration") or "").strip()
++            for i, (v, s) in enumerate(zip(vs, shots), 1)):
++        times = [(round(float(v["start_sec"]), 3), round(float(v["end_sec"]), 3)) for v in vs]
++        return times, {"file": str(master.resolve()), "measured": True}
++    t, times = 0.0, []
++    for s in shots:   # provisional: the story's planned durations, laid end to end
++        d = max(.5, float(s.get("duration_sec") or 3))
++        times.append((round(t, 3), round(t + d, 3)))
++        t += d
++    return times, {"measured": False}
++
++
++def _headline(s: dict) -> str:
++    chunks = s.get("caption_chunks") or []
++    text = str(chunks[0] if chunks else s.get("narration") or "").strip()
++    return text if len(text) <= 42 else text[:40].rstrip() + "…"
++
++
++def test_shot(s: dict, i: int, aspect: str, length: float) -> dict:
++    """No-AI layout from existing story data: the shot's caption as kinetic type over a slow camera move."""
++    tp = ("reveal", "slide", "pop", "highlight")[i % 4]
++    return {"treatment": "kinetic_typography", "backend": "javascript_motion",
++            "purpose": f"no-AI test layout · {s.get('story_function') or ''}".strip(),
++            "camera": {"cap": "cameraMove", "params": {"from": [540, 960, 1] if aspect == "9:16" else [960, 540, 1],
++                                                       "to": [540, 930, 1.08] if aspect == "9:16" else [930, 540, 1.08],
++                                                       "at": 0, "dur": round(max(.5, length), 2), "drift": 6}},
++            "layers": [
++                {"id": "mark", "cap": "objectReveal", "params": {"shape": ("circle", "square", "star", "heart")[i % 4],
++                                                                 "from": ("below", "left", "right", "center")[i % 4], "at": .1, "dur": .7}},
++                {"id": "line", "cap": f"type.{tp}", "params": {"text": _headline(s), "at": .15, "end": round(max(.5, length - .1), 2), "x": .5, "y": .2, "maxWidth": .84}},
++            ],
++            "expected_motion": {"min_changed_frac": .01}}
++
++
++def compact_catalog(cat: dict) -> list:
++    out = []
++    for c in cat.get("capabilities", []):
++        if c.get("status") != "verified":
++            continue
++        params = {}
++        for k, s in c.get("params", {}).items():
++            desc = s.get("type", "any")
++            if s.get("enum"):
++                desc += " " + "|".join(map(str, s["enum"]))
++            if s.get("min") is not None or s.get("max") is not None:
++                desc += f" {s.get('min', '')}..{s.get('max', '')}"
++            params[k] = desc
++        out.append({"id": c["id"], "category": c["category"], "about": c.get("about", ""), "tags": c.get("tags", []),
++                    "params": params, "aspects": c.get("aspects", [])})
++    return out
++
++
++def compact_story(story: dict, shots: list, times: list) -> dict:
++    return {"format": story.get("format"), "target_duration_sec": story.get("target_duration_sec"),
++            "style": story.get("selected_style_name"),
++            "creative_direction": str(story.get("creative_direction") or "")[:700],
++            "shots": [{"id": str(s.get("shot_id") or f"S{i:03d}"), "start": a, "end": b,
++                       **{k: str(s.get(k) or "")[:320] for k in SHOT_KEYS}}
++                      for i, (s, (a, b)) in enumerate(zip(shots, times), 1)]}
++
++
++def opus_direct(app_root: Path, runner, story: dict, shots: list, times: list, catalog: dict, aspect: str) -> dict:
++    instructions = (app_root / "prompts" / PROMPT_FILE).read_text(encoding="utf-8")
++    stable = instructions + "\n\nCAPABILITY CATALOG " + catalog.get("hash", "") + " (verified only):\n" + \
++        json.dumps(compact_catalog(catalog), ensure_ascii=False, separators=(",", ":"))
++    prompt = f"ASPECT: {aspect}\nSTORY:\n" + json.dumps(compact_story(story, shots, times), ensure_ascii=False, separators=(",", ":"))
++    out = extract_json(runner.run("opus", prompt, stable_prefix=stable))
++    if not isinstance(out, dict) or not isinstance(out.get("shots"), list):
++        raise MotionEngineError("Opus did not return {strategy, shots}")
++    return out
++
++
++def build_manifest(project: Path, engine: MotionEngine, aspect: str, mode: str = "test", runner=None,
++                   app_root: Optional[Path] = None, log: Optional[Callable[[str], None]] = None) -> tuple[dict, dict]:
++    log = log or (lambda m: None)
++    if aspect not in ASPECTS:
++        raise MotionEngineError(f"aspect must be one of {ASPECTS}")
++    project = Path(project)
++    story, shots = story_shots(project)
++    times, narration = shot_timing(project, shots)
++    catalog = engine.catalog()
++    log(f"[Shot Director] {len(shots)} shots · timing {'measured voice' if narration['measured'] else 'provisional'} · catalog {catalog.get('hash')}")
++    directed, notes = {}, []
++    strategy = {"name": "kinetic_typography", "look": "classic", "ai_video": "forbidden"}
++    data = {}
++    if mode == "opus":
++        if runner is None:
++            raise MotionEngineError("Opus mode needs the app's model runner")
++        out = opus_direct(app_root or Path(__file__).resolve().parent.parent, runner, story, shots, times, catalog, aspect)
++        directed = {str(s.get("id")): s for s in out["shots"] if isinstance(s, dict)}
++        strategy = {**strategy, **(out.get("strategy") or {}), "ai_video": "forbidden"}
++        data = out.get("data") or {}
++    m_shots = []
++    for i, (s, (a, b)) in enumerate(zip(shots, times)):
++        sid = str(s.get("shot_id") or f"S{i + 1:03d}")
++        d = directed.get(sid)
++        if mode == "opus" and not d:
++            notes.append(f"{sid}: Opus returned no direction; filled with the no-AI test layout")
++        body = d or test_shot(s, i, aspect, b - a)
++        shot = {"id": sid, "start": a, "end": b, "narration": s.get("narration") or "",
++                "treatment": body.get("treatment") or "kinetic_typography", "backend": "javascript_motion",
++                "purpose": body.get("purpose") or "", "camera": body.get("camera"), "layers": body.get("layers") or [],
++                "transition_in": body.get("transition_in") or "cut",
++                "expected_motion": body.get("expected_motion") or {"min_changed_frac": .01}}
++        if d is None and mode == "opus":
++            shot["notes"] = "substituted: no-AI test layout"
++        m_shots.append(shot)
++    manifest = {"schema": "shot_manifest/1", "project_id": re.sub(r"[^A-Za-z0-9_-]", "_", project.name)[:50] or "story",
++                "aspect": aspect, "fps": 24, "target_seconds": round(times[-1][1], 3), "tolerance_seconds": 1,
++                "mode": "motion_only", "capability_catalog": catalog.get("hash"), "director": "opus" if mode == "opus" else "no_ai_test",
++                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"), "strategy": strategy,
++                "audio": {"narration": narration}, "data": data, "shots": m_shots}
++    report = validate(engine, manifest)
++    report["notes"] = notes + report.get("notes", [])
++    return manifest, report
++
++
++def validate(engine: MotionEngine, manifest: dict) -> dict:
++    """Dry-run the engine compiler against the live catalog; nothing is rendered or written into the project."""
++    with tempfile.TemporaryDirectory() as tmp:
++        p = Path(tmp) / "shot_manifest.json"   # a separate plan id, so a dry run never touches the real plan's reports
++        p.write_text(json.dumps({**manifest, "project_id": manifest["project_id"][:50] + "_candidate"}, ensure_ascii=False, indent=2), encoding="utf-8")
++        try:
++            rep = engine.compile(p, extra=["--dry"])
++        except MotionEngineError as ex:
++            return {"status": "rejected", "error": str(ex), "shots": [], "notes": []}
++    rep.setdefault("notes", [])
++    return rep
++
++
++def save_manifest(project: Path, manifest: dict) -> Path:
++    dst = Path(project) / "production" / "shot_manifest.json"
++    dst.parent.mkdir(parents=True, exist_ok=True)
++    if dst.is_file():   # the caller asked the user; keep the old one anyway
++        dst.replace(dst.with_name(f"shot_manifest.{time.strftime('%Y%m%d_%H%M%S')}.bak.json"))
++    dst.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
++    return dst
+diff --git a/prompts/opus_shot_director.txt b/prompts/opus_shot_director.txt
+new file mode 100644
+index 0000000..304c4f2
+--- /dev/null
++++ b/prompts/opus_shot_director.txt
+@@ -0,0 +1,27 @@
++You are the visual director of an automated Thai documentary/explainer studio. Turn an EXISTING story (its shots, narration and timing are fixed) into executable motion for a JavaScript motion engine. You do not write code, narration or image prompts. You choose, per shot, which REGISTERED capabilities to use and with which parameters.
++
++Return ONLY one JSON object, no prose, no markdown:
++{
++  "strategy": { "name": "<one dominant visual language, e.g. historical_map_documentary | kinetic_typography | infographic | abstract_motion>",
++                "look": "<classic|documentary|collage|watercolor|infographic|cinematic|illustration|abstract|product>",
++                "background": "#rrggbb", "rationale": "<one sentence: why this language fits the narrative>" },
++  "data": { "<id>": { "lonlat": [lon, lat] | "coords": [[lon, lat], ...], "date": "...", "event": "...",
++                      "source": "<where the STORY states it>", "confidence": "high|medium|schematic", "note": "..." } },
++  "shots": [ { "id": "<story shot id, unchanged>", "treatment": "<semantic treatment, e.g. animated_map | kinetic_typography | infographic | abstract_motion>",
++               "purpose": "<what this shot must make the viewer understand>",
++               "camera": { "cap": "<camera capability id>", "params": { ... } } | null,
++               "layers": [ { "id": "<short id>", "cap": "<capability id>", "params": { ... } } ],
++               "transition_in": "cut|fade|dip|slide|wipe",
++               "expected_motion": { "min_changed_frac": 0.01, "intentional_still": false } } ]
++}
++
++Hard rules (the compiler rejects violations; a rejected shot is not rendered):
++1. Use ONLY capability ids from the CAPABILITY CATALOG below, and ONLY the parameter names it lists for that id, with the listed types, enums and ranges. Never invent a capability or parameter. Ids starting with "type." are text items.
++2. One entry per story shot, same ids, same order. Never add, drop, merge or retime shots: start/end come from the measured narration.
++3. Every time parameter (at, dur, end, out, keys times) is in SHOT-LOCAL seconds: 0 = the start of that shot, and it must fit inside the shot's length (end - start).
++4. Map layers (category "map") require camera cap "mapView". Every place or route MUST come from "data" via {"$data": "<id>", "field": "lonlat" | "coords"}. Put a place in "data" only if the STORY itself names it, with a "source" that points to that story text. Do not invent coordinates, dates, routes, borders or numbers; if the story does not support a map, do not use one.
++5. Colours are "#rrggbb". Positions for type items are frame fractions x, y in 0..1; keep titles near y 0.1–0.25 and away from the main subject.
++6. On-screen text is SHORT Thai (max ~40 characters): a key phrase or a date/place label, never the whole narration.
++7. Motion serves meaning: every shot needs at least one element that visibly moves (camera, route, reveal), unless it is a deliberate pause; then set "intentional_still": true and say why in "purpose". Avoid decorative particles and identical camera moves on consecutive shots.
++8. Never use AI video. Prefer one consistent visual language for the whole film; change it only with a narrative reason given in "purpose".
++9. The output aspect is given as ASPECT; the engine re-frames for it. Do not use pixel coordinates except where a parameter's type requires numbers in pixels (e.g. cameraMove from/to: [x, y, zoom] with x, y in frame pixels: 9:16 = 1080x1920, 16:9 = 1920x1080).

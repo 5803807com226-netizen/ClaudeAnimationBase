@@ -39,9 +39,11 @@ const cues = srtFile && existsSync(srtFile) ? readFileSync(srtFile, 'utf8').repl
   const l = b.split('\n'), m = l[1].match(/(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)/), s = (h, mi, se, ms) => +h * 3600 + +mi * 60 + +se + +ms / 1000;
   return { i: +l[0], start: s(m[1], m[2], m[3], m[4]), end: s(m[5], m[6], m[7], m[8]), text: l.slice(2).join(' ') };
 }) : null;
-const measured = !!(cues && M.audio?.narration?.measured);
+// measured = cue times from an aligned SRT, or explicit per-shot times taken from the measured voice (no SRT given)
+const measured = !!(M.audio?.narration?.measured && (cues || !srtFile));
 if (srtFile && !cues) warnings.push(`narration timing file missing: ${srtFile} (shot times are provisional)`);
 if (cues && !measured) warnings.push('narration timing is not marked measured: shot times are provisional until the real voice is aligned');
+if (!cues && !measured) warnings.push('no measured narration timing: shot times are provisional');
 M.shots.forEach((s, i) => {
   if (s.say && cues) { const a = cues.find(c => c.i === s.say[0]); if (a) s.start = +(Math.max(0, a.start - (s.lead ?? .3))).toFixed(3); }
   if (i && s.say && cues) M.shots[i - 1].end = s.start;
@@ -68,6 +70,9 @@ function checkLayer(L, len, prov, errors, subs) {
   if (!cap) return errors.push(`${L.id}: blocked:unknown_capability "${L.cap}"`);
   if (cap.status !== 'verified' && !allowExp) return errors.push(`${L.id}: blocked:unverified_capability "${L.cap}" (pass --allow-experimental to preview)`);
   if (cap.aspects.length && !cap.aspects.includes(M.aspect)) errors.push(`${L.id}: ${L.cap} has not passed ${M.aspect}`);
+  // geography is a fact: on map layers, places and routes must come from sourced `data`, never literal coordinates
+  if (cap.category === 'map') for (const k of ['lonlat', 'coords']) { const v = L.params?.[k];
+    if (v !== undefined && !(v && typeof v === 'object' && !Array.isArray(v) && '$data' in v)) errors.push(`${L.id}.${k}: blocked:unsourced_data (use {"$data": "<id>", "field": "${k}"} with a sourced data entry)`); }
   let params;
   try { params = resolveData(L.params || {}, prov, `${L.id}.params`); } catch (e) { return errors.push(`${L.id}: ${e}`); }
   for (const [k, v] of Object.entries(params)) {
