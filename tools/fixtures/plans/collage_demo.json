@@ -1,0 +1,73 @@
+{
+  "schema": "shot_manifest/1",
+  "project_id": "collage_demo",
+  "aspect": "9:16",
+  "fps": 24,
+  "target_seconds": 9,
+  "tolerance_seconds": 1,
+  "mode": "motion_only",
+  "_comment": "Collage treatment as AutoCinematic writes it: three shots on the collage_reel cut-outs, joined by reel transitions. Values may be per format ({\"9:16\": …, \"16:9\": …}). Timing provisional (no voice).",
+  "strategy": { "name": "editorial_paper_collage", "look": { "style": "collage", "off": ["vignette"], "set": { "paper": 0.3 } }, "background": "#F3F1EC", "ai_video": "forbidden" },
+  "shots": [
+    {
+      "id": "C01", "start": 0, "end": 3.2, "treatment": "collage", "backend": "javascript_motion",
+      "purpose": "the hook: a hand offers a tangerine that peels into a globe",
+      "collage": {
+        "assets": "assets/stories/collage_reel/", "boil": { "amp": 1.2, "rot": 0.35 },
+        "camera": { "9:16": [[0, 540, 960, 1, "smooth"], [3.2, 540, 930, 1.1, "smooth"]], "16:9": [[0, 540, 960, 1, "smooth"], [3.2, 540, 940, 1.06, "smooth"]] }
+      },
+      "layers": [
+        { "id": "globe", "cap": "collage.layer", "params": { "file": "globe.png", "size": [560], "at": [540, 980], "subject": true, "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 }, "border": 7 } },
+          "motion": [{ "cap": "collage.appear", "params": { "at": 1.1, "flutter": 0 } }, { "cap": "collage.sway", "params": { "amp": 1.5, "hz": 0.5 } }] },
+        { "id": "fruit", "cap": "collage.layer", "params": { "file": "tangerine.png", "size": [470], "at": [540, 990], "subject": true, "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 }, "border": 7 } },
+          "motion": [{ "cap": "collage.place", "params": { "at": 0.15, "dur": 0.6, "from": "bottom", "dist": 1100, "rot": -10 } }, { "cap": "collage.peel", "params": { "at": 1.15, "dur": 1.1, "pieces": 7 } }] },
+        { "id": "hand", "cap": "collage.layer", "params": { "file": "hand_up.png", "size": [null, 760], "at": [560, 1190], "anchor": [0.5, 0.08], "boil": false, "edgeOk": true, "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 } } },
+          "motion": [{ "cap": "collage.follow", "params": { "target": "fruit", "grip": [30, 200], "until": 0.9, "release": [10, 45] } }, { "cap": "collage.leave", "params": { "at": 1.05, "dur": 0.45, "to": "bottom", "dist": 1200, "rot": -6 } }] },
+        { "id": "title", "cap": "type.cutout", "params": { "text": "ยินดีต้อนรับ", "at": 0.5, "x": { "9:16": 0.5, "16:9": 0.2 }, "y": { "9:16": 0.14, "16:9": 0.3 }, "maxWidth": { "9:16": 0.8, "16:9": 0.32 }, "maxLines": 1, "prefer": "up", "style": { "font": "display", "weight": 800, "size": 80, "color": "#2E2E30" } } }
+      ],
+      "expected_motion": { "min_changed_frac": 0.01 }
+    },
+    {
+      "id": "C02", "start": 3.2, "end": 6.2, "treatment": "collage", "backend": "javascript_motion",
+      "purpose": "the town grows: trees pop, a temple slams in, a plane flies over",
+      "transition_in": { "cap": "transition.push", "params": { "dur": 0.8, "focus": [540, 980], "zoom": 6 } },
+      "collage": {
+        "assets": "assets/stories/collage_reel/", "boil": { "amp": 1.2, "rot": 0.35 },
+        "camera": { "9:16": [[0, 540, 1040, 1.05, "smooth"], [3, 540, 1060, 1.12, "smooth"]], "16:9": [[0, 540, 1010, 1, "smooth"], [3, 560, 1030, 1.05, "smooth"]] }
+      },
+      "layers": [
+        { "id": "ground", "cap": "collage.layer", "params": { "file": "ground_mint.png", "size": [4200], "at": [540, 1330], "anchor": [0.5, 0.2], "edgeOk": true, "step": 1 } },
+        { "id": "temple", "cap": "collage.layer", "params": { "file": "temple.png", "size": [540], "at": [540, 1345], "anchor": [0.5, 0.95], "subject": true, "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 }, "border": 7 } },
+          "motion": [{ "cap": "collage.slam", "params": { "at": 0.6 } }] },
+        { "id": "tree_l", "cap": "collage.layer", "params": { "file": "tree_teal.png", "size": [300], "at": [180, 1350], "anchor": [0.5, 0.95] },
+          "motion": [{ "cap": "collage.pop", "params": { "at": 0.15 } }, { "cap": "collage.sway", "params": { "amp": 2, "hz": 0.45 } }] },
+        { "id": "tree_r", "cap": "collage.layer", "params": { "file": "tree_teal.png", "size": [300], "at": [900, 1350], "anchor": [0.5, 0.95] },
+          "motion": [{ "cap": "collage.pop", "params": { "at": 0.3 } }, { "cap": "collage.sway", "params": { "amp": 2, "hz": 0.45, "phase": 0.3 } }] },
+        { "id": "plane", "cap": "collage.layer", "params": { "file": "airplane.png", "size": [220], "at": [0, 0] },
+          "motion": [{ "cap": "collage.fly", "params": { "at": 0, "dur": 3, "ease": "linear", "orient": true, "bank": 0.6, "path": [[-200, 760], [400, 640], [800, 720], [1300, 560]], "hide": true } }] },
+        { "id": "title", "cap": "type.label", "params": { "text": "ทุกเส้นทาง", "at": 1.1, "x": { "9:16": 0.5, "16:9": 0.78 }, "y": { "9:16": 0.12, "16:9": 0.14 }, "maxWidth": { "9:16": 0.8, "16:9": 0.36 }, "maxLines": 1, "prefer": "up", "style": { "font": "display", "weight": 700, "size": 70, "color": "#F7F3EA" } } }
+      ],
+      "expected_motion": { "min_changed_frac": 0.01 }
+    },
+    {
+      "id": "C03", "start": 6.2, "end": 9, "treatment": "collage", "backend": "javascript_motion",
+      "purpose": "the end: fruit drops round a growing tangerine tree; the name lands",
+      "transition_in": { "cap": "transition.tear", "params": { "dur": 0.7 } },
+      "collage": {
+        "assets": "assets/stories/collage_reel/", "boil": { "amp": 1.2, "rot": 0.35 },
+        "camera": { "9:16": [[0, 540, 1010, 1.08, "smooth"], [2.8, 540, 990, 1.14, "smooth"]], "16:9": [[0, 600, 990, 1, "smooth"], [2.8, 600, 980, 1.05, "smooth"]] }
+      },
+      "layers": [
+        { "id": "ground", "cap": "collage.layer", "params": { "file": "ground_mint.png", "size": [3200], "at": [540, 1340], "anchor": [0.5, 0.2], "edgeOk": true, "step": 1 } },
+        { "id": "tree", "cap": "collage.layer", "params": { "file": "tangerine_tree.png", "size": [620], "at": { "9:16": [540, 1350], "16:9": [360, 1320] }, "anchor": [0.5, 0.97], "subject": true, "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 }, "border": 7 } },
+          "motion": [{ "cap": "collage.pop", "params": { "at": 0.1, "dur": 0.7, "overshoot": 2.4 } }, { "cap": "collage.sway", "params": { "amp": 1, "hz": 0.4 } }] },
+        { "id": "fruit_a", "cap": "collage.layer", "params": { "file": "tangerine.png", "size": [90], "at": { "9:16": [330, 1430], "16:9": [150, 1400] }, "anchor": [0.5, 0.95] },
+          "motion": [{ "cap": "collage.drop", "params": { "at": 0.9, "height": 560, "bounces": 3 } }] },
+        { "id": "fruit_b", "cap": "collage.layer", "params": { "file": "tangerine.png", "size": [90], "at": { "9:16": [760, 1430], "16:9": [580, 1400] }, "anchor": [0.5, 0.95] },
+          "motion": [{ "cap": "collage.drop", "params": { "at": 1.15, "height": 560, "bounces": 3 } }] },
+        { "id": "name", "cap": "type.stamp", "params": { "text": "เชียงใหม่", "at": 1.2, "x": { "9:16": 0.5, "16:9": 0.72 }, "y": { "9:16": 0.14, "16:9": 0.38 }, "maxWidth": { "9:16": 0.86, "16:9": 0.44 }, "maxLines": 1, "prefer": "up", "style": { "font": "display", "weight": 800, "size": { "9:16": 190, "16:9": 150 }, "color": "#3A3A3C" } } }
+      ],
+      "expected_motion": { "min_changed_frac": 0.01 }
+    }
+  ]
+}

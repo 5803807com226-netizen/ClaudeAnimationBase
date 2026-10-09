@@ -24,6 +24,11 @@ if (!/^[A-Za-z0-9_-]{1,60}$/.test(M.project_id || '')) fail('project_id: letters
 if (!ASPECT_SIZE[M.aspect]) fail(`aspect must be one of ${Object.keys(ASPECT_SIZE).join(', ')} (got ${M.aspect})`);
 if (!Array.isArray(M.shots) || !M.shots.length) fail('shots: none');
 if (M.mode === 'motion_only' && M.shots.some(s => s.backend === 'ltx_video')) fail('mode motion_only forbids backend ltx_video');
+// a value may be per format ({ "9:16": …, "16:9": … }, as in the engine): the compiled plan is for one format, so pick it
+const isAspectMap = v => v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every(k => /^(\d+:\d+|tall|wide|default)$/.test(k));
+const pickAspect = v => isAspectMap(v) ? pickAspect(v[M.aspect] ?? v[ASPECT_SIZE[M.aspect][1] > ASPECT_SIZE[M.aspect][0] ? 'tall' : 'wide'] ?? v.default)
+  : Array.isArray(v) ? v.map(pickAspect) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, pickAspect(x)])) : v;
+M.shots = M.shots.map(s => ({ ...s, layers: pickAspect(s.layers), camera: pickAspect(s.camera), collage: pickAspect(s.collage), transition_in: pickAspect(s.transition_in) }));
 
 let catalog;
 if (args.catalog) catalog = JSON.parse(readFileSync(args.catalog, 'utf8'));
@@ -85,7 +90,7 @@ function checkLayer(L, len, prov, errors, subs) {
     if (S.enum && !S.enum.includes(v)) errors.push(`${L.id}.${k}: ${JSON.stringify(v)} not in ${S.enum.join('|')}`);
     if (t === 'number' && ((S.min != null && v < S.min) || (S.max != null && v > S.max))) errors.push(`${L.id}.${k}: ${v} outside ${S.min ?? ''}..${S.max ?? ''}`);
   }
-  const at = params.at ?? 0, dur = params.dur ?? cap.params.dur?.default ?? 0;
+  const at = typeof params.at === 'number' ? params.at : 0, dur = params.dur ?? (cap.kind === 'collage' ? 0 : cap.params.dur?.default ?? 0);   // collage motions may run on (walk, sway)
   if (at > len) errors.push(`${L.id}: starts at ${at} s, after the shot ends (${len.toFixed(2)} s)`);
   else if (at + dur > len + .05) warnings.push(`${L.id}: its move (${at}+${dur} s) runs past the shot end (${len.toFixed(2)} s) and will be cut`);
   return { id: L.id, cap: cap.id, params, space: cap.kind === 'type' ? 'text' : cap.camera === 'screen' ? 'screen' : 'world' };
@@ -103,13 +108,40 @@ for (const [i, s] of M.shots.entries()) {
   const len = (s.end ?? 0) - (s.start ?? 0);
   let camera = null;
   if (s.camera) { const c = checkLayer({ id: `${s.id}.camera`, ...s.camera }, len, prov, errors, subs); if (c && c.cap) { camera = c; if (CAPS[c.cap].category !== 'camera') errors.push(`${s.id}.camera: ${c.cap} is not a camera capability`); } }
-  const layers = (s.layers || []).map(L => checkLayer({ ...L, id: `${s.id}.${L.id}` }, len, prov, errors, subs)).filter(x => x && x.cap);
+  const collage = s.treatment === 'collage';
+  const layers = (s.layers || []).map(L => {
+    const c = checkLayer({ ...L, id: `${s.id}.${L.id}` }, len, prov, errors, subs); if (!c || !c.cap) return null;
+    if (collage ? !(c.cap === 'collage.layer' || c.space === 'text') : c.cap === 'collage.layer') { errors.push(`${s.id}.${L.id}: ${c.cap} ${collage ? 'is not a collage layer or text (a collage shot takes collage.layer and type.* layers)' : 'needs treatment "collage"'}`); return null; }
+    if (c.cap === 'collage.layer') {   // its moves: collage.* motions, each checked like any capability
+      if (!/^[a-z0-9]+(_[a-z0-9]+)*\.png$/.test(c.params.file || '')) errors.push(`${s.id}.${L.id}.file: a lower_snake_case .png name is required`);
+      if (!Array.isArray(c.params.size) || !Array.isArray(c.params.at)) errors.push(`${s.id}.${L.id}: size [w] | [null, h] and at [x, y] are required`);
+      c.motion = (L.motion || []).map((m, j) => {
+        const r = checkLayer({ id: `${s.id}.${L.id}.motion[${j}]`, ...m }, len, prov, errors, subs); if (!r || !r.cap) return null;
+        if (CAPS[r.cap].category !== 'collage' || r.cap === 'collage.layer') { errors.push(`${s.id}.${L.id}.motion[${j}]: ${r.cap} is not a collage motion`); return null; }
+        return { kind: r.cap.slice(8), ...r.params };
+      }).filter(Boolean);
+    } else if (L.motion) errors.push(`${s.id}.${L.id}: only collage layers take a motion list`);
+    return c;
+  }).filter(Boolean);
+  let scene = null;
+  if (collage) {   // → a collage scene (src/collage/collage.js), played with its neighbours as one reel
+    const C = s.collage || {}, tr = s.transition_in;
+    if (!C.assets || typeof C.assets !== 'string') errors.push(`${s.id}.collage.assets: the artwork folder is required (e.g. "assets/stories/<id>/")`);
+    if (C.camera && !(Array.isArray(C.camera) && C.camera.every(k => Array.isArray(k) && k.length >= 4 && k.slice(0, 4).every(v => typeof v === 'number')))) errors.push(`${s.id}.collage.camera: keys [[t, x, y, zoom, ease?], ...]`);
+    let transition;
+    if (tr && typeof tr === 'object') { const r = checkLayer({ id: `${s.id}.transition_in`, ...tr }, len, prov, errors, subs); if (r && r.cap) { if (CAPS[r.cap].category !== 'transition') errors.push(`${s.id}.transition_in: ${r.cap} is not a transition`); else transition = { kind: r.cap.slice(11), ...r.params }; } }
+    else if (tr && tr !== 'cut') errors.push(`${s.id}.transition_in: a collage shot takes { "cap": "transition.<kind>", "params": {...} } or "cut"`);
+    scene = { assets: C.assets, background: C.background || s.background || M.strategy?.background || '#F3F1EC', duration: +len.toFixed(3), aspects: [M.aspect],
+      camera: C.camera, boil: C.boil, gen: C.gen, transition,
+      layers: layers.filter(L => L.cap === 'collage.layer').map(L => ({ id: L.id.slice(s.id.length + 1), ...L.params, motion: L.motion })),
+      type: layers.filter(L => L.space === 'text').map(L => ({ id: L.id, preset: L.cap.slice(5), ...L.params })), narration: s.narration ? [{ at: 0, end: len, text: s.narration }] : [] };
+  }
   const mapLayers = layers.filter(L => CAPS[L.cap].category === 'map');
   if (mapLayers.length && camera?.cap !== 'mapView') errors.push('map layers need camera mapView');
   const exp = { min_changed_frac: .01, intentional_still: false, ...s.expected_motion };
   report.shots.push({ id: s.id, start: s.start, end: s.end, treatment: s.treatment, backend: s.backend || 'javascript_motion',
     status: errors.length ? 'blocked' : 'compiled', errors, substitutions: subs, provenance: prov, expected_motion: exp, purpose: s.purpose || null });
-  compiled.push({ id: s.id, start: s.start, end: s.end, background: s.background, camera, layers, expected_motion: exp });
+  compiled.push(collage ? { id: s.id, start: s.start, end: s.end, collage: scene, expected_motion: exp } : { id: s.id, start: s.start, end: s.end, background: s.background, camera, layers, expected_motion: exp });
   t = s.end;
 }
 const total = t, target = M.target_seconds, tol = M.tolerance_seconds ?? 2;
@@ -129,10 +161,13 @@ const story = `_plan_${M.project_id}`, dir = `src/stories/${story}`, [w, h] = AS
 const look = M.strategy?.look || 'classic';
 writeFileSync(`${dir}/config.js`, `// GENERATED by tools/compile_plan.mjs from ${args.manifest}. Do not edit: change the manifest and recompile.\n` +
   `const PROJECT = ${JSON.stringify({ width: w, height: h, aspect: M.aspect, duration: +total.toFixed(3), bpm: 120, offset: 0, audio: '', look, files: ['src/plan/play.js', 'plan.js'] })};\n`);
+// collage shots become SCENES entries (so tools/gen_assets.mjs and validate_assets.mjs work on the compiled story too)
+const sceneId = s => `${M.project_id}_${s.id}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 writeFileSync(`${dir}/plan.js`, `// GENERATED by tools/compile_plan.mjs (${catalog.hash}). Do not edit.\n` +
-  `const PLAN = ${JSON.stringify({ id: M.project_id, catalog: catalog.hash, background: M.strategy?.background, shots: compiled })};\nplayPlan(PLAN);\n`);
+  compiled.filter(s => s.collage).map(s => `SCENES.${sceneId(s)} = ${JSON.stringify(s.collage)};\n`).join('') +
+  `const PLAN = ${JSON.stringify({ id: M.project_id, catalog: catalog.hash, background: M.strategy?.background, shots: compiled.map(s => s.collage ? { ...s, collage: undefined, scene: sceneId(s) } : s) })};\nplayPlan(PLAN);\n`);
 const job = { id: M.project_id, fps: M.fps || 24, size: [w, h], aspect: M.aspect, fade: 0, audio: M.audio?.narration?.file ? resolve(base, M.audio.narration.file) : null,
-  segments: compiled.map((s, i) => ({ id: s.id, type: 'story', story, range: [s.start, s.end], transition: M.shots[i].transition_in || 'cut', expected_motion: s.expected_motion,
+  segments: compiled.map((s, i) => ({ id: s.id, type: 'story', story, range: [s.start, s.end], transition: s.collage ? 'cut' : M.shots[i].transition_in || 'cut',   // collage transitions are drawn in the frames themselves expected_motion: s.expected_motion,
     shot_hash: createHash('sha256').update(JSON.stringify([s, M.aspect, look, M.strategy?.background])).digest('hex').slice(0, 16) })) };   // per-shot cache key for tools/pipeline.mjs
 writeFileSync(`${outDir}/job.json`, JSON.stringify(job, null, 2));
 console.log(`compiled ${compiled.length} shot(s), ${total.toFixed(2)} s, ${M.aspect} → ${dir}/ and ${outDir}/job.json`);

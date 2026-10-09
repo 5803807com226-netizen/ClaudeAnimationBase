@@ -3,7 +3,10 @@
 // layers inside it (a map camera draws map layers; cameraMove draws objects), then screen-space layers (transitions),
 // then typography. Every time in a layer's params is SHOT-LOCAL seconds, so one shot renders the same alone or in the film.
 function playPlan(plan) {
-  shots(plan.shots.map(s => {
+  // runs of consecutive collage shots play as ONE reel (their transitions span the cut between them)
+  const runs = []; for (const s of plan.shots) if (s.scene) { const r = runs.at(-1); if (r && r.end === s) r.list.push(s); else runs.push({ list: [s] }); runs.at(-1).end = plan.shots[plan.shots.indexOf(s) + 1]; }
+  for (const r of runs) playCollage(r.list.map(s => SCENES[s.scene]), { start: r.list[0].start });
+  shots(plan.shots.filter(s => !s.scene).map(s => {
     const typeItems = s.layers.filter(L => L.space === 'text').map(L => ({ id: L.id, ...L.params, preset: L.cap.slice(5) }));
     const overlay = typeItems.length ? typeOverlay({ items: typeItems }) : null;
     const world = s.layers.filter(L => L.space === 'world'), screen = s.layers.filter(L => L.space === 'screen');

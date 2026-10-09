@@ -27,7 +27,8 @@ export async function openTarget(browser, T, opts, errors) {
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   const q = Object.entries(opts).filter(([, v]) => v).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join('');
-  await withTimeout(page.goto(pathToFileURL(resolve(T.story ? 'story.html' : 'studio.html')).href + '?render' + (T.story ? '&story=' + T.story : '') + q, { waitUntil: 'load', timeout: LOAD_MS }), LOAD_MS, 'load ' + T.name);
+  const story = T.byAspect?.[opts.aspect] || T.story;   // byAspect: a compiled plan is one story per format
+  await withTimeout(page.goto(pathToFileURL(resolve(story ? 'story.html' : 'studio.html')).href + '?render' + (story ? '&story=' + story : '') + q, { waitUntil: 'load', timeout: LOAD_MS }), LOAD_MS, 'load ' + T.name);
   await page.waitForFunction('window.ready === true', { timeout: LOAD_MS });
   if (T.loop && !(await page.evaluate(n => { if (!LOOPS[n]) return false; window.LOOP = LOOPS[n]; return true; }, T.loop))) throw new Error('no loop ' + T.loop);
   return page;

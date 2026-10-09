@@ -1,0 +1,37 @@
+diff --git a/autocinematic/shot_director.py b/autocinematic/shot_director.py
+index 5a0836c..84972b5 100644
+--- a/autocinematic/shot_director.py
++++ b/autocinematic/shot_director.py
+@@ -156,6 +156,9 @@ def build_manifest(project: Path, engine: MotionEngine, aspect: str, mode: str =
+                 "purpose": body.get("purpose") or "", "camera": body.get("camera"), "layers": body.get("layers") or [],
+                 "transition_in": body.get("transition_in") or "cut",
+                 "expected_motion": body.get("expected_motion") or {"min_changed_frac": .01}}
++        if shot["treatment"] == "collage" and isinstance(body.get("collage"), dict):
++            pid = re.sub(r"[^A-Za-z0-9_-]", "_", project.name)[:50] or "story"   # the art folder is per project: the app sets it, not Opus
++            shot["collage"] = {**body["collage"], "assets": f"assets/stories/{pid}/"}   # camera keys, boil, generation style (engine collage scene)
+         if d is None and mode == "opus":
+             shot["notes"] = "substituted: no-AI test layout"
+         m_shots.append(shot)
+diff --git a/prompts/opus_shot_director.txt b/prompts/opus_shot_director.txt
+index 304c4f2..81164b5 100644
+--- a/prompts/opus_shot_director.txt
++++ b/prompts/opus_shot_director.txt
+@@ -11,7 +11,8 @@ Return ONLY one JSON object, no prose, no markdown:
+                "purpose": "<what this shot must make the viewer understand>",
+                "camera": { "cap": "<camera capability id>", "params": { ... } } | null,
+                "layers": [ { "id": "<short id>", "cap": "<capability id>", "params": { ... } } ],
+-               "transition_in": "cut|fade|dip|slide|wipe",
++               "transition_in": "cut|fade|dip|slide|wipe"  (collage shots: { "cap": "transition.<push|slide|tear|iris|whip|fade|cut>", "params": { ... } }),
++               "collage": { ... }  (only for treatment "collage", see rule 10),
+                "expected_motion": { "min_changed_frac": 0.01, "intentional_still": false } } ]
+ }
+ 
+@@ -25,3 +26,8 @@ Hard rules (the compiler rejects violations; a rejected shot is not rendered):
+ 7. Motion serves meaning: every shot needs at least one element that visibly moves (camera, route, reveal), unless it is a deliberate pause; then set "intentional_still": true and say why in "purpose". Avoid decorative particles and identical camera moves on consecutive shots.
+ 8. Never use AI video. Prefer one consistent visual language for the whole film; change it only with a narrative reason given in "purpose".
+ 9. The output aspect is given as ASPECT; the engine re-frames for it. Do not use pixel coordinates except where a parameter's type requires numbers in pixels (e.g. cameraMove from/to: [x, y, zoom] with x, y in frame pixels: 9:16 = 1080x1920, 16:9 = 1920x1080).
++10. Treatment "collage" (editorial paper collage: imported PNG cut-outs, never drawn by the engine). Use it only when the strategy is a collage look (look "collage"), and then for consecutive shots, so their transitions join them into one reel.
++    - The shot has "collage": { "camera": [[t, x, y, zoom, "smooth"], ...], "boil": { "amp": 1.2, "rot": 0.35 }, "gen": { "seed": <int>, "style": "<one shared visual style for every cut-out of the film>", "isolate": "isolated on a plain flat solid chroma green background (#00B140), no cast shadow, centered with empty margin" } }. (The app sets the artwork folder.) Camera keys are world px on the 1080 x 1920 page (centre 540, 960; zoom 1 shows the whole page in 9:16; 16:9 sees 1920 x 1080 around the camera).
++    - Its layers are { "id", "cap": "collage.layer", "params": { "file": "<lower_snake_case>.png", "size": [w] or [null, h], "at": [x, y], "anchor": [ax, ay], "depth", "step": 2, "subject": true for the focal object, "paper": { "shadow": {...}, "border": px }, "gen": { "engine": "zimage", "size": [1024, 1024], "matte": "chroma", "prompt": "<the object alone, no text, no letters, no logo>" } }, "motion": [ { "cap": "collage.<motion>", "params": { ... } } ] } plus "type.*" text layers (prefer type.label, type.stamp, type.cutout).
++    - Reuse the same file (same name) for a recurring object; give "gen" on its first use. Never put text in a gen prompt.
++    - Motion vocabulary (catalog ids collage.*): place, pop, drop, slam, swing, wipe, appear for entrances; fly, roll, walk, orbit, flutter for travel; follow + leave for a hand carrying an object; sway, float, pulse, cycle, boil for life; shake, spin for accents; peel, vanish for exits. Every collage shot needs an entrance and something alive; hands need follow then leave.

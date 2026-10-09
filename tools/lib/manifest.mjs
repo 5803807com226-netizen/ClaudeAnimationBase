@@ -13,7 +13,7 @@ export const av = (v, a) => !isAspectMap(v) ? v : a in v ? v[a] : (ASPECTS[a][1]
 // Run the story's config.js and its own files in a sandbox: they only assign data (PROJECT, SCENES).
 export function loadStory(story) {
   const root = `src/stories/${story}/`;
-  const ctx = { window: {}, console, Math, playCollage: () => {}, SCENES: {} }; ctx.window.SCENES = ctx.SCENES; vm.createContext(ctx);
+  const ctx = { window: {}, console, Math, playCollage: () => {}, playPlan: () => {}, SCENES: {} }; ctx.window.SCENES = ctx.SCENES; vm.createContext(ctx);
   vm.runInContext(readFileSync(root + 'config.js', 'utf8') + '\nwindow.PROJECT = PROJECT;', ctx);
   for (const f of ctx.window.PROJECT.files || []) if (!f.startsWith('src/')) vm.runInContext(readFileSync(root + f, 'utf8'), ctx);
   return { root, project: ctx.window.PROJECT, scenes: ctx.SCENES };

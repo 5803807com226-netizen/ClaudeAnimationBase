@@ -95,3 +95,36 @@ Test it in the app:
 3. Pick 9:16 or 16:9, then **Generate Shot Manifest**.
 4. Answer **No** first, for the no-AI test. Then use **Generate Motion**, and **Render Selected Scene** on one shot.
 5. Repeat with **Yes** to make the one Opus call.
+
+## Collage treatment (patch v3)
+
+`patches/autocinematic_collage_director_v3.patch` applies on top of v2. It changes two files:
+- `prompts/opus_shot_director.txt`: rule 10 teaches the Director the `"collage"` treatment. That covers imported PNG cut-outs as `collage.layer` layers with `collage.*` motions, reel transitions (`transition.*`), and a `gen` prompt per new cut-out.
+- `autocinematic/shot_director.py`: keeps each collage shot's `collage` block (camera, boil, generation style) in the manifest. The app sets its art folder to `assets/stories/<project>/`, because Opus cannot know it.
+
+The engine compiles consecutive collage shots into one reel, so their transitions span the cuts between them, while the pipeline still renders shot by shot. The schema is in `SHOT_MANIFEST_SCHEMA.md` under "Collage shots"; the motions are listed in `docs/COLLAGE_MOTION_KIT.md`.
+
+Collage needs artwork before rendering. After **Generate Shot Manifest** and **Generate Motion**, run once:
+
+```
+cd C:\Users\User\ClaudeAnimationBase
+node tools\gen_assets.mjs --story=_plan_<project> --dry
+node tools\gen_assets.mjs --story=_plan_<project>
+node tools\validate_assets.mjs --story=_plan_<project>
+```
+
+- The `--dry` run shows every prompt; nothing is generated.
+- The second command generates on your ComfyUI (local; no paid API).
+- `validate_assets` must report 0 FAIL before **Render**.
+
+Install:
+
+```
+cd D:\AI\AutoCinematic_Story_Studio_V12.9.36.3_PDF_RESEARCH_FULL_WITH_RUNNER
+git apply --check C:\Users\User\ClaudeAnimationBase\patches\autocinematic_collage_director_v3.patch
+git apply C:\Users\User\ClaudeAnimationBase\patches\autocinematic_collage_director_v3.patch
+```
+
+Tested in the cloud on the AutoCinematic snapshot:
+- v1, v2 and v3 apply in order, and the module compiles;
+- a recorded collage reply goes through `build_manifest` → engine dry-run compile with every shot compiled and the art folder set by the app.

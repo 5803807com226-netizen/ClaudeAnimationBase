@@ -29,6 +29,9 @@ const TARGETS = [
   { name: 'collage_reel', story: 'collage_reel', times: [1.9, 3.5, 5.6, 7.75, 9.8, 13.6] },
   // the rest of the kit (drop, slam, shake, swing, pulse, fly, orbit, flutter, cycle, spin; tear, iris, whip, fade, cut; cutout)
   { name: 'collage_kit', story: 'collage_kit', times: [1.5, 2.8, 4.2, 5.4, 6.6, 7.85, 9.2, 10.4, 12.3, 13.0, 14.4] },
+  // a compiled collage plan (collage.layer + motions, transition_in, type layers): compile first, for each format:
+  // node tools/compile_plan.mjs --manifest=tools/fixtures/plans/collage_demo.json [--aspect=16:9]
+  { name: 'plan_collage', story: '_plan_collage_demo', byAspect: { '16:9': '_plan_collage_demo_16x9' }, times: [1.6, 3.2, 4.6, 6.2, 8.6] },
   { name: 'story_pilot_v4', story: 'story_pilot_v4', times: [0, 1.5, 2.8, 4.9, 8.6, 9.6, 12, 14.96] },
   // map capabilities (mapView, mapBase, routeDraw, mapMarker, mapLabel): the compiled Magellan prototype plan is their
   // fixture. Compile first: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_proto.json --allow-experimental

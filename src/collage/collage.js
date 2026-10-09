@@ -203,7 +203,7 @@ const COLLAGE_MOTIONS = {
 // Verified aspect support per collage motion (tools/aspect_test.mjs target collage_reel; never list a ratio that has not passed).
 // Fixtures: collage_reel and collage_kit (aspect_test targets of the same names).
 const COLLAGE_MOTION_ASPECTS = Object.fromEntries(['place', 'pop', 'wipe', 'peel', 'follow', 'leave', 'roll', 'walk', 'sway', 'float', 'appear', 'vanish', 'boil',
-  'cycle', 'drop', 'swing', 'fly', 'flutter', 'slam', 'shake', 'pulse', 'orbit', 'spin',
+  'layer', 'cycle', 'drop', 'swing', 'fly', 'flutter', 'slam', 'shake', 'pulse', 'orbit', 'spin',
   'transition.push', 'transition.slide', 'transition.tear', 'transition.iris', 'transition.whip', 'transition.fade', 'transition.cut'].map(n => [n, ['9:16', '16:9']]));
 const COLLAGE_TRANSITIONS = { tear: 'the scene is torn in two along a ragged paper edge and the halves pulled apart, the next one underneath (at: where, 0..1 of the width)', iris: 'the next scene opens out of a ragged paper hole growing from focus (screen fractions)', whip: 'a fast whip pan: out one side, in from the other, with smear echoes (from: side the next comes from)', cut: 'hard cut', fade: 'cross-dissolve', push: 'one continuous zoom: into the outgoing scene\'s focus while the next grows out of it (match cut); paper: true dips through paper', slide: 'the next scene slides over the last like a sheet of paper, with a shadowed edge' };
 
@@ -293,22 +293,23 @@ function buildCollage(scene, sid = '', exitAt = null) {
     const bo = L.boil === false ? null : L.boil || ((L.step || 1) >= 2 && !L.fill && sceneBoil ? sceneBoil : null);
     if (bo) ms.push({ kind: 'boil', ...bo });
     const motions = ms.map(m => { const M = COLLAGE_MOTIONS[m.kind]; if (!M) throw new Error(`collage: unknown motion "${m.kind}" on layer ${L.id} (have: ${Object.keys(COLLAGE_MOTIONS).join(', ')})`); return { ...M.defaults, ...m }; });
-    return { anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 1, ...L, motions, src: dir + L.file }; });
+    const src = dir + L.file;   // key: the same PNG with other paper settings or another size is prepared separately
+    return { anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 1, ...L, motions, src, key: src + '|' + JSON.stringify(L.paper || {}) + '|' + JSON.stringify(L.size) }; });
   const byId = Object.fromEntries(layers.map(L => [L.id, L]));
   (window.PRELOAD = window.PRELOAD || []).push(async () => {
     for (const L of layers) {
-      if (!COLLAGE_IMG[L.src]) {
+      if (!COLLAGE_IMG[L.key]) {
         try {
           const im = await loadImage(L.src);
-          COLLAGE_IMG[L.src] = prepareLayerImage(im.canvas || im.elt || im, L.paper, L.size[0] == null ? im.height / L.size[1] : im.width / L.size[0]);
+          COLLAGE_IMG[L.key] = prepareLayerImage(im.canvas || im.elt || im, L.paper, L.size[0] == null ? im.height / L.size[1] : im.width / L.size[0]);
         } catch (e) { console.error(`collage: could not load ${L.src} (run tools/validate_assets.mjs)`); continue; }
       }
-      for (const m of L.motions) if (m.kind === 'peel') { const key = `${L.src}|${m.pieces}|${m.start}|${m.back}`; if (!COLLAGE_PIECES[key]) COLLAGE_PIECES[key] = preparePieces(COLLAGE_IMG[L.src], m.pieces, m.start, m.back); }
+      for (const m of L.motions) if (m.kind === 'peel') { const key = `${L.key}|${m.pieces}|${m.start}|${m.back}`; if (!COLLAGE_PIECES[key]) COLLAGE_PIECES[key] = preparePieces(COLLAGE_IMG[L.key], m.pieces, m.start, m.back); }
     }
   });
   const quant = (t, step) => step > 1 ? Math.floor(t * 24 / step + 1e-6) / (24 / step) : t;
   // the layer's world-space size (never stretched)
-  const sizeOf = L => { const P = COLLAGE_IMG[L.src], r = P ? P.h / P.w : 1;   // [w] or [null, h]: the other side follows the image
+  const sizeOf = L => { const P = COLLAGE_IMG[L.key], r = P ? P.h / P.w : 1;   // [w] or [null, h]: the other side follows the image
     return L.size[0] == null ? [L.size[1] / r, L.size[1]] : [L.size[0], L.size[1] ?? L.size[0] * r]; };
   const X = { stateById: (id, t) => byId[id] && stateOf(byId[id], t), layerById: id => byId[id], sizeOf };
   // a layer's state at time t: keys (absolute values), then its motions in order
@@ -326,7 +327,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
   // the layer's screen box under the camera (for text avoidance and tests)
   const screenBox = (L, t) => {
     const s = stateOf(L, t), [w, h] = sizeOf(L), [cx, cy, z] = cam(t), shx = (cx - PARALLAX_REF[0]) * (1 - L.depth), shy = (cy - PARALLAX_REF[1]) * (1 - L.depth);
-    const b = COLLAGE_IMG[L.src]?.bbox || [0, 0, 1, 1], ox = s.x - L.anchor[0] * w * s.scale + shx, oy = s.y - L.anchor[1] * h * s.scale + shy;
+    const b = COLLAGE_IMG[L.key]?.bbox || [0, 0, 1, 1], ox = s.x - L.anchor[0] * w * s.scale + shx, oy = s.y - L.anchor[1] * h * s.scale + shy;
     const Xs = v => (v - cx) * z + W / 2, Ys = v => (v - cy) * z + H / 2;
     return { x0: Xs(ox + b[0] * w * s.scale), x1: Xs(ox + b[2] * w * s.scale), y0: Ys(oy + b[1] * h * s.scale), y1: Ys(oy + b[3] * h * s.scale) };
   };
@@ -362,7 +363,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
     pop();
   };
   const drawLayer = (L, t, alpha = 1) => {
-    const P = COLLAGE_IMG[L.src]; if (!P) return;
+    const P = COLLAGE_IMG[L.key]; if (!P) return;
     const s = stateOf(L, t); if (s.trail) parallax(L.depth, () => drawTrail(L, s));
     if (s.opacity * alpha <= .003) return;
     const [w, h] = sizeOf(L), k = w / P.w, sh = L.paper?.shadow, op = s.opacity * alpha, R = s.rot * Math.PI / 180;
@@ -391,7 +392,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
   // back alternating as it turns, held on the layer's frames) until it has left the frame. Pieces vary in timing, launch
   // angle, speed and spin; the uncovered layer shows through the gaps. Pure function of t.
   const drawPeel = (L, P, s, ox, oy, k, one, op, local) => {
-    const { m, t } = s.peel, pcs = COLLAGE_PIECES[`${L.src}|${m.pieces}|${m.start}|${m.back}`];
+    const { m, t } = s.peel, pcs = COLLAGE_PIECES[`${L.key}|${m.pieces}|${m.start}|${m.back}`];
     if (!pcs || t < m.at) { one(P.cut, P.shadow, s.lift, op); return; }   // whole until it starts: no seams
     const n = pcs.length, st = m.dur / Math.max(1, n - 1) * m.stagger, LIFT = .12;
     const poses = pcs.map((pc, i) => {
@@ -414,7 +415,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
     rest.forEach(p => draw(p, 'shadow')); rest.forEach(p => draw(p, 'art'));
     moving.forEach(p => { draw(p, 'shadow'); draw(p, 'art'); });
   };
-  const subjects = t => layers.filter(L => L.subject && COLLAGE_IMG[L.src] && stateOf(L, t).opacity > .05).map(L => screenBox(L, t));
+  const subjects = t => layers.filter(L => L.subject && COLLAGE_IMG[L.key] && stateOf(L, t).opacity > .05).map(L => screenBox(L, t));
   // text that has no exit of its own leaves before the transition out of this scene (never frozen over a zoom or slide)
   const items = (scene.type || []).map(it => it.out || exitAt == null ? it : { ...it, out: { at: Math.max(it.at + .3, exitAt - .25), dur: .25, kind: 'up' } });
   const text = items.length ? typeOverlay({ narration: scene.narration || [], items, subjects, duration: scene.duration || DUR }) : null;
@@ -434,15 +435,16 @@ function buildCollage(scene, sid = '', exitAt = null) {
 }
 
 // ---------- playing: one scene, or a reel of scenes joined by transitions ----------
-function playCollage(sceneOrList) {
-  const list = Array.isArray(sceneOrList) ? sceneOrList : [sceneOrList];
+// opts.start: the reel starts at this video time (a compiled plan places collage runs among other shots)
+function playCollage(sceneOrList, opts = {}) {
+  const list = Array.isArray(sceneOrList) ? sceneOrList : [sceneOrList], T00 = opts.start || 0;
   const parts = []; let T0 = 0;
   list.forEach((S, j) => { const nt = list[j + 1] && av(list[j + 1].transition), d = nt && nt.kind !== 'cut' ? (nt.dur ?? .6) : 0;
     const B = buildCollage(S, Object.keys(SCENES).find(k => SCENES[k] === S) || '', d ? (S.duration || DUR) - d / 2 : null); parts.push({ ...B, start: T0, tr: { kind: 'cut', dur: 0, ...(av(S.transition) || {}) } }); T0 += B.duration; });
   const at = t => { let i = 0; while (i < parts.length - 1 && t >= parts[i + 1].start) i++; return i; };
   const veil = (k, col) => { if (k <= .003) return; push(); noStroke(); const c = color(col); c.setAlpha(255 * clamp(k)); fill(c); rect(-60, -60, W + 120, H + 120); pop(); };
-  shots([[0, (t) => {
-    const i = at(t), P = parts[i], lt = t - P.start, nx = parts[i + 1];
+  shots([[T00, (tg) => {
+    const t = tg - T00, i = at(t), P = parts[i], lt = t - P.start, nx = parts[i + 1];
     // inside a transition window? [start - dur/2, start + dur/2] around the join with the next (or this) scene
     const join = nx && t >= nx.start - nx.tr.dur / 2 ? i + 1 : (P.tr.dur && lt < P.tr.dur / 2 && i > 0 ? i : -1);
     if (join < 0) { P.drawScene(lt); if (P.text) P.text.draw(lt); return; }
@@ -503,7 +505,7 @@ function playCollage(sceneOrList) {
     const tP = u < .5 ? A : B, tl = u < .5 ? la : lb; if (tP.text) tP.text.draw(tl);
   }]]);
   // for tests and tools: the scene playing at t (subjects, type boxes and layer boxes in its own local time)
-  const local = t => { const i = at(t); return [parts[i], t - parts[i].start]; };
+  const local = tg => { const t = Math.max(0, tg - T00), i = at(t); return [parts[i], t - parts[i].start]; };
   if (parts.some(p => p.typeInfo)) window.TYPE_INFO = t => { const [P, lt] = local(t); return P.typeInfo ? P.typeInfo(lt) : { safe: safeArea('title'), subjects: P.subjects(lt), items: [] }; };
   window.COLLAGE_INFO = { scene: parts[0].scene, layers: parts[0].layers, cam: parts[0].cam, stateOf: parts[0].stateOf, screenBox: parts[0].screenBox, subjects: t => { const [P, lt] = local(t); return P.subjects(lt); }, parts, local };
   return window.COLLAGE_INFO;

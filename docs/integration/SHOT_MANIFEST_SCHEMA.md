@@ -71,6 +71,43 @@
 }
 ```
 
+## Collage shots (`"treatment": "collage"`)
+
+These are editorial paper collage shots: imported PNG cut-outs placed and moved by the engine (`src/collage/collage.js`). The full example is `tools/fixtures/plans/collage_demo.json`.
+
+```jsonc
+{ "id": "C02", "start": 3.2, "end": 6.2, "treatment": "collage", "backend": "javascript_motion",
+  "transition_in": { "cap": "transition.push", "params": { "dur": 0.8, "focus": [540, 980], "zoom": 6 } },   // or "cut"
+  "collage": { "assets": "assets/stories/<project>/", "camera": [[0, 540, 1040, 1.05, "smooth"], [3, 540, 1060, 1.12, "smooth"]],
+               "boil": { "amp": 1.2, "rot": 0.35 }, "gen": { "seed": 7300, "style": "…", "isolate": "…" } },
+  "layers": [
+    { "id": "temple", "cap": "collage.layer",
+      "params": { "file": "temple.png", "size": [540], "at": [540, 1345], "anchor": [0.5, 0.95], "subject": true,
+                  "paper": { "shadow": { "dx": 8, "dy": 12, "blur": 12, "opacity": 0.3 }, "border": 7 },
+                  "gen": { "engine": "zimage", "size": [1024, 1024], "matte": "chroma", "prompt": "…" } },
+      "motion": [{ "cap": "collage.slam", "params": { "at": 0.6 } }] },
+    { "id": "title", "cap": "type.label", "params": { "text": "ทุกเส้นทาง", "at": 1.1, "y": 0.12 } }
+  ] }
+```
+
+**The shot's layers:**
+- A collage shot takes only `collage.layer` and `type.*` layers. Any other capability is blocked, and a `collage.layer` outside a collage shot is blocked too.
+- `params.file` must be a lower_snake_case `.png`; `size` ([w] or [null, h]) and `at` are required. Positions are world px on the 1080 × 1920 page.
+
+**Validation (blocked on violation):**
+- Every `motion` entry is a `collage.*` capability, validated like any other: verified status, known parameters, types and ranges.
+- `transition_in` must be a `transition.*` capability, or `"cut"`.
+- `collage.assets` is required; camera keys must be `[t, x, y, zoom, ease?]`.
+
+**Values:**
+- Any value may be per format (`{ "9:16": …, "16:9": … }`); the compiler picks the format it compiles for.
+- Times are shot-local.
+
+**How it compiles:**
+- Each collage shot becomes a `SCENES` entry in the generated `plan.js`, so `tools/gen_assets.mjs` and `tools/validate_assets.mjs` work on `_plan_<id>` directly.
+- Consecutive collage shots play as one reel, so transitions are drawn across the cut; the job's segment transition is `cut`.
+- Titles with no `out` leave by themselves before a transition.
+
 ## Validation and error states (compiler output, per shot)
 
 - `ok`.

@@ -71,10 +71,16 @@ function capabilityOf(P, kind, aspects) {
 window.CAPABILITY_CATALOG = () => [
   ...Object.values(PRESETS).map(P => capabilityOf(P, 'preset', PRESET_ASPECTS[P.name])),
   ...(typeof TYPE_PRESETS === 'undefined' ? [] : Object.keys(TYPE_PRESETS).map(n => capabilityOf({ name: n, label: n, about: 'kinetic typography item preset (playType / typeOverlay)',
-    defaults: { text: '', end: 1, x: .5, y: .5, maxWidth: .84, maxLines: 3, safe: 'title', style: {}, out: null, by: 'word', stagger: .08 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
+    defaults: { text: '', end: 1, x: .5, y: .5, maxWidth: .84, maxLines: 3, safe: 'title', style: {}, out: null, by: 'word', stagger: .08, prefer: 'up', say: null, unitDur: null, from: null, to: null,
+      rate: 12, tilt: null, boil: 1, papers: [], inks: [], weights: [], bar: null, padX: .28, padY: .12, cursor: null, words: [], keep: true, burst: null, flash: null, hlAt: null,
+      digits: null, decimals: 0, locale: null, prefix: '', suffix: '', suffixStyle: {} }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
   // collage motions: a layer's `motion: [{ kind, ... }]` in a collage manifest (src/collage/collage.js); artwork is imported PNGs
   ...(typeof COLLAGE_MOTIONS === 'undefined' ? [] : Object.entries(COLLAGE_MOTIONS).map(([n, M]) => ({ ...capabilityOf({ name: n, label: n, about: M.about, defaults: M.defaults,
     meta: { category: 'collage', tags: ['collage', 'cutout', 'paper', 'stop-motion'], layers: ['collage layer'], camera: 'world', assets: ['png cut-out (the layer)'] } }, 'collage', COLLAGE_MOTION_ASPECTS[n]), id: 'collage.' + n }))),
+  // a collage layer itself (one imported PNG cut-out) for compiled plans: shot layers { cap: 'collage.layer', params, motion: [...] }
+  ...(typeof COLLAGE_MOTIONS === 'undefined' ? [] : [{ ...capabilityOf({ name: 'layer', label: 'collage layer', about: 'one imported PNG cut-out placed on the collage page (world px on the 1080 × 1920 page): size [w] or [null, h] (never stretched), at, anchor, depth (parallax), step (2 = on twos), paper (shadow, border, grain), subject (text avoids it); its moves are its motion list of collage.* capabilities; gen: how tools/gen_assets.mjs makes the PNG',
+    defaults: { file: '', size: [400], at: [540, 960], anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 2, paper: {}, subject: false, fill: false, edgeOk: false, keys: [], boil: {}, gen: {} },
+    meta: { category: 'collage-layer', tags: ['collage', 'cutout', 'png', 'layer'], layers: ['collage layer'], camera: 'world', assets: ['png cut-out'] } }, 'collage', COLLAGE_MOTION_ASPECTS.layer), id: 'collage.layer' }]),
   ...(typeof COLLAGE_TRANSITIONS === 'undefined' ? [] : Object.entries(COLLAGE_TRANSITIONS).map(([n, about]) => ({ ...capabilityOf({ name: n, label: n, about: `collage reel transition: ${about}`,
     defaults: { dur: .6, focus: null, zoom: 4, from: 'right', color: '' }, meta: { category: 'transition', tags: ['collage', 'transition', 'reel'], layers: ['scene'], camera: 'screen' } }, 'transition', COLLAGE_MOTION_ASPECTS['transition.' + n]), id: 'transition.' + n }))),
 ];
