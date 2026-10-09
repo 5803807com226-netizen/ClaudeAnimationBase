@@ -22,6 +22,7 @@ const TARGETS = [
   { name: 'phase1_demo', story: 'phase1_demo', times: [.8, 2.4, 4.2, 6] },
   { name: 'type_demo', story: 'type_demo', times: [.6, 1.6, 2.6, 3.6, 4.6] },
   { name: 'look_infographic', story: 'look_infographic', times: [2.4, .6, 3.6] },
+  { name: 'collage_test', story: 'collage_test', times: [1.8, .5, 2.95] },
   { name: 'story_pilot_v4', story: 'story_pilot_v4', times: [0, 1.5, 2.8, 4.9, 8.6, 9.6, 12, 14.96] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
 ];

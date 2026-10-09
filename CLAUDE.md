@@ -28,6 +28,13 @@ Read ANIMATION_GUIDE.md first. Multi-aspect rules: docs/ASPECT_RATIOS.md. Visual
 - Story-specific: palette, characters, world theme, camera keys, acting. A look never changes these.
 - A new or changed style must PASS `tools/look_test.mjs` (before/after against `classic`) and `tools/aspect_test.mjs --look=<style>`.
 
+## Artwork-first scenes (Editorial Paper Collage)
+
+- Story artwork is imported PNG layers made outside the code (docs/COLLAGE_PIPELINE.md). Never draw a scene's artwork procedurally.
+- A scene is a data manifest (`SCENES.id = {...}`, `playCollage`). Prefer extending the manifest over writing scene-specific code.
+- Run `node tools/validate_assets.mjs --story=<id>` before any render. Image-generation prompts always exclude letters, numbers, logos and watermarks; Thai text is live text (typeOverlay), and subject layers are kept clear of it.
+- Prototype one polished short scene before a full video.
+
 ## Rendering
 
 - Cloud: low-res `--sheet` / `--strip` or `tools/aspect_test.mjs --frames=2 --frame-timeout=90 --soft-gl` only. No full-video renders, and no unbounded waiting loops. Final videos are rendered locally on Windows.
