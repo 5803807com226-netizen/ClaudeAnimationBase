@@ -29,8 +29,9 @@ export function autoBind(wf) {
   }
   if (!b.seed) { const n = find(c => /RandomNoise/.test(c))[0]; if (n) b.seed = `${n[0]}.noise_seed`; }
   if (!b.positive) { const n = find(c => /TextEncode/.test(c))[0]; if (n) b.positive = textInput(n[0]); }
-  const lat = find((c, n) => /EmptyLatent|EmptySD3Latent|EmptyHunyuanLatent|EmptyQwen/i.test(c) && 'width' in n.inputs)[0];
-  if (lat) { b.width = `${lat[0]}.width`; b.height = `${lat[0]}.height`; }
+  const lat = find((c, n) => /EmptyLatent|EmptySD3Latent|EmptyHunyuanLatent|EmptyQwen|EmptyLTXV/i.test(c) && 'width' in n.inputs)[0];
+  if (lat) { b.width = `${lat[0]}.width`; b.height = `${lat[0]}.height`; if ('length' in lat[1].inputs) b.length = `${lat[0]}.length`; }   // video latents: frame count
+  if (!b.length) { const v = find((c, n) => /LTXV.*(ImgToVideo|Img2Vid)/i.test(c) && 'length' in n.inputs)[0]; if (v) { b.length = `${v[0]}.length`; b.width = b.width || `${v[0]}.width`; b.height = b.height || `${v[0]}.height`; } }
   const img = find(c => c === 'LoadImage')[0]; if (img) b.image = `${img[0]}.image`;
   return b;
 }
@@ -49,6 +50,7 @@ export async function comfyGenerate(engine, job, { timeout = 600 } = {}) {
   setPath(wf, bind.positive, job.positive);   // last: an explicit positive binding always wins
   if (bind.seed) setPath(wf, bind.seed, job.seed);
   if (bind.width && job.width) { setPath(wf, bind.width, job.width); setPath(wf, bind.height, job.height); }
+  if (bind.length && job.length) setPath(wf, bind.length, job.length);
   if (job.ref && bind.image) setPath(wf, bind.image, await uploadImage(server, job.ref, `ref_${job.seed}.png`));
   const q = await fetch(`${server}/prompt`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: wf, client_id: 'claudeanimationbase' }) });
   if (!q.ok) throw new Error(`ComfyUI rejected the workflow: ${q.status} ${await q.text()}`);
@@ -58,10 +60,14 @@ export async function comfyGenerate(engine, job, { timeout = 600 } = {}) {
     const h = await (await fetch(`${server}/history/${prompt_id}`)).json(), run = h[prompt_id];
     if (!run) continue;
     if (run.status?.status_str === 'error') throw new Error('ComfyUI job failed: ' + JSON.stringify(run.status.messages?.slice(-1)));
-    for (const out of Object.values(run.outputs || {})) for (const im of out.images || []) {
-      const u = `${server}/view?filename=${encodeURIComponent(im.filename)}&subfolder=${encodeURIComponent(im.subfolder || '')}&type=${im.type || 'output'}`;
+    // any saved file (images, or videos from SaveVideo / VideoHelperSuite 'gifs'); a video is preferred when asked for
+    const files = Object.values(run.outputs || {}).flatMap(o => Object.values(o).filter(Array.isArray).flat()).filter(f => f && f.filename);
+    if (files.length) {
+      const pick = (job.video && files.find(f => /\.(mp4|webm|mov|mkv|gif|webp)$/i.test(f.filename))) || files[0];
+      const u = `${server}/view?filename=${encodeURIComponent(pick.filename)}&subfolder=${encodeURIComponent(pick.subfolder || '')}&type=${pick.type || 'output'}`;
       return Buffer.from(await (await fetch(u)).arrayBuffer());
     }
+    if (run.status?.completed) throw new Error('ComfyUI job finished without saving any file (add a Save node)');
   }
   throw new Error(`ComfyUI job ${prompt_id} produced no image within ${timeout} s`);
 }

@@ -1,8 +1,18 @@
 {
-  "_comment": "Copy to tools/comfy/engines.local.json (not committed) and point each engine at a workflow exported from ComfyUI with 'Save (API Format)'. bind is optional: add it only if the auto-binding cannot find an input, as \"<node id>.<input name>\".",
+  "_comment": "Copy to tools/comfy/engines.local.json (not committed) and point each engine at a workflow exported from ComfyUI with 'Save (API Format)'. bind is optional: add it only if the auto-binding cannot find an input, as \"<node id>.<input name>\". ltx: an LTX-2.5 (image-to-)video workflow; the pipeline sets prompt, negative, seed, size, frame count (8n+1) and the start image.",
   "server": "http://127.0.0.1:8188",
   "engines": {
-    "zimage": { "workflow": "C:/ComfyUI/user/default/workflows/api/z_image_turbo_api.json", "bind": {} },
-    "qwen": { "workflow": "C:/ComfyUI/user/default/workflows/api/qwen_image_api.json", "bind": {} }
+    "zimage": {
+      "workflow": "C:/ComfyUI/user/default/workflows/api/z_image_turbo_api.json",
+      "bind": {}
+    },
+    "qwen": {
+      "workflow": "C:/ComfyUI/user/default/workflows/api/qwen_image_api.json",
+      "bind": {}
+    },
+    "ltx": {
+      "workflow": "C:/ComfyUI/user/default/workflows/api/ltx_2_5_i2v_api.json",
+      "bind": {}
+    }
   }
 }
