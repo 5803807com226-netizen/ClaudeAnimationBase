@@ -7,10 +7,11 @@
 //                             [--engines=tools/comfy/engines.local.json] [--python=python] [--timeout=600]
 //                             [--mock [--mock-bad=sun]] [--out=<dir>] [--dry] [--preview]
 // gen block: { engine: 'zimage' | 'qwen' | 'manual' | 'derive', prompt, negative, size: [w, h] (generation size), seed,
-//   matte: 'chroma' | 'rembg' | 'none', margin (clear margin, fraction of width), style (replaces the scene's) | false,
+//   matte: 'chroma' | 'rembg' | 'none', unshadow (remove a baked neutral shadow; default true, false for dark-edged art), margin (clear margin, fraction of width), style (replaces the scene's) | false,
 //   character (a name: the same seed family wherever it appears), ref (reference image, for workflows with LoadImage),
 //   op / from / source / mirror / colors (derive: 'screen_glow' | 'beside', on another layer's canvas) }
 //   --dry      print the plan and the exact prompts; generate nothing
+//   --offline  never call ComfyUI: reprocess cached source images only (e.g. after a matting fix); fails if one is missing
 //   --mock     no image model: synthetic stand-ins, written to out/mock_assets/<story>/<scene>/ (never the real art folder)
 //   --preview  after every layer passes, a low-res contact sheet of the scene with these assets (out/gen/<story>_<scene>.jpg)
 // Manual import stays: a layer without `gen`, with gen.engine 'manual', or a file you put there yourself (no record in
@@ -26,7 +27,10 @@ if (!args.story) { console.error('usage: node tools/gen_assets.mjs --story=<id> 
 const PY = args.python || (process.platform === 'win32' ? 'python' : 'python3'), CACHE = args.cache || process.env.ASSET_CACHE || '.cache/assets';
 const RETRIES = +(args.retries ?? 2), only = args.only ? String(args.only).split(',') : null, mockBad = new Set(String(args['mock-bad'] || '').split(',').filter(Boolean));
 const sha = (...x) => createHash('sha256').update(x.map(v => typeof v === 'string' || Buffer.isBuffer(v) ? v : JSON.stringify(v)).join('\u0000')).digest('hex').slice(0, 20);
-const py = (...a) => { const r = spawnSync(PY, ['tools/comfy/imageops.py', ...a], { encoding: 'utf8' }); if (r.status) throw new Error(`imageops ${a[0]}: ${(r.stderr || r.error || '').toString().trim().split('\n').pop()}`); };
+const py = (...a) => { const r = spawnSync(PY, ['tools/comfy/imageops.py', ...a], { encoding: 'utf8' }); if (r.status) throw new Error(`imageops ${a[0]}: ${(r.stderr || r.error || '').toString().trim().split('\n').pop()}`); return r.stdout || ''; };
+// the image-processing code is part of every processed-image cache key: change the matting and stale results are redone
+// (generated source images stay cached: no new AI calls)
+const OPS = sha(readFileSync('tools/comfy/imageops.py'));
 mkdirSync(CACHE, { recursive: true });
 
 // Words that must never be asked for, and must always be in the negative prompt (letters, numbers, logos, watermarks).
@@ -59,6 +63,7 @@ async function generateRaw(g, S, L, attempt, label) {   // → path of the raw i
   const out = `${CACHE}/${key}.raw.png`, meta = { key, engine: g.engine, seed, size: [w, h], positive, negative, mock: !!args.mock };
   if (existsSync(out)) return { ...meta, path: out, cached: true };
   if (args.dry) return { ...meta, path: out, dry: true };
+  if (args.offline) throw new Error(`--offline: no cached source image for this prompt and seed (key ${key}); run without --offline to generate it`);
   console.log(`    ${label}: generating (${args.mock ? 'mock' : g.engine}, seed ${seed}, ${w}×${h})`);
   if (args.mock) py('mock', '--out', out, '--prompt', g.prompt, '--size', `${w},${h}`, '--seed', String(seed), ...(bad ? ['--bad'] : []));
   else writeFileSync(out, await comfyGenerate({ server: ENGINES.server, ...eng }, { positive, negative, seed, width: w, height: h, ref: g.ref ? readFileSync(g.ref) : null }, { timeout: +(args.timeout || 600) }));
@@ -66,11 +71,16 @@ async function generateRaw(g, S, L, attempt, label) {   // → path of the raw i
 }
 // raw → finished layer: remove the background (or not), crop with a margin, size to what the closest shot needs
 function finish(raw, g, L, S, P, tol) {
-  const ns = neededSize(L, S, P), need = Math.ceil(ns.px * 1.04), dimArg = ns.dim === 'h' ? '--height' : '--width', key = sha('fin', raw.key, g.matte || 'chroma', g.margin ?? .04, tol, ns.dim, need, L.fill ? g.size : '');
-  const out = `${CACHE}/${key}.png`; if (existsSync(out)) return out;
+  const ns = neededSize(L, S, P), need = Math.ceil(ns.px * 1.04), dimArg = ns.dim === 'h' ? '--height' : '--width', key = sha('fin', OPS, raw.key, g.matte || 'chroma', g.margin ?? .04, tol, g.unshadow ?? true, ns.dim, need, L.fill ? g.size : '');
+  const out = `${CACHE}/${key}.png`, repFile = `${CACHE}/${key}.report.json`;
+  if (existsSync(out)) return { path: out, report: existsSync(repFile) ? JSON.parse(readFileSync(repFile, 'utf8')) : {} };
+  let report = {};
   if (g.matte === 'none' || L.fill) py('fit', '--in', raw.path, '--out', out, dimArg, String(need), ...(L.fill && g.size ? ['--cover', `${g.size[0]}:${g.size[1]}`] : []));
-  else { const m = `${CACHE}/${key}.matte.png`; py('matte', '--in', raw.path, '--out', m, '--mode', g.matte || 'chroma', '--tol', String(tol), '--margin', String(g.margin ?? .04)); py('fit', '--in', m, '--out', out, dimArg, String(need)); }
-  return out;
+  else {
+    const m = `${CACHE}/${key}.matte.png`, o = py('matte', '--in', raw.path, '--out', m, '--mode', g.matte || 'chroma', '--tol', String(tol), '--margin', String(g.margin ?? .04), ...(g.unshadow === false ? ['--no-unshadow'] : []));
+    report = JSON.parse(o.trim().split('\n').pop() || '{}'); writeFileSync(repFile, JSON.stringify(report)); py('fit', '--in', m, '--out', out, dimArg, String(need));
+  }
+  return { path: out, report };
 }
 
 const { project: P, scenes } = loadStory(args.story);
@@ -102,7 +112,7 @@ for (const [sid, S0] of list) {
         if (g.engine === 'derive') {   // layers made from another layer, on its canvas (so they align exactly)
           const base = dir + byId[g.from].file; if (!existsSync(base)) throw new Error(`base layer ${g.from} is not ready`);
           const srcRaw = g.source ? await generateRaw(g.source, S, { id: L.id + '_src' }, attempt, L.id) : null;
-          const src = srcRaw ? finish(srcRaw, g.source, { ...L, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1) : null;
+          const src = srcRaw ? finish(srcRaw, g.source, { ...L, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1).path : null;
           const key = sha('derive', g.op, readFileSync(base), src ? readFileSync(src) : '', g.colors || '', g.mirror || ''), out = `${CACHE}/${key}.png`;
           if (!existsSync(out)) {
             if (g.op === 'screen_glow') py('screen_glow', '--base', base, '--out', out, ...(g.colors ? ['--colors', g.colors.join(',')] : []));
@@ -114,17 +124,18 @@ for (const [sid, S0] of list) {
           const raw = await generateRaw(g, S, L, attempt, L.id);
           let fin = null, c = null;
           for (const tol of [1, .8, 1.25]) {   // cheap repair first: re-matte with a tighter / looser key before regenerating
-            fin = finish(raw, g, L, S, P, tol); copyFileSync(fin, f); c = checkLayer(L, S, P);
+            fin = finish(raw, g, L, S, P, tol); copyFileSync(fin.path, f); c = checkLayer(L, S, P);
+            if (fin.report.shadow_suspect) c.fails.push('a shadow is baked into the generated image and could not be separated: needs regeneration');
             if (!c.fails.length || g.matte === 'none' || L.fill) break;
           }
-          rec[L.id] = { key: raw.key, attempt, engine: g.engine, seed: raw.seed, size: raw.size, positive: raw.positive, negative: raw.negative, mock: raw.mock, cached: raw.cached };
+          rec[L.id] = { key: raw.key, attempt, matte: fin.report, engine: g.engine, seed: raw.seed, size: raw.size, positive: raw.positive, negative: raw.negative, mock: raw.mock, cached: raw.cached };
           row.how = `${raw.cached ? 'cache' : args.mock ? 'mock' : g.engine} seed ${raw.seed}${attempt ? ` (retry ${attempt})` : ''}`;
         }
-        const c = checkLayer(L, S, P); last = c.fails[0];
+        const c = checkLayer(L, S, P); if (rec[L.id]?.matte?.shadow_suspect) c.fails.push('a shadow is baked into the generated image and could not be separated: needs regeneration'); last = c.fails[0];
         ok = !c.fails.length; if (!ok) console.log(`    ${L.id}: attempt ${attempt + 1} invalid: ${last}`);
         if (g.engine === 'derive') row.how = `derived (${g.op} from ${g.from})`;
         rec[L.id].status = ok ? 'PASS' : 'FAIL'; rec[L.id].warns = c.warns;
-      } catch (e) { last = e.message; console.log(`    ${L.id}: ${e.message}`); if (/not ready|unknown derive|asks for|no engine/.test(e.message)) break; }
+      } catch (e) { last = e.message; console.log(`    ${L.id}: ${e.message}`); if (/not ready|unknown derive|asks for|no engine|--offline/.test(e.message)) break; }
     }
     row.status = ok ? 'PASS' : 'FAIL'; row.msg = ok ? '' : last; if (!ok) failed++;
   }

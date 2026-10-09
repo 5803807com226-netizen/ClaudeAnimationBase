@@ -49,7 +49,7 @@ SCENES.s1_hook = {
       paper: { shadow: { dx: 14, dy: 22, blur: 22, opacity: .34 }, border: 6, grain: .15 },
       keys: [[0, { rot: -6 }], [.12, { rot: -4.8 }], [.2, { rot: -7.2 }], [.28, { rot: -5.1 }], [.36, { rot: -6.6 }], [.46, { rot: -6 }]],   // the buzz, on twos
       // the canvas keeps clear room either side of the phone (margin) for the vibration marks, which share it
-      gen: { engine: 'qwen', size: [1024, 1472], matte: 'chroma', character: 'hand_v1', margin: .3,
+      gen: { engine: 'qwen', size: [1024, 1472], matte: 'chroma', character: 'hand_v1', margin: .3, unshadow: false,   // a black phone is a dark edge, not a shadow
         style: 'a printed photograph cut out with scissors, matte print texture, soft natural window light from the top left, high detail, true-to-life colour',
         prompt: 'a photograph of a young Asian woman\'s hand holding a modern black smartphone upright, front view, phone screen completely dark and blank, natural matte skin, short neat nails, relaxed grip, slight tilt, cut out like a printed photograph, wrist ending at the bottom of the image',
         negative: 'brand logo, camera bump, notification, wallpaper, reflections of text, extra fingers, deformed hand' } },

@@ -53,9 +53,45 @@ export function readPng(file) {
     const a = A(x, y); if (a < 8) clear++; else { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } if (a > 247) solid++; else if (a >= 8) partial++;
   }
   const n = ihdr.w * ihdr.h;
-  return { ...out, clear: clear / n, solid: solid / n, partial: partial / n, bbox: x1 < 0 ? null : [x0, y0, x1, y1], edge: x1 >= 0 && (x0 <= 1 || y0 <= 1 || x1 >= ihdr.w - 2 || y1 >= ihdr.h - 2) };
+  // matte quality: detached specks (connected components of visible pixels), green tint on the edge and inside, and a dark
+  // outer rim (a baked shadow). Green tint = green is (about) the top channel and clearly above the lowest one.
+  const quality = ch === 4 ? matteQuality(px, ihdr.w, ihdr.h) : null;
+  return { ...out, quality, clear: clear / n, solid: solid / n, partial: partial / n, bbox: x1 < 0 ? null : [x0, y0, x1, y1], edge: x1 >= 0 && (x0 <= 1 || y0 <= 1 || x1 >= ihdr.w - 2 || y1 >= ihdr.h - 2) };
 }
 
+
+function matteQuality(px, w, h) {
+  const A = i => px[i * 4 + 3], vis = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) vis[i] = A(i) > 10 ? 1 : 0;
+  // connected components by row runs + union-find (8-neighbour)
+  const parent = [0], find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  let prev = [], runs = [];
+  for (let y = 0; y < h; y++) {
+    const cur = []; let x = 0;
+    while (x < w) { if (!vis[y * w + x]) { x++; continue; } const s = x; while (x < w && vis[y * w + x]) x++;
+      let lab = 0; for (const [ps, pe, pl] of prev) if (ps <= x && pe >= s) { const r = find(pl); if (!lab) lab = r; else if (r !== lab) { const lo = Math.min(r, lab); parent[Math.max(r, lab)] = lo; lab = lo; } }
+      if (!lab) { lab = parent.length; parent.push(lab); } cur.push([s, x, lab]); runs.push([s, x, lab]); }
+    prev = cur;
+  }
+  const area = new Map(); for (const [s, e, l] of runs) { const r = find(l); area.set(r, (area.get(r) || 0) + e - s); }
+  const sizes = [...area.values()].sort((a, b) => b - a), big = sizes[0] || 0, specks = sizes.filter(a => a < big * .01);
+  let visN = 0, edgeN = 0, gVis = 0, gEdge = 0, lumSum = [], rimN = 0, rimDark = 0;
+  const isVis = (x, y) => x >= 0 && y >= 0 && x < w && y < h && vis[y * w + x];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!vis[i]) continue;
+    const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], a = px[i * 4 + 3], tint = g >= Math.max(r, b) - 2 && g - Math.min(r, b) > 25;
+    visN++; if (tint) gVis++;
+    if (a < 235) { edgeN++; if (tint) gEdge++; }
+    if (a > 245 && (y * 7 + x * 13) % 9 === 0) lumSum.push((r + g + b) / 3);
+  }
+  lumSum.sort((a, b) => a - b); const Lm = lumSum[lumSum.length >> 1] || 0;
+  for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) {   // the outer rim: solid pixels with a clear pixel 3 px away
+    const i = y * w + x; if (A(i) < 128) continue;
+    if (isVis(x + 3, y) && isVis(x - 3, y) && isVis(x, y + 3) && isVis(x, y - 3)) continue;
+    rimN++; if ((px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3 < .5 * Lm) rimDark++;
+  }
+  return { specks: specks.length, speckArea: specks.reduce((s, a) => s + a, 0) / Math.max(1, big), greenEdge: gEdge / Math.max(1, edgeN), greenVisible: gVis / Math.max(1, visN), darkRim: rimDark / Math.max(1, rimN) };
+}
 
 // ---- camera sampling (same maths as collage.js cameraKeys; linear k bounds the view) ----
 export const camAt = (keys, t) => {
@@ -105,6 +141,13 @@ export function checkLayer(L, S, P) {
   } else {
     if (!im.hasAlpha || im.clear < .01) fails.push('a cut-out needs transparency around the artwork (export RGBA PNG with the background removed)');
     else if (im.partial > .15) fails.push(`${(im.partial * 100).toFixed(0)} % of pixels are half-transparent: the background was not removed cleanly (speckled matte)`);
+    const q = im.quality;
+    if (q) {
+      if (q.specks >= 5 || q.speckArea > .001) fails.push(`${q.specks} detached specks outside the artwork: background noise left by the matte`);
+      else if (q.specks) warns.push(`${q.specks} small detached speck(s) outside the artwork`);
+      if (!L.allowGreen && (q.greenEdge > .05 || q.greenVisible > .01)) fails.push(`green contamination: ${(q.greenEdge * 100).toFixed(1)} % of edge pixels, ${(q.greenVisible * 100).toFixed(1)} % of the artwork (chroma spill)`);
+      if (q.darkRim > .06) warns.push(`${(q.darkRim * 100).toFixed(0)} % of the outer edge is dark: a shadow may be baked into the artwork (the renderer adds shadows; regenerate if it shows)`);
+    }
     else if (im.edge && !L.edgeOk) warns.push('the artwork touches the image edge: leave a margin, or it looks cut off (and the paper border is clipped)');
   }
   return { fails, warns, png: im, info: `${im.w}×${im.h}${im.hasAlpha ? ' RGBA' : ' RGB'}${im.clear != null ? `, ${(im.clear * 100).toFixed(0)} % clear` : ''}` };

@@ -35,7 +35,10 @@ These are your own ComfyUI workflows. In ComfyUI, export each one with **Save (A
 
 The client finds each workflow's inputs on its own, by following the sampler's links: the prompt and negative prompt (also through `ConditioningZeroOut`), the seed (`seed` / `noise_seed` / `RandomNoise`), the size (`Empty*LatentImage`) and a `LoadImage` reference. Add `"bind": { "positive": "<node>.<input>" }` only if a workflow is unusual.
 
-Waiting on a job is bounded (`--timeout`, 600 s). `tools/comfy/test_client.mjs` tests the client against a mock ComfyUI server.
+Waiting on a job is bounded (`--timeout`, 600 s). Tests:
+- `tools/comfy/test_client.mjs` tests the client against a mock ComfyUI server.
+- `tools/comfy/test_matte.py` tests the matte on synthetic sources with specks, green spill, fibres and baked shadows.
+- `python tools/comfy/imageops.py compare --in a.png b.png --labels before,after --out sheet.jpg` shows cut-outs on a checker, on white, on dark, and as a lower-edge zoom.
 
 ### The `gen` block
 
@@ -52,11 +55,11 @@ The scene-level `gen: { seed, style, isolate, negative }` keeps one paper langua
 | rule | what happens |
 |---|---|
 | no text in artwork | Every negative prompt is guaranteed to include text, letters, words, numbers, digits, typography, logo, watermark and signature. A prompt that *asks* for text is refused, because Thai text is live text in `type`. |
-| backgrounds | Generated on flat chroma green, then keyed out in `tools/comfy/imageops.py`: soft alpha, green spill removed, cropped with a clear margin. `matte: 'rembg'` uses rembg if installed. An image with no chroma background (the model ignored the request) is rejected and regenerated. |
+| backgrounds | Generated on flat chroma green, then removed in `tools/comfy/imageops.py`. The key works on the green *ratio*, measured against the green actually rendered (taken from the image border), so a shadow cast on the green is removed too. Detached specks are removed by connected components, while torn fibres attached to the object stay. Edge colours are un-mixed from the background and despilled against the object's own nearby colour (yellow, cream and skin are never altered). A neutral baked shadow touching the outside is cleared; if one can't be separated, the layer is marked for regeneration. `matte: 'rembg'` uses rembg if installed, and `unshadow: false` keeps dark-edged art (a black phone) intact. An image with no chroma background is rejected and regenerated. |
 | sizes | Every layer is upscaled (Lanczos) to the pixels its closest shot needs in every declared format. A layer is sized by width (`size: [w]`) or height (`size: [null, h]`). |
 | aligned layers | `derive` makes layers on another layer's canvas, so they line up with no offsets: `screen_glow` finds the dark phone screen and lights it; `beside` places marks either side of the phone. |
-| validation | Every layer is checked with the same rules as `validate_assets.mjs` (shared code in `tools/lib/manifest.mjs`). Only failing layers are retried: first a cheap re-matte at two other tolerances, then regeneration with a new seed, up to `--retries`. Passing layers are never touched. |
-| cache | Results are keyed by content (engine, workflow file, prompts, seed, size, processing) in `.cache/assets/` (git-ignored, shared by all stories, or set `ASSET_CACHE`). The same request is never generated twice. A rerun starts from the attempt that last passed. `_generated.json` beside the art records each layer's seed, prompts and status. |
+| validation | Every layer is checked with the same rules as `validate_assets.mjs` (shared code in `tools/lib/manifest.mjs`), including matte quality: detached specks, green contamination (`allowGreen: true` for green art), and a dark outer rim (a likely baked shadow, WARN). Only failing layers are retried: first a cheap re-matte at two other tolerances, then regeneration with a new seed, up to `--retries`. Passing layers are never touched. |
+| cache | Results are keyed by content in `.cache/assets/` (git-ignored, shared by all stories, or set `ASSET_CACHE`). Generated source images are keyed by engine, workflow file, prompts, seed and size. Processed images are also keyed by the code of `imageops.py`, so a matting fix redoes only the processing. Reprocess without any AI call: `node tools/gen_assets.mjs --story=<id> --only=<layer> --offline`. The same request is never generated twice. A rerun starts from the attempt that last passed. `_generated.json` records each layer's seed, prompts, matte report and status. |
 | manual import | A layer without `gen`, with `engine: 'manual'`, or a file you placed yourself (no record in `_generated.json`) is only validated, never overwritten (unless `--force`). |
 | consistency | `character: '<name>'` gives a layer the same seed family wherever it appears, in any story. `ref` passes a reference image to workflows that take one (e.g. Qwen-Image-Edit). |
 

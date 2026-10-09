@@ -1,17 +1,21 @@
 """tools/comfy/imageops.py: image steps for tools/gen_assets.mjs (PIL + NumPy; both ship with ComfyUI's Python).
 
-  matte   --in raw.png --out cut.png [--mode chroma|rembg] [--key #00B140] [--tol 1.0] [--margin .04]
-          remove a flat chroma background (soft alpha, green spill removed), crop to the artwork, pad a clear margin
+  matte   --in raw.png --out cut.png [--mode chroma|rembg] [--key #00B140] [--tol 1.0] [--margin .04] [--no-unshadow]
+          remove a chroma background: keyed on the green RATIO (shadows cast on the green go too), detached specks
+          removed (connected components; fibres attached to the object stay), edge colours un-mixed from the background
+          and despilled (only where green dominates: yellow, cream, coral and skin are untouched), an optional neutral
+          baked shadow removed; prints a JSON report (specks, shadow, dark_rim_fraction, shadow_suspect)
   fit     --in a.png --out b.png --width W | --height H [--cover W:H]   upscale (Lanczos) to at least W wide / H tall; --cover crops
   screen_glow --base hand.png --out glow.png [--colors #FFF4DE,#F4E6CC]
           find the phone's dark screen inside the cut-out and paint a soft lit screen ON THE SAME CANVAS (so it aligns)
   beside  --base hand.png --source ticks.png --out buzz.png [--mirror]
           place the source beside the phone (and a mirrored copy on the other side) on the base's canvas
+  compare --in a.png [b.png ...] [--labels a,b] --out sheet.jpg   cut-outs on checker / white / dark + a zoom of the lower edge
   mock    --out raw.png --prompt "..." --size W,H --seed N [--bad]
           a synthetic stand-in image for TESTING the pipeline without an image model (never story artwork)
 Exit code 0 on success; errors go to stderr.
 """
-import argparse, hashlib, sys
+import argparse, hashlib, json, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -28,25 +32,127 @@ def crop_pad(img, margin):
     out = Image.new('RGBA', (img.width + 2 * p, img.height + 2 * p), (0, 0, 0, 0)); out.paste(img, (p, p)); return out
 
 
+def label(mask):
+    """Connected components (8-neighbour) of a boolean mask → (labels int32, areas). SciPy when available (ComfyUI ships
+    it); otherwise a run-length union-find in NumPy + Python, fast enough for a few megapixels."""
+    try:
+        from scipy import ndimage
+        lab, n = ndimage.label(mask, structure=np.ones((3, 3)))
+        return lab, np.bincount(lab.ravel(), minlength=n + 1)
+    except ImportError:
+        pass
+    h, w = mask.shape; parent = [0]; runs = []; prev = []
+    def find(x):
+        while parent[x] != x: parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    for y in range(h):
+        row = mask[y]; d = np.diff(np.concatenate(([0], row.view(np.int8), [0])))
+        starts, ends = np.nonzero(d == 1)[0], np.nonzero(d == -1)[0]; cur = []
+        for s0, e0 in zip(starts, ends):
+            lab = None
+            for ps, pe, pl in prev:                      # 8-connected: runs overlap when extended by one pixel
+                if ps <= e0 and pe >= s0:                  # runs [s, e): touching diagonally counts
+                    r = find(pl)
+                    if lab is None: lab = r
+                    elif r != lab: parent[max(r, lab)] = min(r, lab); lab = min(r, lab)
+            if lab is None: lab = len(parent); parent.append(lab)
+            cur.append((s0, e0, lab)); runs.append((y, s0, e0, lab))
+        prev = cur
+    lab = np.zeros((h, w), np.int32); roots = {}
+    for y, s0, e0, l in runs:
+        r = find(l); lab[y, s0:e0] = roots.setdefault(r, len(roots) + 1)
+    return lab, np.bincount(lab.ravel(), minlength=len(roots) + 1)
+
+
+def box(a, r):
+    """Box filter (mean over a (2r+1)² window) by cumulative sums: fast at any radius."""
+    p = np.pad(a, r + 1, mode='edge').astype(np.float64); c = p.cumsum(0).cumsum(1); k = 2 * r + 1
+    return ((c[k:, k:] - c[:-k, k:] - c[k:, :-k] + c[:-k, :-k]) / (k * k))[:a.shape[0], :a.shape[1]]
+
+
+def keep_attached(alpha, core_t=.5, soft_t=.04, keep_frac=.01):
+    """Remove detached background noise: keep the solid components that are at least keep_frac of the largest one, and
+    every soft pixel (fibres, antialiasing) connected to them. Returns (alpha, components removed, pixels removed)."""
+    lab, areas = label(alpha > core_t)
+    if len(areas) <= 1: return alpha, 0, 0
+    big = areas[1:].max(); keep = np.zeros(len(areas), bool); keep[1:] = areas[1:] >= max(1, big * keep_frac)
+    core = keep[lab]
+    soft, _ = label(alpha > soft_t)                       # soft regions that touch a kept core survive whole
+    ok = np.zeros(soft.max() + 1, bool); ok[np.unique(soft[core])] = True; ok[0] = False
+    out = np.where(ok[soft], alpha, 0.0)
+    removed = int(((alpha > soft_t) & ~ok[soft]).sum()); ncomp = int((~keep[1:]).sum())
+    return out, ncomp, removed
+
+
 def matte(a):
-    img = Image.open(a.inp).convert('RGB')
+    img = Image.open(a.inp).convert('RGB'); report = {}
     if a.mode == 'rembg':
         from rembg import remove   # optional: pip install rembg
-        cut = remove(img).convert('RGBA')
+        cut = remove(img).convert('RGBA'); px = np.asarray(cut).astype(np.float32); alpha = px[:, :, 3] / 255; px = px[:, :, :3]; bg = None
     else:
-        px = np.asarray(img).astype(np.float32)
-        # how green-dominant each pixel is: the chroma background is strongly so (#00B140 → 113); paper, skin, coral,
-        # sky blue and grey are not (≤ ~15). Keep the key colour for documentation; dominance is what separates them.
-        g_dom = px[:, :, 1] - np.maximum(px[:, :, 0], px[:, :, 2])
-        t0, t1 = 30 * a.tol, 75 * a.tol
-        alpha = 1 - np.clip((g_dom - t0) / (t1 - t0), 0, 1)
-        # despill: edge pixels keep no more green than their other channels allow
-        px[:, :, 1] = np.where(g_dom > 0, np.minimum(px[:, :, 1], np.maximum(px[:, :, 0], px[:, :, 2]) + 4), px[:, :, 1])
+        px = np.asarray(img).astype(np.float32); h, w, _ = px.shape
+        mx, mn = px.max(-1), px.min(-1)
+        gr = (px[:, :, 1] - np.maximum(px[:, :, 0], px[:, :, 2])) / np.maximum(px[:, :, 1], 1)   # green ratio: brightness-free
+        # the background colour as rendered: the median of green-dominant pixels in a ring along the image border
+        ring = np.zeros((h, w), bool); b = max(4, int(min(h, w) * .04)); ring[:b] = ring[-b:] = True; ring[:, :b] = ring[:, -b:] = True
+        g_ring = ring & (gr > .25); bg = np.median(px[g_ring], axis=0) if g_ring.sum() > 50 else hexrgb(a.key)
+        # key on the green RATIO, not the green difference: a shadow cast on the green (darker green) is still background
+        lo, hi = .10 * a.tol, .30 * a.tol
+        alpha = 1 - np.clip((gr - lo) / (hi - lo), 0, 1)
+        alpha = np.where((mx < 28) & (gr > .04), 0, alpha)                                          # near-black greenish noise
         if (alpha < .5).mean() < .03:   # nothing to key out: the model ignored the chroma background (white, grey, a scene...)
             raise SystemExit('no chroma background found in the generated image (the model ignored the green background); regenerate it')
-        al = Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(.8))
-        cut = Image.fromarray(np.clip(px, 0, 255).astype(np.uint8)).convert('RGBA'); cut.putalpha(al)
+        alpha = np.where(alpha < .06, 0, alpha)
+    # 1. detached specks: anything not connected to the object goes
+    alpha, n_specks, px_specks = keep_attached(alpha)
+    report.update(specks_removed=n_specks, speck_pixels=px_specks)
+    # 2. a neutral baked shadow: dark, desaturated pixels on the outside of the object, much darker than the object itself
+    if a.unshadow:
+        lum = px.mean(-1); sat = (px.max(-1) - px.min(-1)) / np.maximum(px.max(-1), 1); solid = alpha > .9
+        if solid.sum() > 100:
+            Lm = np.median(lum[solid]); cand = (alpha > 0) & (lum < .55 * Lm) & (sat < .25)
+            lab, _ = label(cand); outside = alpha < .5          # half-keyed pixels count as outside (a shadow fades into the green)
+            edge = box(outside.astype(np.float32), 3) > 0       # within 3 px of the outside
+            touching = np.unique(lab[cand & edge]); touching = touching[touching > 0]
+            shadow = np.isin(lab, touching)
+            report['shadow_pixels_removed'] = int(shadow.sum()); report['shadow_fraction'] = round(float(shadow.sum() / max(1, (alpha > .5).sum())), 4)
+            alpha = np.where(shadow, 0, alpha)                  # a shadow is not the object: fully clear (the renderer adds its own)
+            fringe = (box(shadow.astype(np.float32), 4) > 0) & (lum < .55 * Lm)   # its half-keyed outer edge (grey into green) too
+            alpha = np.where(fringe, 0, alpha)
+            alpha, _, _ = keep_attached(alpha)
+    # 3. edges: take the background colour back out of half-covered pixels, then make sure no green dominates there
+    if bg is not None:
+        soft = (alpha > .02) & (alpha < .98); A = np.maximum(alpha, .02)[..., None]
+        un = (px - (1 - A) * bg[None, None, :]) / A
+        plausible = (un.min(-1) > -24) & (un.max(-1) < 280)   # only where the pixel really is object + background mixed
+        px = np.where((soft & plausible)[..., None], np.clip(un, 0, 255), px)
+    # despill against the object's OWN colour: each pixel near the edge may carry no more green, relative to its red/blue,
+    # than the clean interior of the object close to it (yellow stays yellow, cream stays cream; only spill goes)
+    solid = alpha > .99; inner = solid.copy()
+    for _ in range(6): inner = inner & np.roll(inner, 1, 0) & np.roll(inner, -1, 0) & np.roll(inner, 1, 1) & np.roll(inner, -1, 1)
+    band = (alpha > 0) & ~inner
+    if band.any() and inner.any():
+        hi_rb = np.maximum(px[:, :, 0], px[:, :, 2])
+        ratio = np.where(inner, px[:, :, 1] / np.maximum(hi_rb, 1), 0)          # the interior's green : max(red, blue)
+        num, den = ratio * inner, inner.astype(np.float32)
+        for r in (10, 24, 60):                                                     # widen until every edge pixel has a reference
+            ref = box(num, r) / np.maximum(box(den, r), 1e-6)
+            if (box(den, r)[band] > 1e-6).all(): break
+        ref = np.where(box(den, r) > 1e-6, ref, 1.0)
+        allowed = ref * hi_rb + 6
+        tinted = (px[:, :, 1] >= hi_rb - 4) & (px[:, :, 1] - np.minimum(px[:, :, 0], px[:, :, 2]) > 25)   # a real green tint only:
+        px[:, :, 1] = np.where(band & tinted, np.minimum(px[:, :, 1], np.maximum(allowed, 0)), px[:, :, 1])   # white / cream fibres untouched
+    al = Image.fromarray(np.clip(alpha * 255, 0, 255).astype(np.uint8))
+    cut = Image.fromarray(np.clip(px, 0, 255).astype(np.uint8)).convert('RGBA'); cut.putalpha(al)
+    # remaining dark rim on the outer edge (a baked shadow that could not be separated): suggest regenerating
+    A = np.asarray(al) / 255; lum = px.mean(-1); solid = A > .9
+    if solid.sum() > 100:
+        rim = (A > .5) & ~(np.roll(A > .5, 3, 0) & np.roll(A > .5, -3, 0) & np.roll(A > .5, 3, 1) & np.roll(A > .5, -3, 1))
+        dark = rim & (lum < .5 * np.median(lum[solid]))
+        report['dark_rim_fraction'] = round(float(dark.sum() / max(1, rim.sum())), 4)
+        report['shadow_suspect'] = bool(dark.sum() / max(1, rim.sum()) > .12)
     crop_pad(cut, a.margin).save(a.out)
+    print(json.dumps(report))
 
 
 def fit(a):
@@ -134,12 +240,40 @@ def mock(a):
     img.save(a.out)
 
 
+def compare(a):
+    """One row per cut-out: on a transparency checker, on white, on dark, and a 3x zoom of its lower edge on dark (where a
+    baked shadow or a green fringe shows). For checking a matte by eye: compare --in before.png after.png --labels a,b."""
+    from PIL import ImageFont
+    ims = [Image.open(f).convert('RGBA') for f in a.inp]; labels = (a.labels or ','.join(f'#{i}' for i in range(len(ims)))).split(',')
+    S = a.cell; rows = []
+    for im, lab in zip(ims, labels):
+        t = im.copy(); t.thumbnail((S, S)); cells = []
+        chk = Image.new('RGBA', (S, S)); d = ImageDraw.Draw(chk)
+        for y in range(0, S, 16):
+            for x in range(0, S, 16): d.rectangle([x, y, x + 15, y + 15], fill=(200, 200, 200, 255) if (x + y) // 16 % 2 else (245, 245, 245, 255))
+        for bg in (chk, Image.new('RGBA', (S, S), (255, 255, 255, 255)), Image.new('RGBA', (S, S), (24, 22, 28, 255))):
+            c = bg.copy(); c.alpha_composite(t, ((S - t.width) // 2, (S - t.height) // 2)); cells.append(c)
+        al = np.asarray(im)[:, :, 3]; ys, xs = np.nonzero(al > 8)
+        if len(xs):   # the lower edge of the artwork, magnified
+            cy, cx = ys.max(), int(np.median(xs[ys > ys.max() - 6])); r = S // 6
+            crop = im.crop((cx - r, cy - r, cx + r, cy + r // 2)).resize((S, int(S * .75)), Image.NEAREST)
+            z = Image.new('RGBA', (S, S), (24, 22, 28, 255)); z.alpha_composite(crop, (0, (S - crop.height) // 2)); cells.append(z)
+        row = Image.new('RGBA', (S * len(cells) + 8 * len(cells), S + 22), (40, 36, 46, 255))
+        for i, c in enumerate(cells): row.paste(c, (i * (S + 8), 22))
+        ImageDraw.Draw(row).text((6, 4), lab, fill=(240, 240, 240, 255)); rows.append(row)
+    out = Image.new('RGBA', (max(r.width for r in rows), sum(r.height for r in rows)), (40, 36, 46, 255)); y = 0
+    for r in rows: out.paste(r, (0, y)); y += r.height
+    out.convert('RGB').save(a.out, quality=90)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
     s = sub.add_parser('matte'); s.add_argument('--in', dest='inp', required=True); s.add_argument('--out', required=True)
     s.add_argument('--mode', default='chroma'); s.add_argument('--key', default='#00B140'); s.add_argument('--tol', type=float, default=1.0); s.add_argument('--margin', type=float, default=.04)
+    s.add_argument('--no-unshadow', dest='unshadow', action='store_false')
     s = sub.add_parser('fit'); s.add_argument('--in', dest='inp', required=True); s.add_argument('--out', required=True); s.add_argument('--width', type=int); s.add_argument('--height', type=int); s.add_argument('--cover')
     s = sub.add_parser('screen_glow'); s.add_argument('--base', required=True); s.add_argument('--out', required=True); s.add_argument('--colors', default='#FFF4DE,#F4E6CC')
     s = sub.add_parser('beside'); s.add_argument('--base', required=True); s.add_argument('--source', required=True); s.add_argument('--out', required=True); s.add_argument('--mirror', action='store_true')
     s = sub.add_parser('mock'); s.add_argument('--out', required=True); s.add_argument('--prompt', required=True); s.add_argument('--size', required=True); s.add_argument('--seed', type=int, default=0); s.add_argument('--bad', action='store_true')
-    a = ap.parse_args(); {'matte': matte, 'fit': fit, 'screen_glow': screen_glow, 'beside': beside, 'mock': mock}[a.cmd](a)
+    s = sub.add_parser('compare'); s.add_argument('--in', dest='inp', nargs='+', required=True); s.add_argument('--labels'); s.add_argument('--out', required=True); s.add_argument('--cell', type=int, default=300)
+    a = ap.parse_args(); {'compare': compare, 'matte': matte, 'fit': fit, 'screen_glow': screen_glow, 'beside': beside, 'mock': mock}[a.cmd](a)
