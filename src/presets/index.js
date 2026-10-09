@@ -15,7 +15,9 @@ const PRESETS = {};
 const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16', '16:9', '4:5'], shapeMorph: ['9:16', '16:9', '4:5'],
   brushWipe: ['9:16', '16:9', '4:5'], objectReveal: ['9:16', '16:9', '4:5'], particleBurst: ['9:16', '16:9', '4:5'],
   // map capabilities: fixture = the compiled Magellan prototype plan (aspect_test target map_proto); production formats only
-  mapView: ['9:16', '16:9'], mapBase: ['9:16', '16:9'], routeDraw: ['9:16', '16:9'], mapMarker: ['9:16', '16:9'], mapLabel: ['9:16', '16:9'] };
+  mapView: ['9:16', '16:9'], mapBase: ['9:16', '16:9'], routeDraw: ['9:16', '16:9'], mapMarker: ['9:16', '16:9'], mapLabel: ['9:16', '16:9'],
+  // style kit (fixture: aspect_test target map_style)
+  mapRegion: ['9:16', '16:9'], mapSprite: ['9:16', '16:9'], captionBar: ['9:16', '16:9'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
 const presetK = (t, o) => easeBy(o.ease)(seg(t, o.at, o.at + o.dur));   // eased 0..1 progress of the main move

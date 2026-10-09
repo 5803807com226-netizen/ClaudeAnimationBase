@@ -28,6 +28,9 @@ const TARGETS = [
   // map capabilities (mapView, mapBase, routeDraw, mapMarker, mapLabel): the compiled Magellan prototype plan is their
   // fixture. Compile first: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_proto.json --allow-experimental
   { name: 'map_proto', story: '_plan_magellan_proto', times: [.2, 3, 7, 10] },
+  // mapRegion, mapSprite, captionBar, mapBase 'satellite', mapView blur, routeDraw glow: the style-test plan is their fixture
+  // (compile: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_style.json --allow-experimental)
+  { name: 'map_style', story: '_plan_magellan_style', times: [1.5, 7.2, 12] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
 ];
 const only = args.only ? String(args.only).split(',') : null;
