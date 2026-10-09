@@ -1,2 +1,5 @@
 node_modules
 out/
+.cache/
+tools/comfy/engines.local.json
+__pycache__/

@@ -6,7 +6,7 @@ Artwork is designed and made OUTSIDE the code: illustration, photography, or Z I
 
 1. **Brief and storyboard:** style, palette, key frames, focal points, text. Example: `src/stories/pilot_collage/ART_BRIEF.md`.
 2. **Asset list:** exact file names, minimum pixel sizes, transparency, anchors, depth, plus generation prompts that exclude text, numbers, logos and watermarks.
-3. **Make the art:** generate, cut out and clean the PNGs, and put them in `assets/stories/<story>/<scene>/`.
+3. **Make the art:** automatically with `node tools/gen_assets.mjs --story=<story>` (local ComfyUI; see below), or by hand: put PNGs in `assets/stories/<story>/<scene>/`.
 4. **Validate before any render:** `node tools/validate_assets.mjs --story=<story>`. It checks:
    - resolution against the closest camera zoom;
    - transparency, margins and naming;
@@ -16,6 +16,49 @@ Artwork is designed and made OUTSIDE the code: illustration, photography, or Z I
    - `node render.mjs --story=<story> "--sheet=…" --w=200`;
    - `node tools/aspect_test.mjs --only=<story> --aspects=9:16`, which also FAILs any text that covers a subject layer.
 7. **Final render locally:** `node render.mjs --story=<story> --clip --out=out/<story>.mp4`.
+
+## Automatic asset generation (`tools/gen_assets.mjs`, local ComfyUI)
+
+The manifest's `gen` blocks say how each layer is made, so the same tool works for every scene and story:
+
+```
+node tools/gen_assets.mjs --story=<id> --dry            # the plan and the exact prompts; nothing is generated
+node tools/gen_assets.mjs --story=<id>                  # generate → remove background → size → derive → validate
+node tools/gen_assets.mjs --story=<id> --preview        # …then a low-res contact sheet of the scene (out/gen/)
+node tools/gen_assets.mjs --story=<id> --only=sun --force   # remake one layer
+node tools/gen_assets.mjs --story=<id> --mock           # test the whole pipeline with stand-ins (out/mock_assets/, never the art folder)
+```
+
+### Engines
+
+These are your own ComfyUI workflows. In ComfyUI, export each one with **Save (API Format)**, then point `tools/comfy/engines.local.json` at them. Start from `engines.example.json`; the local file is git-ignored.
+
+The client finds each workflow's inputs on its own, by following the sampler's links: the prompt and negative prompt (also through `ConditioningZeroOut`), the seed (`seed` / `noise_seed` / `RandomNoise`), the size (`Empty*LatentImage`) and a `LoadImage` reference. Add `"bind": { "positive": "<node>.<input>" }` only if a workflow is unusual.
+
+Waiting on a job is bounded (`--timeout`, 600 s). `tools/comfy/test_client.mjs` tests the client against a mock ComfyUI server.
+
+### The `gen` block
+
+```js
+gen: { engine: 'zimage' | 'qwen' | 'manual' | 'derive', prompt, negative, size: [w, h], seed, matte: 'chroma' | 'rembg' | 'none',
+       margin, style (replaces the scene's) | false, character, ref,
+       op: 'screen_glow' | 'beside', from, source: { …a gen block… }, mirror, colors }      // derive only
+```
+
+The scene-level `gen: { seed, style, isolate, negative }` keeps one paper language, one light and one seed family across every layer.
+
+### Rules
+
+| rule | what happens |
+|---|---|
+| no text in artwork | Every negative prompt is guaranteed to include text, letters, words, numbers, digits, typography, logo, watermark and signature. A prompt that *asks* for text is refused, because Thai text is live text in `type`. |
+| backgrounds | Generated on flat chroma green, then keyed out in `tools/comfy/imageops.py`: soft alpha, green spill removed, cropped with a clear margin. `matte: 'rembg'` uses rembg if installed. An image with no chroma background (the model ignored the request) is rejected and regenerated. |
+| sizes | Every layer is upscaled (Lanczos) to the pixels its closest shot needs in every declared format. A layer is sized by width (`size: [w]`) or height (`size: [null, h]`). |
+| aligned layers | `derive` makes layers on another layer's canvas, so they line up with no offsets: `screen_glow` finds the dark phone screen and lights it; `beside` places marks either side of the phone. |
+| validation | Every layer is checked with the same rules as `validate_assets.mjs` (shared code in `tools/lib/manifest.mjs`). Only failing layers are retried: first a cheap re-matte at two other tolerances, then regeneration with a new seed, up to `--retries`. Passing layers are never touched. |
+| cache | Results are keyed by content (engine, workflow file, prompts, seed, size, processing) in `.cache/assets/` (git-ignored, shared by all stories, or set `ASSET_CACHE`). The same request is never generated twice. A rerun starts from the attempt that last passed. `_generated.json` beside the art records each layer's seed, prompts and status. |
+| manual import | A layer without `gen`, with `engine: 'manual'`, or a file you placed yourself (no record in `_generated.json`) is only validated, never overwritten (unless `--force`). |
+| consistency | `character: '<name>'` gives a layer the same seed family wherever it appears, in any story. `ref` passes a reference image to workflows that take one (e.g. Qwen-Image-Edit). |
 
 ## The manifest (`src/collage/collage.js`)
 

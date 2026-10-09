@@ -162,16 +162,21 @@ function typeOverlay(spec) {
     if (it.safe !== false) {
       X = clamp(X, sa.x0 + bw / 2, Math.max(sa.x0 + bw / 2, sa.x1 - bw / 2)); Y = clamp(Y, sa.y0 + bh / 2, Math.max(sa.y0 + bh / 2, sa.y1 - bh / 2));
     }
-    if (spec.subjects) Y = avoidSubjects(it, X, Y, bw, bh, sa);
+    Y = avoidSubjects(it, X, Y, bw, bh, sa);
+    placed.push({ it, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
     return (it._fit = { L, X, Y, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
   };
   // Collision-aware layout: spec.subjects(t) → [{ x0, y0, x1, y1 }] screen boxes of what text must never cover (a
   // character, the focal object). Each item is placed ONCE for its whole time on screen (no jitter): if its box would
   // touch any subject at any moment of its life, it moves to the nearest free height inside the safe area, trying the
   // item's prefer side first ('up' | 'down').
+  // Text never lands on other text either: items already placed that are on screen at the same time count as subjects.
+  const placed = [], lifeOf = it => [it.at - .1, it.out ? it.out.at + (it.out.dur ?? .35) : (spec.duration ?? DUR)];
   function avoidSubjects(it, X, Y, bw, bh, sa) {
-    const end = it.out ? it.out.at + (it.out.dur ?? .35) : (spec.duration ?? DUR), pad = .012 * H, boxes = [];
-    for (let tt = it.at - .1; tt <= end; tt += .1) boxes.push(...spec.subjects(tt));
+    const [start, end] = lifeOf(it), pad = .012 * H, boxes = [];
+    if (spec.subjects) for (let tt = start; tt <= end; tt += .1) boxes.push(...spec.subjects(tt));
+    for (const p of placed) { const [s0, e0] = lifeOf(p.it); if (s0 < end && e0 > start) boxes.push(p.box); }
+    if (!boxes.length) return Y;
     const hits = y => boxes.some(b => X - bw / 2 - pad < b.x1 && X + bw / 2 + pad > b.x0 && y - bh / 2 - pad < b.y1 && y + bh / 2 + pad > b.y0);
     if (!hits(Y)) return Y;
     const dirs = it.prefer === 'down' ? [1, -1] : [-1, 1];
@@ -180,8 +185,12 @@ function typeOverlay(spec) {
     }
     console.warn(`type: "${it.text}" cannot avoid the subjects inside the safe area`); return Y;
   }
-  window.TYPE_INFO = t => ({ safe: safeArea('title'), subjects: spec.subjects ? spec.subjects(t) : [], items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
+  // place every item once, in order, before anything reads a position: frames rendered in any order (parallel workers)
+  // get the same layout
+  let laidOut = false; const layoutAll = () => { if (!laidOut) { laidOut = true; items.forEach(fitted); } };
+  window.TYPE_INFO = t => (layoutAll(), { safe: safeArea('title'), subjects: spec.subjects ? spec.subjects(t) : [], items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
   const draw = t => {
+    layoutAll();
     const c = typeLayer(); c.clearRect(0, 0, W, H);
     for (const it of items) {
       if (t < it.at - .5) continue;

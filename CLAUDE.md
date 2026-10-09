@@ -33,6 +33,7 @@ Read ANIMATION_GUIDE.md first. Multi-aspect rules: docs/ASPECT_RATIOS.md. Visual
 - Story artwork is imported PNG layers made outside the code (docs/COLLAGE_PIPELINE.md). Never draw a scene's artwork procedurally.
 - A scene is a data manifest (`SCENES.id = {...}`, `playCollage`). Prefer extending the manifest over writing scene-specific code.
 - Run `node tools/validate_assets.mjs --story=<id>` before any render. Image-generation prompts always exclude letters, numbers, logos and watermarks; Thai text is live text (typeOverlay), and subject layers are kept clear of it.
+- Make artwork with `node tools/gen_assets.mjs --story=<id>` (local ComfyUI, from the manifest's `gen` blocks; `--mock` / `--dry` in the cloud). Never present mock stand-ins as artwork, and never claim assets were generated unless the pipeline produced and validated them.
 - Prototype one polished short scene before a full video.
 
 ## Rendering

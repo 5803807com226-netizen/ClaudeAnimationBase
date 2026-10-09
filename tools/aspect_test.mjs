@@ -9,7 +9,7 @@
 // Every page load and frame has an explicit timeout; nothing waits without a limit.
 //
 //   node tools/aspect_test.mjs [--only=phase2_lumo,preset_popBounce] [--aspects=9:16,4:5] [--frames=2] [--w=180]
-//                              [--look=<style>] [--frame-timeout=30 (s)] [--chrome=<path>] [--soft-gl] [--verbose]
+//                              [--look=<style>] [--assets=<dir> (collage scenes: artwork from another folder)] [--frame-timeout=30 (s)] [--chrome=<path>] [--soft-gl] [--verbose]
 // Output: out/aspect/<target>.jpg (columns: 9:16 · 16:9 · 4:5, rows: times) and out/aspect/report.json / report.md.
 // Exit code 1 if any target FAILs.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -23,6 +23,7 @@ const TARGETS = [
   { name: 'type_demo', story: 'type_demo', times: [.6, 1.6, 2.6, 3.6, 4.6] },
   { name: 'look_infographic', story: 'look_infographic', times: [2.4, .6, 3.6] },
   { name: 'collage_test', story: 'collage_test', times: [1.8, .5, 2.95] },
+  { name: 'pilot_collage', story: 'pilot_collage', times: [2.4, .6, 1.3, 2.95] },
   { name: 'story_pilot_v4', story: 'story_pilot_v4', times: [0, 1.5, 2.8, 4.9, 8.6, 9.6, 12, 14.96] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
 ];
@@ -39,6 +40,9 @@ function check(r, t) {
     else if (out(it, r.type.safe)) fails.push(`${t}s: text "${it.id}" ${fmt(it)} leaves the title-safe area ${fmt(r.type.safe)}`);
     for (const s of r.type.subjects || []) if (it.x0 < s.x1 && it.x1 > s.x0 && it.y0 < s.y1 && it.y1 > s.y0) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overlaps a subject ${fmt(s)}`);
   }
+  const items = r.type?.items || [];   // text never overlaps other text on screen at the same moment
+  for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = items[i], b = items[j];
+    if (a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0) fails.push(`${t}s: text "${a.id}" overlaps text "${b.id}"`); }
   // a flat AND light band looks like bare paper / an empty canvas; smooth dark skies are fine
   // (a look with no texture, e.g. infographic, is meant to be flat)
   if (!r.clean) for (const [e, { sd, lum }] of Object.entries(r.edges)) if (sd < 1.2 && lum > 200) review.push(`${t}s: flat light ${e} edge (σ ${sd.toFixed(1)}, lum ${lum.toFixed(0)}): uncovered background?`);
@@ -54,7 +58,7 @@ for (const T of TARGETS.filter(x => !only || only.includes(x.name))) {
     const res = { status: 'PASS', fails: [], review: [], errors: [] };
     let page = null;
     try {
-      page = await openTarget(browser, T, { aspect: A, look: args.look }, res.errors);
+      page = await openTarget(browser, T, { aspect: A, look: args.look, assets: args.assets }, res.errors);
       cells[A] = [];
       for (const t of T.times.slice(0, +(args.frames || 99))) {
         const t0 = Date.now(), r = await probe(page, t);

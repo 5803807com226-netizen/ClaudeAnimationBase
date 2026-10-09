@@ -6,7 +6,7 @@
 //     assets: 'assets/stories/<id>/scene1/', duration: 3, look: 'collage',
 //     camera: [[t, x, y, zoom, ease], ...],           // world px (the world is the 1080 × 1920 page), zoom in log space
 //     layers: [{                                      // drawn in order (back to front)
-//       id, file: 'name.png', size: [w, h?],          // world px; h from the image's aspect if omitted (never stretched)
+//       id, file: 'name.png', size: [w] | [null, h],  // world px; the other side follows the image's aspect (never stretched)
 //       at: [x, y], anchor: [ax, ay] (0..1 of the image, default centre), rot (deg), scale, opacity, depth (parallax: 1 = page),
 //       paper: { shadow: { dx, dy, blur, opacity, color }, border: px, borderColor, grain: 0..1 },
 //       keys: [[t, { x, y, rot, scale, opacity }, ease], ...],   // absolute values at times (missing = unchanged)
@@ -17,6 +17,7 @@
 //     }],
 //     type: [ typeOverlay items ],  narration: [{ at, end, text }]   // live Thai text; beats kept for retiming
 //   };
+//   aspects: ['9:16', '16:9', '4:5'] (formats it supports); camera and any placement value may be per format: { '9:16': …, … }
 //   playCollage(SCENES.id)
 const SCENES = window.SCENES = window.SCENES || {};
 const COLLAGE_IMG = {};   // file → { img, cut, shadow, pad } prepared once
@@ -60,18 +61,27 @@ function prepareLayerImage(el, paper = {}, scale = 1) {
     sx.filter = `blur(${blur}px)`; sx.drawImage(silhouette(cut, paper.shadow.color || '#2B1E14'), 0, 0); sx.filter = 'none';
   }
   const toP5 = c => { if (!c) return null; const g = createGraphics(c.width, c.height); g.pixelDensity(1); g.drawingContext.drawImage(c, 0, 0); return g; };
-  return { w: el.width, h: el.height, pad, cut: toP5(cut), shadow: toP5(shadow) };
+  // the visible artwork's bounds (fractions of the image), measured once on a small CPU canvas: subject boxes follow the art,
+  // not the transparent canvas around it
+  const sm = canvasOf(Math.min(256, el.width), Math.min(256, el.height) * Math.min(256, el.width) / el.width), smx = sm.getContext('2d', { willReadFrequently: true });
+  smx.drawImage(el, 0, 0, sm.width, sm.height); const d = smx.getImageData(0, 0, sm.width, sm.height).data; let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  for (let y = 0; y < sm.height; y++) for (let x = 0; x < sm.width; x++) if (d[(y * sm.width + x) * 4 + 3] > 20) { x0 = Math.min(x0, x / sm.width); x1 = Math.max(x1, (x + 1) / sm.width); y0 = Math.min(y0, y / sm.height); y1 = Math.max(y1, (y + 1) / sm.height); }
+  return { w: el.width, h: el.height, pad, cut: toP5(cut), shadow: toP5(shadow), bbox: x1 > x0 ? [x0, y0, x1, y1] : [0, 0, 1, 1] };
 }
 
 // ---------- playing a scene ----------
 function playCollage(scene) {
-  const dir = scene.assets || '', cam = cameraKeys(scene.camera || [[0, W / 2, H / 2, 1, 'ease'], [scene.duration || DUR, W / 2, H / 2, 1, 'ease']]);
-  const layers = scene.layers.map(L => ({ anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 1, ...L, src: dir + L.file }));
+  // ?assets=<dir> (render.mjs --assets=<dir>) swaps the artwork folder, e.g. for a mock preview kept apart from real art
+  const dir = new URLSearchParams(location.search).get('assets') || scene.assets || '';
+  const cam = cameraKeys(av(scene.camera) || [[0, W / 2, H / 2, 1, 'ease'], [scene.duration || DUR, W / 2, H / 2, 1, 'ease']]);
+  // any placement value may be per format ({ '9:16': …, '16:9': …, '4:5': … }, responsive.js av)
+  const layers = scene.layers.map(L0 => { const L = { ...L0 }; for (const k of ['at', 'size', 'anchor', 'rot', 'scale', 'opacity', 'depth', 'keys', 'reveal']) if (k in L) L[k] = av(L[k]);
+    return { anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 1, ...L, src: (dir ? dir.replace(/\/?$/, '/') : '') + L.file }; });
   (window.PRELOAD = window.PRELOAD || []).push(async () => {
     for (const L of layers) if (!COLLAGE_IMG[L.src]) {
       try {
         const im = await loadImage(L.src);
-        COLLAGE_IMG[L.src] = prepareLayerImage(im.canvas || im.elt || im, L.paper, im.width / L.size[0]);
+        COLLAGE_IMG[L.src] = prepareLayerImage(im.canvas || im.elt || im, L.paper, L.size[0] == null ? im.height / L.size[1] : im.width / L.size[0]);
       } catch (e) { console.error(`collage: could not load ${L.src} (run tools/validate_assets.mjs)`); }
     }
   });
@@ -97,12 +107,13 @@ function playCollage(scene) {
     return s;
   };
   // the layer's world-space size (never stretched) and its screen box under the camera (for text avoidance and tests)
-  const sizeOf = L => { const P = COLLAGE_IMG[L.src]; return [L.size[0], L.size[1] ?? (P ? L.size[0] * P.h / P.w : L.size[0])]; };
+  const sizeOf = L => { const P = COLLAGE_IMG[L.src], r = P ? P.h / P.w : 1;   // [w] or [null, h]: the other side follows the image
+    return L.size[0] == null ? [L.size[1] / r, L.size[1]] : [L.size[0], L.size[1] ?? L.size[0] * r]; };
   const screenBox = (L, t) => {
     const s = stateOf(L, t), [w, h] = sizeOf(L), [cx, cy, z] = cam(t), shx = (cx - PARALLAX_REF[0]) * (1 - L.depth), shy = (cy - PARALLAX_REF[1]) * (1 - L.depth);
-    const x0 = s.x - L.anchor[0] * w * s.scale + shx, y0 = s.y - L.anchor[1] * h * s.scale + shy;
+    const b = COLLAGE_IMG[L.src]?.bbox || [0, 0, 1, 1], ox = s.x - L.anchor[0] * w * s.scale + shx, oy = s.y - L.anchor[1] * h * s.scale + shy;
     const X = v => (v - cx) * z + W / 2, Y = v => (v - cy) * z + H / 2;
-    return { x0: X(x0), x1: X(x0 + w * s.scale), y0: Y(y0), y1: Y(y0 + h * s.scale) };
+    return { x0: X(ox + b[0] * w * s.scale), x1: X(ox + b[2] * w * s.scale), y0: Y(oy + b[1] * h * s.scale), y1: Y(oy + b[3] * h * s.scale) };
   };
   const drawLayer = (L, t) => {
     const P = COLLAGE_IMG[L.src]; if (!P) return;

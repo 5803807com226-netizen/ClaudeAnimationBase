@@ -1,5 +1,9 @@
 # Scene 1: the hook (0–3 s). Art brief and asset specification
 
+> **Generation is now automatic.** The prompts below live in `scene.js` as `gen` blocks, which are the source of truth. Run
+> `node tools/gen_assets.mjs --story=pilot_collage --preview` with your local ComfyUI. Making the layers by hand still works:
+> files you place yourself are validated, never overwritten.
+
 **Story:** `pilot_collage`. **Scene:** `s1_hook`. **Format:** 9:16, 1080 × 1920, 24 fps. **Look:** Editorial Paper Collage.
 The manifest is `scene.js`. The artwork goes in `assets/stories/pilot_collage/s1/`. Check it with
 `node tools/validate_assets.mjs --story=pilot_collage`.
