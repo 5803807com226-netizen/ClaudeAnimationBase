@@ -6,7 +6,7 @@
 // Each particle's path is closed-form from hash(i), so nothing is simulated frame to frame.
 definePreset('particleBurst', {
   label: 'Particle Burst', about: 'hash-seeded particles on easeOut arcs with gravity, tumble, shrink and a glow() flash',
-  defaults: { x: W / 2, y: 520, size: 420, count: 26, pSize: 26, shape: 'mix', colors: [PAL.ochre, PAL.rose, PAL.clay, PAL.cream, PAL.teal], angle: -Math.PI / 2, arc: TAU, gravity: 260, glow: PAL.ochre, spin: 3, seed: 0, ease: 'easeOut', dur: 1.4 },
+  defaults: { x: W / 2, y: ny(520 / 1080), size: 420 * US(), count: 26, pSize: 26 * US(), shape: 'mix', colors: [PAL.ochre, PAL.rose, PAL.clay, PAL.cream, PAL.teal], angle: -Math.PI / 2, arc: TAU, gravity: 260, glow: PAL.ochre, spin: 3, seed: 0, ease: 'easeOut', dur: 1.4 },
   run(t, o) {
     const age = seg(t, o.at, o.at + o.dur); if (t < o.at || age >= 1) return;
     if (o.glow) glow(o.x, o.y, o.size * .8, o.glow, Math.pow(1 - seg(age, 0, .35), 2));
@@ -21,7 +21,7 @@ definePreset('particleBurst', {
     }
   },
   demo: {
-    bg: PAL.night, ground: { y: 860, color: PAL.indigo },
-    layers: [(lt) => clawd(960, 860, 26, emotions(lt, [[0, 'neutral'], [.5, 'excited']])), ['particleBurst', { x: 960, y: 420, at: .5 }], ['particleBurst', { x: 960, y: 420, at: 2.2, seed: 1, shape: 'heart', colors: [PAL.rose, PAL.clayLt] }]],
+    bg: PAL.night, ground: { y: ny(860 / 1080), color: PAL.indigo },
+    layers: [(lt) => clawd(W / 2, ny(860 / 1080), 26 * US(), emotions(lt, [[0, 'neutral'], [.5, 'excited']])), ['particleBurst', { x: W / 2, y: ny(860 / 1080) - 440 * US(), at: .5 }], ['particleBurst', { x: W / 2, y: ny(860 / 1080) - 440 * US(), at: 2.2, seed: 1, shape: 'heart', colors: [PAL.rose, PAL.clayLt] }]],
   },
 });

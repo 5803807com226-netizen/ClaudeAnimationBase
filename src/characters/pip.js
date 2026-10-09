@@ -70,7 +70,7 @@ function makePip(o = {}) {
     } },
   ];
   return { ...defineCharacter({ id: o.id || 'pip', parts, C, lag: .1 }),
-    feet: PIP_FEET, head: [F, -.18],
+    feet: PIP_FEET, head: [F, -.18], height: PIP_FEET + 1.5, width: 1.15,   // full height (to the leaf tip) and half-width, in u
     pose: c => ({ legL: { rot: c.legL }, legR: { rot: c.legR }, armL: { rot: c.armL }, armR: { rot: c.armR },
       face: { look: c.look, blink: c.blink, wide: c.wide, happy: c.happy, brow: c.brow, mouth: c.mouth, open: c.open } }) };
 }

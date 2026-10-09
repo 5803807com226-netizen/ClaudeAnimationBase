@@ -24,8 +24,8 @@ function drawWorld(t) {
 }
 
 function placeholder(t) {
-  paint(ellPts(960, 520, 520, 300, 30, 20), { fill: PAL.sky, fillOp: 90, bleed: .3, ink: null });
-  clawd(960, 820, 20, feel('happy', t));
+  paint(ellPts(W / 2, H * .48, Math.min(W, H) * .48, Math.min(W, H) * .28, 30, 20), { fill: PAL.sky, fillOp: 90, bleed: .3, ink: null });
+  clawd(W / 2, H * .76, 20 * US(), feel('happy', t));
 }
 
 // ---------- brush wipe ----------

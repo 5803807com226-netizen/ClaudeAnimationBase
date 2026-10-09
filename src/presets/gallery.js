@@ -5,8 +5,9 @@
 (() => {
   const LEN = { shapeMorph: 4.5, brushWipe: 3, objectReveal: 3.5 };       // demo length per preset; default 4 s
   const title = P => {
-    letter(P.label, W / 2, 74, 64, PAL.cream, { stroke: PAL.ink, screen: true });
-    letter(P.name + '  ·  ' + P.about, W / 2, 136, 30, PAL.cream, { stroke: PAL.ink, screen: true });
+    const s = US(), about = P.name + '  ·  ' + P.about;   // titles scale with the frame and never overflow its width
+    letter(P.label, W / 2, 74 * s, Math.min(64 * s, W * .9 / (P.label.length * .55)), PAL.cream, { stroke: PAL.ink, screen: true });
+    letter(about, W / 2, 136 * s, Math.min(30 * s, W * .94 / (about.length * .5)), PAL.cream, { stroke: PAL.ink, screen: true });
   };
   const tour = [];
   let start = 0;

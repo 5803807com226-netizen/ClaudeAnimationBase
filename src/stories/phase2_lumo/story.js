@@ -5,7 +5,7 @@
 (() => {
   const LOG = 705, ground = x => 760 + 22 * Math.sin(x * .002 + 1.1) + 10 * Math.sin(x * .0055);
   let stage = null;   // set below; the star is in the sky (screen space), so looking at it needs the camera
-  const STAR = makePath([[1760, 80], [1500, 170], [1200, 280], [1040, 330]]);
+  const STAR = makePath([[.92, .075], [.78, .16], [.625, .26], [.54, .305]].map(([x, y]) => [x * W, y * H]));   // in frame fractions: any aspect
   const starScreen = t => { const p = follow(t, STAR, 4.2, 4.95, easeIn); return [p.x, p.y]; };
   const starWorld = t => { if (!stage) return [0, 0]; const c = stage.camAt(t), [sx, sy] = starScreen(t); return [c.cx + (sx - W / 2) / c.zoom, c.cy + (sy - H / 2) / c.zoom]; };
 

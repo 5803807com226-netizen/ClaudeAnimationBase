@@ -15,7 +15,7 @@ function resamplePts(pts, n = 48) {
 }
 definePreset('shapeMorph', {
   label: 'Shape Morph', about: 'resampled point lists blended with lerp, colour with mixCol',
-  defaults: { shapes: ['circle', 'star', 'heart'], colors: [PAL.sky, PAL.ochre, PAL.rose], x: W / 2, y: 540, size: 200, hold: .5, spin: 0, dur: .8 },
+  defaults: { shapes: ['circle', 'star', 'heart'], colors: [PAL.sky, PAL.ochre, PAL.rose], x: W / 2, y: H / 2, size: 200 * US(), hold: .5, spin: 0, dur: .8 },
   run(t, o) {
     const n = o.shapes.length - 1, step = o.dur + o.hold, i = clamp(Math.floor((t - o.at) / step), 0, n - 1), s0 = o.at + i * step;
     const k = easeBy(o.ease)(seg(t, s0, s0 + o.dur)), shape = j => resamplePts(SHAPES[o.shapes[j]](0, 0, o.size));

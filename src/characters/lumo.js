@@ -30,7 +30,7 @@ function makeLumo(o = {}) {
     }), w: .5, h: .35, anchor: [.25, .12] } },
   ];
   return { ...defineCharacter({ id: o.id || 'lumo', parts, lag: .12 }),
-    feet: 1.06 + .82, head: [F, -.15],
+    feet: 1.06 + .82, head: [F, -.15], height: 1.06 + .82 + 1.35 + .55, width: 1.0,   // full height (to the handle) and half-width, in u
     // a printed face can't move its pupils, so the whole eye layer glances toward the look target
     pose: c => ({ legL: { rot: c.legL * .8 }, legR: { rot: c.legR * .8 }, armL: { rot: Math.PI + c.armL }, armR: { rot: c.armR },
       eyes: { dx: c.look[0] * .07, dy: c.look[1] * .05 }, glow: c.glow ?? 1,

@@ -14,10 +14,10 @@
 function makeWorld(o) { return { layers: [], ...o, layers: (o.layers || []).map(L => ({ seed: 0, ...L })) }; }
 
 function drawLayers(world, t, pick = () => true) {
-  const cam = CAM || { cx: W / 2, cy: H / 2, zoom: 1 };
+  const cam = CAM || { cx: PARALLAX_REF[0], cy: PARALLAX_REF[1], zoom: 1 };
   for (const L of world.layers) {
     if (!pick(L)) continue;
-    const shift = (cam.cx - W / 2) * (1 - L.depth), view = W / 2 / cam.zoom + L.tile;
+    const shift = (cam.cx - PARALLAX_REF[0]) * (1 - L.depth), view = W / 2 / cam.zoom + L.tile;   // same anchor as parallax()
     const front = world.reveal ? world.reveal(t) - shift : Infinity;   // the same screen position at every depth
     const grow = x => world.reveal ? backOut(clamp((front - x) / (L.growDist ?? 160))) : 1;
     parallax(L.depth, () => {

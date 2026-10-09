@@ -15,6 +15,8 @@
 //     node render.mjs --loop=emotions --png --out=out/loop_emotions                          one cycle as PNGs (for GIFs)
 //   Stories (story.html, e.g. vertical): add --story=<id> to any of the above, e.g.
 //     node render.mjs --story=one_message --clip --out=out/one_message.mp4
+//   Aspect ratio: add --aspect=9:16 | 16:9 | 4:5 to any command (stories, loops and the studio video); without it a
+//   project keeps its own format. Low-res previews: --sheet / --strip with --w; full res: --clip or --frames.
 //   Music: --audio=assets/song.mp3 (or PROJECT.audio) is muxed into --clip and --encode. Other flags: --fps=24,
 //   --chrome=<path to Chrome/Chromium>.
 import puppeteer from 'puppeteer-core';
@@ -100,7 +102,7 @@ async function openPage(tag = '') {
   const page = await browser.newPage();
   page.on('console', m => { if (['error', 'warn'].includes(m.type())) console.log(`[page${tag}]`, m.text()); });
   page.on('pageerror', e => console.log(`[page error${tag}]`, e.message));
-  const query = args.story ? '&story=' + encodeURIComponent(args.story) : '';
+  const query = (args.story ? '&story=' + encodeURIComponent(args.story) : '') + (args.aspect ? '&aspect=' + encodeURIComponent(args.aspect) : '');
   await page.goto(pathToFileURL(resolve(args.story ? 'story.html' : 'studio.html')).href + '?render' + query, { waitUntil: 'networkidle0' });
   await page.waitForFunction('window.ready === true', { timeout: 60000 });
   if (args.loop) {

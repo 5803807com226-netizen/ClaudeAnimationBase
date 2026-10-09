@@ -39,8 +39,9 @@ function presetSequence(list, len) {
 // reference for the voiceover (never drawn); see src/stories/ and story.html.
 function playStory(story) { shots(story.shots.map(s => [s.at, presetShot(s)])); }
 // Layered parallax inside a camera: content drawn in fn moves on screen at `depth` × the camera's motion
-// (depth < 1: far, slower; > 1: near, faster). Draw far layers first.
+// (depth < 1: far, slower; > 1: near, faster). Draw far layers first. Anchored to a fixed world point (PARALLAX_REF,
+// responsive.js), not the canvas centre, so a layer sits in the same place in every aspect ratio.
 function parallax(depth, fn) {
   if (!CAM) return fn();
-  push(); translate((CAM.cx - W / 2) * (1 - depth), (CAM.cy - H / 2) * (1 - depth)); fn(); pop();
+  push(); translate((CAM.cx - PARALLAX_REF[0]) * (1 - depth), (CAM.cy - PARALLAX_REF[1]) * (1 - depth)); fn(); pop();
 }

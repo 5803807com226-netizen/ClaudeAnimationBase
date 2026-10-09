@@ -10,6 +10,10 @@
 // presetShot() in scene.js picks and configures presets from data.
 
 const PRESETS = {};
+// Verified aspect support per preset: ratios its gallery demo has PASSED in tools/aspect_test.mjs (low-res frames, framing
+// checked by eye). Never list a ratio that has not passed; a new preset starts with [] and is added after its test.
+const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16', '16:9', '4:5'], shapeMorph: ['9:16', '16:9', '4:5'],
+  brushWipe: ['9:16', '16:9', '4:5'], objectReveal: ['9:16', '16:9', '4:5'], particleBurst: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
 const presetK = (t, o) => easeBy(o.ease)(seg(t, o.at, o.at + o.dur));   // eased 0..1 progress of the main move

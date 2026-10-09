@@ -7,7 +7,7 @@
 <style>
   html, body { margin: 0; background: #1b1820; color: #eee; font: 13px system-ui, sans-serif; }
   main { padding: 12px; display: grid; gap: 8px; }
-  #out { width: min(100%, 1280px); aspect-ratio: 16 / 9; height: auto; background: #F3EBDC; }
+  #out { max-width: min(100%, 1280px); max-height: 86vh; width: auto; height: auto; background: #F3EBDC; }   /* keeps the canvas's own aspect */
   .p5Canvas { display: none !important; }
   .bar { display: flex; gap: 10px; align-items: center; max-width: 1280px; }
   #scrub { flex: 1; }
@@ -23,6 +23,7 @@
 </main>
 <!-- engine -->
 <script src="src/config.js"></script>
+<script src="src/responsive.js"></script>
 <script src="src/core.js"></script>
 <script src="src/clawd.js"></script>
 <script src="src/timeline.js"></script>

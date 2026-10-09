@@ -25,6 +25,8 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 
 ## The rules
 
+**Aspect ratios.** Everything must work at 9:16, 16:9 and 4:5. Use `src/responsive.js` (`nx`, `ny`, `US`, `byAspect`, `safeArea`) and test with `tools/aspect_test.mjs`. See [docs/ASPECT_RATIOS.md](docs/ASPECT_RATIOS.md).
+
 ### 1. The medium is solid: brush strokes, flat 2D, boil
 
 - **Paint everything with p5.brush through `paint()` and `inkLine()`.** Characters get flat `wash` colour plus an ink outline. Backgrounds get soft watercolour `fill` shapes, usually with no outline or a thin one. Never use plain p5 shapes (`rect`, `ellipse`, `fill()`): they look like 2000s Flash.

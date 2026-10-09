@@ -19,12 +19,14 @@ WORLDS.meadow = (o) => {
   };
   const rolling = (base, a1, a2, s) => x => base + a1 * Math.sin(x * .0031 + s) + a2 * Math.sin(x * .0077 + s * 2);
 
-  const sky = (t) => {
-    boilSeed('sky');
-    for (let i = 0; i < 6; i++) paint(rectPts(-60, -60 + i * 160, W + 120, 200), { wash: mixCol(P.skyTop, P.skyLow, i / 5), ink: null });
-    paint(ellPts(W * .5, 700, W * .8, 160, 30), { fill: P.haze, fillOp: 140, bleed: .3, tex: .4, ink: null });    // haze at the horizon
-    glow(1520, 230, 220, '#FFC27A', .6); paint(ellPts(1520, 230, 64, 64, 28), { wash: P.sun, ink: P.ink, sw: 1 });
-    paint(ellPts(1505, 215, 30, 22, 12), { wash: '#FFE3A6', washOp: 160, ink: null });
+  // the sky is in screen space but follows the world horizon, so it fits any frame height and framing
+  const sky = (t, ctx) => {
+    boilSeed('sky'); const hz = horizonOnScreen(ctx, 720), n = Math.ceil((H + 120) / 160) + 1, s = Math.min(W, H) / 1080;
+    for (let i = 0; i < n; i++) { const y = -60 + i * 160; paint(rectPts(-60, y, W + 120, 200), { wash: mixCol(P.skyTop, P.skyLow, clamp((y + 100) / Math.max(200, hz + 60))), ink: null }); }
+    paint(ellPts(W * .5, hz - 20, W * .8, 160 * s, 30), { fill: P.haze, fillOp: 140, bleed: .3, tex: .4, ink: null });    // haze at the horizon
+    const sx = W * .79, sy = Math.max(110 * s, hz - 560 * s);
+    glow(sx, sy, 220 * s, '#FFC27A', .6); paint(ellPts(sx, sy, 64 * s, 64 * s, 28), { wash: P.sun, ink: P.ink, sw: 1 });
+    paint(ellPts(sx - 15 * s, sy - 15 * s, 30 * s, 22 * s, 12), { wash: '#FFE3A6', washOp: 160, ink: null });
   };
 
   const hillsFar = rolling(690, 30, 14, .7), hillsNear = rolling(728, 36, 16, 2.1);
@@ -45,14 +47,14 @@ WORLDS.meadow = (o) => {
       paint(rectPts(x0 - 60, base - 40 * g, x1 - x0 + 120, 100 * g), { wash: P.haze, washOp: 120, ink: null });   // haze over the feet
     } },
     { name: 'hillsFar', depth: .32, tile: 600, draw: ({ x0, x1, r, front, grow }) => {
-      const gs = groundShape(hillsFar, x0, x1 + 2, 1300, 30, front); if (!gs) return;
+      const gs = groundShape(hillsFar, x0, x1 + 2, 4000, 30, front); if (!gs) return;
       paint(gs.shape, { wash: P.hillFar, ink: null }); inkLine(gs.top, .8, mixCol(P.hillFar, P.ink, .4), 'inkfine', .4);
       for (let j = 0; j < 6; j++) { const x = x0 + (j + r(j)) / 6 * 600, g = clamp(grow(x + 60)); if (g < .05 || x > front) continue; pine(x, hillsFar(x) + 4, 34 + 18 * r(10 + j), g, mixCol(P.pine, P.hillFar, .45)); }
     } },
     { name: 'hillsNear', depth: .55, tile: 560, draw: ({ x0, x1, r, front, grow }) => {
-      const gs = groundShape(hillsNear, x0, x1 + 2, 1300, 30, front); if (!gs) return;
+      const gs = groundShape(hillsNear, x0, x1 + 2, 4000, 30, front); if (!gs) return;
       paint(gs.shape, { wash: P.hill, ink: null }); inkLine(gs.top, 1.1, P.ink, 'ink', .4);
-      const band = groundShape(x => hillsNear(x) + 50, x0, x1 + 2, 1300, 40, front); if (band) paint(band.shape, { wash: P.hillDk, washOp: 140, ink: null });
+      const band = groundShape(x => hillsNear(x) + 50, x0, x1 + 2, 4000, 40, front); if (band) paint(band.shape, { wash: P.hillDk, washOp: 140, ink: null });
       const n = 1 + Math.floor(r(3) * 3);
       for (let j = 0; j < n; j++) {
         const x = x0 + (j + .2 + .6 * r(4 + j)) / n * 560, g = clamp(grow(x + 50)); if (g <= .02 || x > front) continue;
@@ -63,10 +65,10 @@ WORLDS.meadow = (o) => {
     } },
     { name: 'ground', depth: 1, tile: 420, draw: ({ x0, x1, r, front, grow }) => {
       // the ink line is drawn a little ahead of the colour, as if being sketched
-      const line = groundShape(G, x0, x1 + 2, 1500, 28, front), gs = groundShape(G, x0, x1 + 2, 1500, 28, front - 46);
+      const line = groundShape(G, x0, x1 + 2, 4000, 28, front), gs = groundShape(G, x0, x1 + 2, 4000, 28, front - 46);
       if (!line) return;
       if (gs) paint(gs.shape, { wash: P.ground, ink: null });
-      for (const [dy, col] of [[60, P.groundMid], [150, P.groundDk]]) { const b = groundShape(x => G(x) + dy + 10 * Math.sin(x * .01), x0, x1 + 2, 1500, 40, front - 46); if (b) paint(b.shape, { wash: col, ink: null }); }
+      for (const [dy, col] of [[60, P.groundMid], [150, P.groundDk]]) { const b = groundShape(x => G(x) + dy + 10 * Math.sin(x * .01), x0, x1 + 2, 4000, 40, front - 46); if (b) paint(b.shape, { wash: col, ink: null }); }
       inkLine(line.top, 2, P.ink, 'ink', .4);
       for (let j = 0; j < 11; j++) {   // grass ticks along the line
         const x = x0 + (j + r(20 + j)) / 11 * (x1 - x0), g = clamp(grow(x)); if (g <= .05) continue;

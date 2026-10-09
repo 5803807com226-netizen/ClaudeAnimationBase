@@ -4,7 +4,7 @@
 //   wobble      follow-through wobble after the pop (0 = none)     beat  true to pulse with the music's beat
 definePreset('popBounce', {
   label: 'Pop & Bounce', about: 'backOut pop-in, spring wobble, then jump() hops with squash and stretch',
-  defaults: { x: W / 2, y: 700, size: 110, color: PAL.ochre, shape: 'star', hops: 2, hopH: 1.2, hopGap: .75, wobble: .12, beat: false, ease: 'backOut', dur: .55 },
+  defaults: { x: W / 2, y: ny(700 / 1080), size: 110 * US(), color: PAL.ochre, shape: 'star', hops: 2, hopH: 1.2, hopGap: .75, wobble: .12, beat: false, ease: 'backOut', dur: .55 },
   run(t, o) {
     if (t < o.at) return;
     const end = o.at + o.dur;
@@ -15,5 +15,5 @@ definePreset('popBounce', {
     }
     presetPlace(o.x, o.y + dy * o.size, 0, s * (1 + sq * .6), s * (1 - sq), () => presetItem(o));
   },
-  demo: { bg: PAL.sky, ground: { y: 860, color: PAL.sap }, layers: [['popBounce', { x: 960, y: 700, size: 130, at: .4 }]] },
+  demo: { bg: PAL.sky, ground: { y: ny(860 / 1080), color: PAL.sap }, layers: [['popBounce', { x: W / 2, y: ny(860 / 1080) - 160 * US(), size: 130 * US(), at: .4 }]] },
 });

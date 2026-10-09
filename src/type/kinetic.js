@@ -15,6 +15,9 @@
 //     fade: { in, out, color }, duration,
 //   })
 // `say: i` takes the text and timing of narration[i]; at/end/dur override. Presets: TYPE_PRESETS below.
+// Responsive (responsive.js): x, y, maxWidth, maxLines and any style value may be a per-aspect map
+// ({ '9:16': …, '16:9': …, '4:5': … } or { tall, wide }). Text shrinks to fit its width and line limit, and every block
+// is kept inside the title-safe area (safe: 'title' | 'action' | false).
 
 // Ease names, as everywhere else (presets/index.js EASES), plus a sharp expo-out for text.
 const typeEase = e => typeof e === 'function' ? e : e === 'expo' ? (x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * clamp(x))) : (EASES[e] || easeOut);
@@ -109,23 +112,51 @@ const TYPE_PRESETS = {
   counter(t, it, c, L, X, Y, ex) {
     if (t < it.at) return;
     const st = it.style, d = it.dur ?? 1.2, k = typeEase(it.ease || 'expo')(seg(t, it.at, it.at + d)), v = lerp(it.from ?? 0, it.to, k);
-    const fmt = new Intl.NumberFormat(it.digits === 'thai' ? 'th-TH-u-nu-thai' : (it.locale || 'th-TH'), { maximumFractionDigits: it.decimals ?? 0, minimumFractionDigits: it.decimals ?? 0 });
-    const num = (it.prefix || '') + fmt.format(v), a = t - (it.at + d), land = a > 0 ? 1 + .14 * Math.exp(-7 * a) * Math.cos(16 * a) : 1;
-    const c2 = typeLayer(); c2.save(); c2.font = fontCss(st); const nw = c2.measureText(num).width; const ss = { ...st, ...(it.suffixStyle || {}) }; c2.font = fontCss(ss);
-    const sw = it.suffix ? c2.measureText(' ' + it.suffix).width : 0; c2.restore();
+    const num = counterText(it, v), a = t - (it.at + d), land = a > 0 ? 1 + .14 * Math.exp(-7 * a) * Math.cos(16 * a) : 1;
+    const ss = { ...st, ...(it.suffixStyle || {}) }, { nw, sw } = counterWidths(it, num, st);
     const x0 = X - (nw + sw) / 2, alpha = seg(t, it.at, it.at + .1) * ex.alpha, y = Y + (ex.dy || 0);
     drawText(c, num, x0 + nw / 2, y, st, { s: land * ex.s, alpha, color: a > 0 && a < .25 ? (it.flash || st.color) : st.color });
     if (it.suffix) drawText(c, it.suffix, x0 + nw + sw / 2, y + (st.size - ss.size) * TS() * .18, ss, { s: ex.s, alpha: alpha * seg(t, it.at + d * .6, it.at + d) });
   },
 };
 
+// the counter's text at value v, and the measured widths of a number and its suffix (for drawing and for fitting)
+function counterText(it, v) {
+  const fmt = new Intl.NumberFormat(it.digits === 'thai' ? 'th-TH-u-nu-thai' : (it.locale || 'th-TH'), { maximumFractionDigits: it.decimals ?? 0, minimumFractionDigits: it.decimals ?? 0 });
+  return (it.prefix || '') + fmt.format(v);
+}
+function counterWidths(it, num, st) {
+  const c = typeLayer(); c.save(); c.font = fontCss(st); const nw = c.measureText(num).width;
+  c.font = fontCss({ ...st, ...(it.suffixStyle || {}) }); const sw = it.suffix ? c.measureText(' ' + it.suffix).width : 0; c.restore();
+  return { nw, sw };
+}
+
 function playType(spec) {
   registerFonts(spec.fonts);
   const N = spec.narration || [], dur = spec.duration || DUR;
-  const items = spec.items.map(it => {
-    const n = it.say != null ? N[it.say] : null, at = it.at ?? n?.at ?? 0;
-    return { ...it, text: it.text ?? n?.text ?? '', at, end: it.end ?? (it.dur != null ? at + it.dur : n?.end ?? at + 1), style: { size: 80, ...it.style } };
+  const res = o => o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, av(v)])) : o;
+  const items = spec.items.map((it0, i) => {
+    const it = res(it0), n = it.say != null ? N[it.say] : null, at = it.at ?? n?.at ?? 0;
+    return { ...it, id: it.id || `${it.preset}#${i}`, text: it.text ?? n?.text ?? '', at, end: it.end ?? (it.dur != null ? at + it.dur : n?.end ?? at + 1),
+      style: { size: 80, ...res(it.style) }, suffixStyle: res(it.suffixStyle) };
   });
+  // fit once per item (the layout depends only on the text, the style and the canvas): shrink until the widest line fits
+  // maxWidth and the line count fits maxLines; then the block's box, clamped into the safe area
+  const fitted = it => {
+    if (it._fit) return it._fit;
+    const mw = (it.maxWidth ?? .86) * W; let st = it.style, L = layout(it.text, st, mw);
+    const cw = st => { const { nw, sw } = counterWidths({ ...it, suffixStyle: it.suffixStyle && { ...it.suffixStyle, size: it.suffixStyle.size * st.size / it.style.size } }, counterText(it, it.to), st); return nw + sw; };
+    const tooWide = () => it.preset === 'counter' ? cw(st) > mw + 1 : L.lines.some(l => l.w > mw + 1) || (it.maxLines && L.lines.length > it.maxLines);
+    for (let k = 0; k < 10 && tooWide(); k++) { st = { ...st, size: st.size * .92 }; L = layout(it.text, st, mw); }
+    if (st !== it.style) { if (it.suffixStyle?.size) it.suffixStyle = { ...it.suffixStyle, size: it.suffixStyle.size * st.size / it.style.size }; it.style = st; }
+    let X = (it.x ?? .5) * W, Y = (it.y ?? .5) * H; const bw = it.preset === 'counter' ? cw(st) : Math.max(...L.lines.map(l => l.w)), bh = L.h;
+    if (it.safe !== false) {
+      const sa = safeArea(it.safe || 'title');
+      X = clamp(X, sa.x0 + bw / 2, Math.max(sa.x0 + bw / 2, sa.x1 - bw / 2)); Y = clamp(Y, sa.y0 + bh / 2, Math.max(sa.y0 + bh / 2, sa.y1 - bh / 2));
+    }
+    return (it._fit = { L, X, Y, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
+  };
+  window.TYPE_INFO = t => ({ safe: safeArea('title'), items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
   const fade = { in: .3, out: .3, color: spec.background || '#F4ECDF', ...spec.fade };
   shots([[0, (t) => {
     if (spec.background) background(spec.background);
@@ -133,9 +164,9 @@ function playType(spec) {
     const c = typeLayer(); c.clearRect(0, 0, W, H);
     for (const it of items) {
       if (t < it.at - .5) continue;
-      const L = layout(it.text, it.style, (it.maxWidth ?? .86) * W), ex = exitOf(t, it);
-      if (ex.alpha <= .003) continue;
-      TYPE_PRESETS[it.preset](t, it, c, L, (it.x ?? .5) * W, (it.y ?? .5) * H, ex);
+      const ex = exitOf(t, it); if (ex.alpha <= .003) continue;
+      const f = fitted(it);
+      TYPE_PRESETS[it.preset](t, it, c, f.L, f.X, f.Y, ex);
     }
     compositeType();
     if (fade.in && t < fade.in) flash(1 - t / fade.in, fade.color);
@@ -143,3 +174,6 @@ function playType(spec) {
   }]]);
   return { items };
 }
+
+// Verified aspect support per typography preset (tools/aspect_test.mjs; never list a ratio that has not passed).
+const TYPE_PRESET_ASPECTS = { pop: ['9:16', '16:9', '4:5'], slide: ['9:16', '16:9', '4:5'], impact: ['9:16', '16:9', '4:5'], highlight: ['9:16', '16:9', '4:5'], reveal: ['9:16', '16:9', '4:5'], counter: ['9:16', '16:9', '4:5'] };

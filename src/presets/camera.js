@@ -13,8 +13,8 @@ definePreset('cameraMove', {
     if (inner) { inner(); camEnd(); }
   },
   demo: {
-    bg: PAL.sky, ground: { y: 860, color: PAL.sap },
-    camera: { from: [W / 2, H / 2, 1], to: [1250, 600, 1.5], at: .3, dur: 3, drift: 10 },
-    layers: [(lt) => { clawd(700, 860, 24, feel('happy', lt)); paint(heartPts(1500, 800, 70), { wash: PAL.rose, ink: PAL.ink, sw: 1 }); }],
+    bg: PAL.sky, ground: { y: ny(860 / 1080), color: PAL.sap },
+    camera: { from: [W / 2, H / 2, 1], to: [nx(1250 / 1920), ny(600 / 1080), 1.5], at: .3, dur: 3, drift: 10 },
+    layers: [(lt) => { clawd(nx(700 / 1920), ny(860 / 1080), 24 * US(), feel('happy', lt)); paint(heartPts(nx(1500 / 1920), ny(860 / 1080) - 60 * US(), 70 * US()), { wash: PAL.rose, ink: PAL.ink, sw: 1 }); }],
   },
 });

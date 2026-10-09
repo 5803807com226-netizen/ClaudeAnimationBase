@@ -18,16 +18,18 @@ WORLDS.snowforest = (o) => {
       paint(ellPts(x, y, size * (.6 + .8 * r(400 + k)), size * (.6 + .8 * r(400 + k)), 8), { wash: P.flake, washOp: op, ink: null });
     }
   };
-  const sky = (t) => {
-    boilSeed('sky');
-    for (let i = 0; i < 14; i++) paint(rectPts(-60, -60 + i * 64, W + 120, 120), { wash: mixCol(P.skyTop, P.skyLow, Math.pow(i / 13, 1.4)), ink: null });
+  // the sky is in screen space but follows the world horizon, so it fits any frame height and framing
+  const sky = (t, ctx) => {
+    boilSeed('sky'); const hz = horizonOnScreen(ctx, 700), n = Math.ceil((H + 120) / 64) + 1, s = Math.min(W, H) / 1080;
+    for (let i = 0; i < n; i++) { const y = -60 + i * 64; paint(rectPts(-60, y, W + 120, 120), { wash: mixCol(P.skyTop, P.skyLow, Math.pow(clamp((y + 60) / Math.max(200, hz)), 1.4)), ink: null }); }
     for (let i = 0; i < 46; i++) {   // stars, each twinkling on its own clock
-      const x = hash(i) * W, y = hash(i + 50) * 520, tw = .5 + .5 * Math.sin(t * (2 + 2 * hash(i + 9)) + i);
+      const x = hash(i) * W, y = hash(i + 50) * Math.max(200, hz - 60), tw = .5 + .5 * Math.sin(t * (2 + 2 * hash(i + 9)) + i);
       boilSeed('star' + i); paint(starPts(x, y, (2 + 3 * hash(i + 3)) * (.6 + .5 * tw), .4, 4), { wash: P.star, washOp: 120 + 120 * tw, ink: null });
     }
-    glow(420, 190, 260, '#AFC3FF', .55); boilSeed('moon');
-    paint(ellPts(420, 190, 62, 62, 28), { wash: P.moon, ink: P.ink, sw: 1 });
-    paint(ellPts(400, 176, 16, 12, 10), { wash: '#DCD6BC', ink: null }); paint(ellPts(440, 206, 10, 8, 8), { wash: '#DCD6BC', ink: null });
+    const mx = W * .22, my = Math.max(110 * s, hz - 374 * s);
+    glow(mx, my, 260 * s, '#AFC3FF', .55); boilSeed('moon');
+    paint(ellPts(mx, my, 62 * s, 62 * s, 28), { wash: P.moon, ink: P.ink, sw: 1 });
+    paint(ellPts(mx - 20 * s, my - 14 * s, 16 * s, 12 * s, 10), { wash: '#DCD6BC', ink: null }); paint(ellPts(mx + 20 * s, my + 16 * s, 10 * s, 8 * s, 8), { wash: '#DCD6BC', ink: null });
   };
   const ridge = (base, a, s) => x => base + a * Math.sin(x * .0028 + s) + a * .4 * Math.sin(x * .0071 + s * 3);
   const treeLineFar = ridge(700, 18, .3), treeLineNear = ridge(735, 22, 1.7);
@@ -41,22 +43,22 @@ WORLDS.snowforest = (o) => {
         paint([[lerp(px, ax, k), lerp(py, ay, k)], [px, py], [lerp(px, bx, k), lerp(py, by, k)], [lerp(px, bx, k * .5), lerp(py, by, k * .5) + 14], [px, py + 30 * g], [lerp(px, ax, k * .5), lerp(py, ay, k * .5) + 12]], { wash: P.farSnow, ink: null }); }
     } },
     { name: 'forestFar', depth: .35, tile: 600, draw: ({ x0, x1, r, front, grow }) => {
-      const gs = groundShape(treeLineFar, x0, x1 + 2, 1300, 30, front); if (!gs) return;
+      const gs = groundShape(treeLineFar, x0, x1 + 2, 4000, 30, front); if (!gs) return;
       paint(gs.shape, { wash: P.pineFar, ink: null });
       for (let j = 0; j < 9; j++) { const x = x0 + (j + r(j)) / 9 * 600, g = clamp(grow(x + 40)); if (g > .05 && x < front) pine(x, treeLineFar(x) + 6, 70 + 50 * r(20 + j), g, P.pineFar, false); }
     } },
     { name: 'snowFar', depth: .45, tile: 700, draw: ({ x0, r, t }) => flakes(x0, 700, r, t, 16, 3, 60, 170) },
     { name: 'forestNear', depth: .62, tile: 520, draw: ({ x0, x1, r, front, grow }) => {
-      const gs = groundShape(treeLineNear, x0, x1 + 2, 1300, 30, front); if (!gs) return;
+      const gs = groundShape(treeLineNear, x0, x1 + 2, 4000, 30, front); if (!gs) return;
       paint(gs.shape, { wash: P.snowShade, ink: null }); inkLine(gs.top, 1, P.ink, 'inkfine', .4);
       const n = 3 + Math.floor(r(1) * 3);
       for (let j = 0; j < n; j++) { const x = x0 + (j + .15 + .7 * r(2 + j)) / n * 520, g = clamp(grow(x + 50)); if (g > .05 && x < front) pine(x, treeLineNear(x) + 6, 130 + 80 * r(10 + j), g, P.pine, true); }
     } },
     { name: 'ground', depth: 1, tile: 420, draw: ({ x0, x1, r, front, grow }) => {
-      const line = groundShape(G, x0, x1 + 2, 1500, 28, front), gs = groundShape(G, x0, x1 + 2, 1500, 28, front - 46);
+      const line = groundShape(G, x0, x1 + 2, 4000, 28, front), gs = groundShape(G, x0, x1 + 2, 4000, 28, front - 46);
       if (!line) return;
       if (gs) paint(gs.shape, { wash: P.snow, ink: null });
-      for (const [dy, col] of [[70, P.snowMid], [170, P.snowShade]]) { const b = groundShape(x => G(x) + dy + 12 * Math.sin(x * .008), x0, x1 + 2, 1500, 40, front - 46); if (b) paint(b.shape, { wash: col, ink: null }); }
+      for (const [dy, col] of [[70, P.snowMid], [170, P.snowShade]]) { const b = groundShape(x => G(x) + dy + 12 * Math.sin(x * .008), x0, x1 + 2, 4000, 40, front - 46); if (b) paint(b.shape, { wash: col, ink: null }); }
       inkLine(line.top, 1.8, P.ink, 'ink', .4);
       for (let j = 0; j < 4; j++) {   // dry grass poking through the snow
         const x = x0 + 420 * r(30 + j), g = clamp(grow(x)), y = G(x); if (g <= .05 || x > front) continue;
