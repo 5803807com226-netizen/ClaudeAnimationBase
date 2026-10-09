@@ -23,7 +23,11 @@ function defineCharacter(spec) {
   for (const p of parts) p.kids = parts.filter(q => q.parent === p.name);
   const srcs = [];
   for (const p of parts) if (p.img) srcs.push(...(typeof p.img.src === 'string' ? [p.img.src] : Object.values(p.img.src)));
-  if (srcs.length) (window.PRELOAD = window.PRELOAD || []).push(async () => { for (const s of srcs) if (!RIG_IMAGES[s]) RIG_IMAGES[s] = await loadImage(s); });
+  // A page opened straight from disk (file://) may refuse to load images: warn and draw without them rather than hang.
+  // Preview PNG characters through a local server (e.g. npx http-server) or render.mjs, which allows file access.
+  if (srcs.length) (window.PRELOAD = window.PRELOAD || []).push(async () => {
+    for (const s of srcs) if (!RIG_IMAGES[s]) try { RIG_IMAGES[s] = await loadImage(s); } catch (e) { console.warn('cutout rig: could not load ' + s + ' (serve the page over http to preview PNG layers)'); }
+  });
   return { lag: .12, ...spec, parts, roots: parts.filter(p => !p.parent) };
 }
 

@@ -4,36 +4,41 @@
 //
 //   const P = makePip({ colors: { body: '#…' } });   drawCharacter(P, x, y, u, t => pose, t)   (x, y) = body centre, u = body radius
 // Pose: { legL, legR, armL, armR: { rot }, sprout: { rot }, face: { look [x, y], blink, wide, happy, brow, mouth, open } }
-//   mouth: 'smile' | 'open' | 'o' | 'flat'. Feet are 1.38 u below the body centre (PIP_FEET).
-const PIP_FEET = 1.38;
+//   mouth: 'smile' | 'open' | 'o' | 'flat'. Feet are 1.5 u below the body centre (PIP_FEET).
+// For actors (systems/actor.js) it also exposes the adapter: feet, head, pose(channels). Registered as CHARACTERS.pip.
+const PIP_FEET = 1.5;
 function makePip(o = {}) {
   const C = { body: '#F2B33D', belly: '#FFE2A0', shade: '#D98E2B', blush: '#EE8A7A', leaf: '#6FB45C', leafDk: '#4C8A43', eye: '#FFFDF6', ink: PAL.ink, ...o.colors };
   const F = .14;                                    // features sit toward the right: Pip faces the way it runs
   const sw = u => u / 42;
   const face = pose => ({ look: [0, 0], blink: 0, wide: 0, happy: 0, brow: 0, mouth: 'smile', open: 0, ...pose.face });
-  const BODY = Array.from({ length: 30 }, (_, i) => { const a = i / 30 * TAU, s = Math.sin(a); return [Math.cos(a) * (1 + .03 * s), s * (s > 0 ? .95 : 1.06)]; });
+  const BODY = Array.from({ length: 30 }, (_, i) => { const a = i / 30 * TAU, s = Math.sin(a); return [Math.cos(a) * (1 + (s > 0 ? .07 : .02) * s), s * (s > 0 ? .95 : 1.06)]; });   // a little pear-shaped: weight at the bottom
 
   function leg(u) {
-    paint(ribbon([[0, 0], [0, .28 * u], [0, .5 * u]], .2 * u, .17 * u), { wash: C.shade, ink: C.ink, sw: sw(u) });
-    paint(ellPts(.09 * u, .55 * u, .21 * u, .11 * u, 14), { wash: C.shade, ink: C.ink, sw: sw(u) });
+    paint(ribbon([[0, 0], [0, .34 * u], [.02 * u, .64 * u]], .21 * u, .16 * u), { wash: C.shade, ink: C.ink, sw: sw(u) });
+    paint(ellPts(.11 * u, .7 * u, .25 * u, .13 * u, 14), { wash: C.shade, ink: C.ink, sw: sw(u) });
+    paint(ellPts(.06 * u, .66 * u, .12 * u, .04 * u, 8), { wash: C.belly, washOp: 120, ink: null });   // shine on the shoe
   }
   function arm(u, dir) {
-    paint(ribbon([[0, 0], [dir * .2 * u, .03 * u], [dir * .38 * u, .02 * u]], .17 * u, .15 * u), { wash: C.body, ink: C.ink, sw: sw(u) });
+    paint(ribbon([[0, 0], [dir * .22 * u, .03 * u], [dir * .42 * u, .02 * u]], .17 * u, .14 * u), { wash: C.body, ink: C.ink, sw: sw(u) });
+    paint(ellPts(dir * .46 * u, .02 * u, .12 * u, .11 * u, 12), { wash: C.body, ink: C.ink, sw: sw(u) });   // a little round hand
   }
   function eye(u, f, side) {
     const w = .2 * u * (1 + .3 * f.wide), h = .25 * u * (1 + .3 * f.wide), s = sw(u);
     if (f.happy > .5) { inkLine([[-w, .05 * u], [0, -.12 * u], [w, .05 * u]], s * 1.6, C.ink, 'ink', .5); return; }
     if (f.blink > .5) { inkLine([[-w, 0], [0, .07 * u], [w, 0]], s * 1.5, C.ink, 'ink', .5); return; }
     paint(ellPts(0, 0, w, h, 18), { wash: C.eye, ink: C.ink, sw: s * .9 });
-    const [lx, ly] = f.look, px = lx * w * .45, py = ly * h * .4, pr = .55 * w;
+    const [lx, ly] = f.look, px = lx * w * .42, py = ly * h * .38, pr = .6 * w;
     paint(ellPts(px, py, pr, pr * 1.15, 14), { wash: C.ink, ink: null });
     paint(ellPts(px - pr * .35, py - pr * .45, pr * .3, pr * .3, 8), { wash: C.eye, ink: null });
+    paint(ellPts(px + pr * .35, py + pr * .4, pr * .14, pr * .14, 6), { wash: C.eye, ink: null });
   }
 
   const parts = [
     { name: 'body', z: 1, draw: (u, pose) => {
       const f = face(pose), s = sw(u);
       paint(BODY.map(([x, y]) => [x * u, y * u]), { wash: C.body, ink: C.ink, sw: s * 1.1, curv: .5 });
+      paint([[.55, -.75], [.95, -.3], [1.0, .25], [.75, .75], [.3, .98], [.55, .55], [.72, .05], [.68, -.4]].map(([x, y]) => [x * u, y * u]), { wash: C.shade, washOp: 120, ink: null, curv: .5 });   // form shadow
       paint(ellPts(.12 * u, .38 * u, .55 * u, .42 * u, 20), { wash: C.belly, ink: null });                  // belly
       paint(ellPts(-.42 * u, -.5 * u, .26 * u, .14 * u, 12, 0, -.6), { wash: '#FFFFFF', washOp: 150, ink: null });   // gloss
       paint(ellPts((-.48 + F) * u, .12 * u, .14 * u, .08 * u, 10), { fill: C.blush, fillOp: 130, bleed: .1, ink: null });
@@ -43,10 +48,10 @@ function makePip(o = {}) {
         inkLine([[(x - .1) * u, (-.6 - .1 * b + side * .04 * b) * u], [x * u, (-.64 - .1 * b) * u], [(x + .1) * u, (-.6 - .1 * b - side * .04 * b) * u]], s * 1.1, C.ink, 'ink', .5);   // a small arch, clear of the eye
       }
     } },
-    { name: 'legL', parent: 'body', joint: [-.3, .72], z: 0, draw: u => leg(u) },
-    { name: 'legR', parent: 'body', joint: [.32, .72], z: 0, draw: u => leg(u) },
-    { name: 'armL', parent: 'body', joint: [-.9, .1], z: 2, draw: u => arm(u, -1) },
-    { name: 'armR', parent: 'body', joint: [.9, .1], z: 2, draw: u => arm(u, 1) },
+    { name: 'legL', parent: 'body', joint: [-.3, .78], z: 0, draw: u => leg(u) },
+    { name: 'legR', parent: 'body', joint: [.32, .78], z: 0, draw: u => leg(u) },
+    { name: 'armL', parent: 'body', joint: [-.92, .1], z: 2, drag: .5, draw: u => arm(u, -1) },
+    { name: 'armR', parent: 'body', joint: [.92, .1], z: 2, drag: .5, draw: u => arm(u, 1) },
     { name: 'eyeL', parent: 'body', joint: [-.3 + F, -.18], z: 3, draw: (u, pose) => eye(u, face(pose), -1) },
     { name: 'eyeR', parent: 'body', joint: [.3 + F, -.18], z: 3, draw: (u, pose) => eye(u, face(pose), 1) },
     { name: 'mouth', parent: 'body', joint: [F * .9, .2], z: 3, draw: (u, pose) => {
@@ -64,5 +69,9 @@ function makePip(o = {}) {
       inkLine([[.04 * u, -.36 * u], [.36 * u, -.5 * u]], sw(u) * .6, C.leafDk, 'inkfine', 0);
     } },
   ];
-  return defineCharacter({ id: o.id || 'pip', parts, C, lag: .1 });
+  return { ...defineCharacter({ id: o.id || 'pip', parts, C, lag: .1 }),
+    feet: PIP_FEET, head: [F, -.18],
+    pose: c => ({ legL: { rot: c.legL }, legR: { rot: c.legR }, armL: { rot: c.armL }, armR: { rot: c.armR },
+      face: { look: c.look, blink: c.blink, wide: c.wide, happy: c.happy, brow: c.brow, mouth: c.mouth, open: c.open } }) };
 }
+CHARACTERS.pip = makePip;

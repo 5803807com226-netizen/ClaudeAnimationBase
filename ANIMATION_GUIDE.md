@@ -338,6 +338,32 @@ Four libraries in [src/systems/](src/systems/), loaded by `story.html`. They are
 
 Characters are built on the cutout rig [src/rig/cutout.js](src/rig/cutout.js), as painter parts or transparent PNG layers (`img`), with IK and follow-through (`drag`). See [src/characters/pip.js](src/characters/pip.js). Worlds are themes of tile painters, such as [src/worlds/meadow.js](src/worlds/meadow.js). A story lists the files it needs in its `config.js` `files`.
 
+### Stages: a scene as data (Phase 2)
+
+[src/systems/stage.js](src/systems/stage.js) builds a whole scene from one data object, so a new story does not touch the engine:
+
+| concern | where | swap it by |
+|---|---|---|
+| character artwork | `src/characters/<name>.js`: rig parts (code painters and/or PNG layers) plus an **adapter** `{ feet, head, pose(channels) }`; registers `CHARACTERS.name` | naming another character |
+| character animation | [src/systems/actor.js](src/systems/actor.js) (generic): motion keys, jumps, look targets, reactions, mouth, blinks, extra keyed channels → shared channels → the adapter; plus the character's shadow, dust, impact, trail (paint or light), speed lines | editing numbers in the story |
+| environment artwork | `src/worlds/<name>.js`: `WORLDS.name = opts => ({ sky(t, ctx), layers })` | naming another theme |
+| camera | `camera: { lag, lead, offset, y: keys, zoom: keys, shakeOnLand }` | data |
+| motion preset parameters, story timing | the story's `story.js` | data |
+| one-off story elements | `screen` (sky, screen space), `extras.back` / `extras.front` (world space) | small functions |
+
+```js
+playStage({
+  world: { theme: 'snowforest', ground: x => y, opts: { logs: [705] }, intro: 1.2 },   // intro: the world draws itself across the frame first
+  actors: [{ character: 'lumo', u: 82, motion: { keys: [[t, x, v], ...], jumps: [{ t0, t1, h, crouch, amt }], stride },
+             look: [[t, 'ahead' | [x, y] | t => [x, y]], ...], reactions: [[t0, 'take', amt], ...], mouth: [[t, 'smile'], ...],
+             blinks: [t, ...], channels: [[t, { glow: 1.9 }], ...], gait: {...}, lean: {...}, fx: {...} }],
+  camera: { lag: .55, lead: .3, y: [[0, 470]], zoom: [[0, 1], [7, 1.12]] },
+  screen: [shootingStar], extras: { front: [firefly] },
+});
+```
+
+Examples, same systems: [phase1_demo](src/stories/phase1_demo/) (Pip, code-painted, meadow) and [phase2_lumo](src/stories/phase2_lumo/) (Lumo, **PNG layers**, snow forest). Lumo's layers come from `tools/make_lumo_layers.py` as stand-ins; an illustrator's PNGs with the same names, sizes and anchors (listed in [lumo.js](src/characters/lumo.js)) replace them as they are. Expression layers are picked per frame from the pose (`img.pick`). PNG characters preview in a browser only over http (`npx http-server`, then open `story.html?story=phase2_lumo`); `render.mjs` loads them directly.
+
 ### Stories (data-driven, any canvas size)
 
 `story.html?story=<id>` plays `src/stories/<id>/` instead of the demo: its `config.js` (canvas `width`/`height`, `duration`, `audio`), its drawings (`art.js`) and its data (`story.js`, which ends with `playStory(STORY)`). `STORY` is `{ narration: [{ at, end, text }], shots: [{ at, ...presetShot spec }] }`; narration is timing reference for the voiceover and is never drawn. Render with `--story=<id>` on any `render.mjs` command. [src/stories/one_message/](src/stories/one_message/) (vertical 1080 × 1920) is the template: retime it by editing its `CUE` table; add shapes for the presets with `SHAPES.name = (x, y, r) => pts`. `cameraMove` also takes `keys: [[t, [x, y, zoom, rot?]], ...]`, and `presetShot`'s `bg` may be `(lt, dur) => colour` for a colour arc.
