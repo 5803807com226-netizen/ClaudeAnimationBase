@@ -16,6 +16,8 @@
 //   --preview  after every layer passes, a low-res contact sheet of the scene with these assets (out/gen/<story>_<scene>.jpg)
 // Manual import stays: a layer without `gen`, with gen.engine 'manual', or a file you put there yourself (no record in
 // _generated.json) is never overwritten unless you pass --force; it is only validated.
+// Layer flag opaque: true — a full opaque image the story places itself (a character reference view, a background plate):
+// no matte, no transparency or frame-coverage checks, only size.
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, statSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';

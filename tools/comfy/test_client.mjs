@@ -46,6 +46,19 @@ try {
   ok('qwen: negative found through ConditioningZeroOut', bq.negative === '7.text' && bq.image === '71.image', JSON.stringify(bq));
   await comfyGenerate({ server: url, workflow: `${dir}/qwen_api.json` }, { ...job, ref: PNG }, { timeout: 20 });
   ok('qwen: reference image uploaded and bound', uploads === 1 && received[71].inputs.image === 'ref_uploaded.png');
+  // shapes of real exported workflows (AutoCinematic's z_image_turbo.json / qwen_image_edit.json):
+  // Z-Image Turbo's negative is ConditioningZeroOut OF THE POSITIVE text: there is no negative to bind (binding it would
+  // overwrite the prompt); Qwen-Image 2.1's one encoder holds prompt + negative_prompt, and only ONE of several
+  // LoadImage nodes is wired to it
+  const zt = autoBind({ 3: { class_type: 'KSampler', inputs: { seed: 1, positive: ['27', 0], negative: ['33', 0], latent_image: ['13', 0] } },
+    27: { class_type: 'CLIPTextEncode', inputs: { text: 'x', clip: ['30', 0] } }, 33: { class_type: 'ConditioningZeroOut', inputs: { conditioning: ['27', 0] } },
+    13: { class_type: 'EmptySD3LatentImage', inputs: { width: 1, height: 1 } } });
+  ok('z-image turbo: zero-out negative is not bound onto the prompt', zt.positive === '27.text' && !zt.negative, JSON.stringify(zt));
+  const q21 = autoBind({ 458: { class_type: 'KSampler', inputs: { seed: 1, positive: ['474', 0], negative: ['474', 1], latent_image: ['456', 0] } },
+    474: { class_type: 'TextEncodeQwenImage21', inputs: { prompt: '', negative_prompt: '', 'images.image_1': ['480', 0] } },
+    456: { class_type: 'EmptyLatentImage', inputs: { width: 1, height: 1 } }, 470: { class_type: 'LoadImage', inputs: { image: 'spare.png' } },
+    480: { class_type: 'LoadImage', inputs: { image: 'used.png' } }, 472: { class_type: 'ImageCompare', inputs: { image_a: ['470', 0] } } });
+  ok('qwen 2.1: negative_prompt and the WIRED reference image', q21.positive === '474.prompt' && q21.negative === '474.negative_prompt' && q21.image === '480.image', JSON.stringify(q21));
   await comfyGenerate({ server: url, workflow: `${dir}/zimage_api.json`, bind: { positive: '7.text' } }, job, { timeout: 20 });
   ok('explicit bind overrides the automatic one', received[7].inputs.text === 'POS');
   let err = ''; try { await comfyGenerate({ server: url, workflow: `${dir}/ui.json` }, job); } catch (e) { err = e.message; }

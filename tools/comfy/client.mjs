@@ -23,7 +23,15 @@ export function autoBind(wf) {
   if (sampler) {
     const [sid, s] = sampler;
     if (Array.isArray(s.inputs.positive)) b.positive = textInput(s.inputs.positive[0]);
-    if (Array.isArray(s.inputs.negative)) b.negative = textInput(s.inputs.negative[0]);
+    if (Array.isArray(s.inputs.negative)) {
+      const [nid, out] = s.inputs.negative, nn = wf[nid];
+      // an encoder with both prompts on one node (e.g. TextEncodeQwenImage21): the negative is its 2nd output
+      if (nn && out === 1 && typeof nn.inputs.negative_prompt === 'string') b.negative = `${nid}.negative_prompt`;
+      else b.negative = textInput(nid);
+      // a negative that leads back to the POSITIVE text (ConditioningZeroOut of the prompt, as in Z-Image Turbo) has no
+      // text of its own: binding it would overwrite the positive prompt with the negative one
+      if (b.negative === b.positive) delete b.negative;
+    }
     if ('seed' in s.inputs && !Array.isArray(s.inputs.seed)) b.seed = `${sid}.seed`;
     else if ('noise_seed' in s.inputs && !Array.isArray(s.inputs.noise_seed)) b.seed = `${sid}.noise_seed`;
   }
@@ -32,7 +40,12 @@ export function autoBind(wf) {
   const lat = find((c, n) => /EmptyLatent|EmptySD3Latent|EmptyHunyuanLatent|EmptyQwen|EmptyLTXV/i.test(c) && 'width' in n.inputs)[0];
   if (lat) { b.width = `${lat[0]}.width`; b.height = `${lat[0]}.height`; if ('length' in lat[1].inputs) b.length = `${lat[0]}.length`; }   // video latents: frame count
   if (!b.length) { const v = find((c, n) => /LTXV.*(ImgToVideo|Img2Vid)/i.test(c) && 'length' in n.inputs)[0]; if (v) { b.length = `${v[0]}.length`; b.width = b.width || `${v[0]}.width`; b.height = b.height || `${v[0]}.height`; } }
-  const img = find(c => c === 'LoadImage')[0]; if (img) b.image = `${img[0]}.image`;
+  // the reference image: the LoadImage the graph actually USES (an edit workflow often keeps spare, unconnected ones),
+  // preferring one that feeds a text/edit encoder
+  const used = id => nodes.filter(([, n]) => Object.values(n.inputs).some(v => Array.isArray(v) && v[0] === id)).map(([, n]) => n.class_type || '');
+  const loads = find(c => c === 'LoadImage').map(([id]) => [id, used(id)]).filter(([, by]) => by.some(c => !/ImageCompare|Preview/i.test(c)));
+  const img = loads.find(([, by]) => by.some(c => /Encode|Edit|Reference/i.test(c))) || loads[0] || find(c => c === 'LoadImage')[0];   // none wired: the first, as before
+  if (img) b.image = `${img[0]}.image`;
   return b;
 }
 const setPath = (wf, path, v) => { const [id, k] = path.split('.'); if (!wf[id]) throw new Error(`binding ${path}: no node ${id}`); wf[id].inputs[k] = v; };

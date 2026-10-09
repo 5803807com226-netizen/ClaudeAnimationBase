@@ -12,7 +12,7 @@
   const R = window.SMOKE_RIG, BASE = 'assets/stories/the_last_smoke/', PX = R.px_per_u;
   const STYLE = 'premium painterly 2.5D animated feature-film illustration, semi-realistic cartoon, believable adult anatomy, ' +
     'soft matte hand-painted surface detail, subtle painterly grain, natural dawn light with warm/cool separation and subtle rim light, ' +
-    'crisp clean silhouette, earth-tone palette, no watercolor bleed, no paper-cut border';
+    'crisp clean silhouette, earth-tone palette, no watercolor bleed, no paper-cut border, no text, no watermark, no logo, no signature';   // in the POSITIVE too: Z-Image Turbo (cfg 1) ignores the negative
   const NEG = 'photograph, photorealistic live-action, plastic 3d render, flat vector, chibi, anime, oversized head, inconsistent face, ' +
     'extra limbs, extra fingers, fused fingers, broken anatomy, melted props, blurry, motion blur, cropped feet, mirrored character, ' +
     'second person, crowd, modern clothing, metal, text, letters, numbers, logo, watermark, signature, caption, UI';
@@ -28,14 +28,14 @@
   const shared = { style: STYLE, negative: NEG };
 
   SCENES.smoke_master = { assets: BASE + 'character/', duration: 3, gen: shared, layers: [
-    { id: 'master_3q', file: 'master_3q.png', size: [1200], fill: true, gen: { engine: 'zimage', size: [1024, 1536], seed: 61519, character: 'wanderer', matte: 'none',
+    { id: 'master_3q', file: 'master_3q.png', size: [1200], opaque: true, gen: { engine: 'zimage', size: [1024, 1536], seed: 61519, character: 'wanderer', matte: 'none',
       prompt: `full-body character design of ${HERO}, standing in a neutral relaxed stance, three-quarter front view turned toward his left, ` +
         'whole figure from head to sandals with margin, plain light warm-gray studio background, even soft light' } },
     ...[['master_front', 'full FRONT view, facing the viewer'], ['master_side_right', 'true RIGHT PROFILE: he faces screen-right, his right side toward the viewer, staff in his near (right) hand'],
         ['master_side_left', 'true LEFT PROFILE: he faces screen-left, his left side toward the viewer showing the left-cheek scar and the left-forearm bandage'],
         ['master_back', 'full BACK view, facing away from the viewer, staff in his right hand on the viewer\'s right'],
         ['master_face_close', 'CLOSE-UP of his face and shoulders, head turned slightly to his right so his LEFT cheek and its scar face the viewer']]
-      .map(([id, view]) => ({ id, file: id + '.png', size: [1200], fill: true, gen: qwen(`the same character, ${view}, plain light warm-gray studio background`, MASTER, { matte: 'none', size: [1024, 1536] }) })),
+      .map(([id, view]) => ({ id, file: id + '.png', size: [1200], opaque: true, gen: qwen(`the same character, ${view}, plain light warm-gray studio background`, MASTER, { matte: 'none', size: [1024, 1536] }) })),
   ] };
 
   // side rig parts (his RIGHT profile); the far LEFT limbs come from the left-profile view (bandage visible there)
@@ -78,18 +78,18 @@
     { id: 's04_left_bandaged_forearm', file: 's04_left_bandaged_forearm.png', size: [1080], gen: qwen('macro of only his LEFT forearm with the linen bandage, entering from the lower left of the frame', SIDE_L, { size: [1024, 1536] }) },
   ] };
 
-  const plate = (id, prompt, size = [1500], o = {}) => ({ id, file: id + '.png', size, ...o, gen: { engine: 'zimage', size: [1024, 1536], matte: o.fill ? 'none' : 'chroma', prompt } });
+  const plate = (id, prompt, size = [1500], o = {}) => ({ id, file: id + '.png', size, ...o, gen: { engine: 'zimage', size: [1024, 1536], matte: o.opaque ? 'none' : 'chroma', prompt } });
   const PLACE = 'ancient mountain valley before sunrise, cold slate-blue sky warming to amber at the horizon, layered blue ridges, no people, no buildings';
   SCENES.smoke_env = { assets: BASE + 'environments/', duration: 3, gen: shared, layers: [
-    plate('s01_sky', `${PLACE}, only the sky, full-bleed`, [1500], { fill: true }), plate('s01_far_mountains', `${PLACE}, only the far mountain ridges as one cut-out band`),
+    plate('s01_sky', `${PLACE}, only the sky, full-bleed`, [1500], { opaque: true }), plate('s01_far_mountains', `${PLACE}, only the far mountain ridges as one cut-out band`),
     plate('s01_mid_mountains', 'nearer darker mountain ridges as one cut-out band, same palette'), plate('s01_ridge', 'a muted brown stony ridge top where one person could stand, cut-out'),
     plate('s01_foreground', 'foreground angular rocks and sparse dry scrub, cut-out'),
-    plate('s02_sky', `${PLACE}, wide sky for a side view, full-bleed`, [2200], { fill: true }), plate('s02_far_mountains', 'distant valley rocks and ridges for a side view, one cut-out band', [2600]),
+    plate('s02_sky', `${PLACE}, wide sky for a side view, full-bleed`, [2200], { opaque: true }), plate('s02_far_mountains', 'distant valley rocks and ridges for a side view, one cut-out band', [2600]),
     plate('s02_walkable_path', 'a dusty gravel mountain path seen exactly from the side, flat walkable ground plane, cut-out band', [2600]),
     plate('s02_foreground_gravel', 'foreground gravel and small scrub strip, cut-out', [2600]),
-    plate('s03_soft_valley', `${PLACE}, soft defocused background for a portrait, full-bleed`, [1400], { fill: true }),
-    plate('s04_soft_stone', 'soft defocused dawn stone texture background, full-bleed', [1400], { fill: true }),
-    plate('s05_sky', 'dawn sky turning golden over a deep valley, full-bleed', [1500], { fill: true }),
+    plate('s03_soft_valley', `${PLACE}, soft defocused background for a portrait, full-bleed`, [1400], { opaque: true }),
+    plate('s04_soft_stone', 'soft defocused dawn stone texture background, full-bleed', [1400], { opaque: true }),
+    plate('s05_sky', 'dawn sky turning golden over a deep valley, full-bleed', [1500], { opaque: true }),
     plate('s05_far_valley', 'a deep valley far below with a few primitive hide shelters, cut-out band, no smoke drawn'),
     plate('s05_mid_valley', 'mid-distance valley slopes, cut-out band'), plate('s05_cliff', 'a rocky cliff edge in the foreground lower right, cut-out'),
   ] };

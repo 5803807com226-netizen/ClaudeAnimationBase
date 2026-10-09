@@ -131,6 +131,7 @@ export function checkLayer(L, S, P) {
   else if (have < need) warns.push(`${im.w}×${im.h} px is a little small: the closest shot needs about ${need} px ${side}`);
   if (im.note) warns.push(im.note);
   else if (im.bbox === null) fails.push('the image is empty (fully transparent)');
+  else if (L.opaque) { /* a full opaque image placed by story code (a reference view, a plate): only size and readability count */ }
   else if (L.fill) {
     if (im.clear > .001) warns.push(`backdrop has ${(im.clear * 100).toFixed(1)} % transparent pixels`);
     const dur = S.duration || 3;
