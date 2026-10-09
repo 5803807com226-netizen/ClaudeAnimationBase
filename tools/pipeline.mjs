@@ -7,6 +7,11 @@
 //   node tools/pipeline.mjs --job=jobs/hybrid_pilot.json [--python=<ComfyUI python>] [--chrome=<path>] [--soft-gl]
 //        [--allow-missing=ltx] (no LTX engine / ComfyUI down: a held still stands in, clearly marked in the report)
 //        [--force=<step>|all] [--max-seconds=0.2 --fade=0.05] (smoke test: segments truncated) [--mock-ltx] [--offline]
+//        [--only=S01,S03]   render (or re-render, with --force=all) just these segments; no assembly
+//        [--failed-only]    re-render only segments that failed (render error or motion check), reuse the rest, assemble
+// Segments with `expected_motion` (compiled shot plans) are motion-checked after rendering (tools/motion_check.mjs);
+// a failed check fails the segment. Every rendered segment gets a preview seg_<id>.jpg (three frames) for the UI.
+// A failing segment no longer stops the others: all are attempted, and assembly waits until every one has passed.
 //
 // Job: { id, fps, size: [w, h], fade (s), audio (path, optional), assets: [{ story }],
 //        segments: [ { id, type: 'story', story, range: [a, b] }
@@ -18,6 +23,7 @@ import { createHash } from 'node:crypto';
 import { comfyGenerate } from './comfy/client.mjs';
 import { direct, TRANSITIONS } from './lib/director.mjs';
 import { windows, loadBeats, cueTimes } from './lib/timeline.mjs';
+import { presetFiles } from './lib/capfiles.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 if (!args.job) { console.error('usage: node tools/pipeline.mjs --job=jobs/<id>.json'); process.exit(1); }
@@ -44,7 +50,17 @@ const run = (cmd, a, what) => {
   return r.stdout || '';
 };
 const duration = f => +execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim();
-const report = { job: job.id, started: new Date().toISOString(), steps: [], substitutes: [] };
+const report = { job: job.id, started: new Date().toISOString(), steps: [], substitutes: [], segments: {} };
+// everything a story segment's pixels depend on besides its own story files (engine, capabilities, plan player)
+const ENGINE = ['src/core.js', 'src/timeline.js', 'src/look.js', 'src/responsive.js', 'src/type/text.js', 'src/type/kinetic.js', 'src/plan/play.js', 'src/presets/index.js', ...presetFiles()];
+const only = args.only ? String(args.only).split(',') : null, failedOnly = !!args['failed-only'];
+if (only) { const ids = new Set(job.segments.map(S => S.id)), bad = only.filter(x => !ids.has(x)); if (bad.length) { console.error(`--only: no segment ${bad.join(', ')}`); process.exit(1); } }
+// did this segment's last attempt fail (render error or failed motion check)?
+const hasFailed = id => state[`segment:${id}`] && !state[`segment:${id}`].ok;
+// three frames of a clip side by side, for the UI's scene preview
+const preview = (clip, jpg) => { const d = duration(clip), w = Math.min(W, H) > 1000 ? 360 : 240;
+  run('ffmpeg', ['-y', '-loglevel', 'error', ...[.2, .5, .85].flatMap(f => ['-ss', (d * f).toFixed(2), '-i', clip]), '-filter_complex',
+    `[0:v]scale=${w}:-2[a];[1:v]scale=${w}:-2[b];[2:v]scale=${w}:-2[c];[a][b][c]hstack=inputs=3`, '-frames:v', '1', '-q:v', '4', jpg], 'preview'); };
 // a step runs only if its inputs changed or it never succeeded; its output path must exist
 async function step(name, inputs, out, fn) {
   const key = sha(inputs), done = state[name];
@@ -81,16 +97,29 @@ try {
   }
 
   // 2. segments
-  const segs = [];
+  const segs = [], failed = [];
   for (const S of job.segments) {
     const out = `${dir}seg_${S.id}.mp4`, max = args['max-seconds'] ? +args['max-seconds'] : null;
+    if (only && !only.includes(S.id)) continue;
+    if (failedOnly && !hasFailed(S.id) && state[`segment:${S.id}`]?.ok && existsSync(out)) { segs.push(out); log(`✓ segment:${S.id} (passed before, kept)`); continue; }
+    try {
     if (S.type === 'story') {
       let [a, b] = S.range; if (max) b = Math.min(b, a + max);
-      const inputs = [S, a, b, fileHash(`src/stories/${S.story}/story.js`), fileHash(`src/stories/${S.story}/scene.js`), fileHash(`src/stories/${S.story}/config.js`), fileHash('src/collage/collage.js'), fileHash('src/core.js')];
+      // a compiled plan's segment is keyed by ITS OWN compiled shot (shot_hash), so editing one shot re-renders one shot
+      const own = S.shot_hash ? [S.shot_hash] : [fileHash(`src/stories/${S.story}/story.js`), fileHash(`src/stories/${S.story}/scene.js`), fileHash(`src/stories/${S.story}/config.js`), fileHash('src/collage/collage.js')];
+      const inputs = [S, a, b, ...own, ...ENGINE.map(fileHash)];
       await step(`segment:${S.id}`, inputs, out, () => {
         const raw = S.hold > 0 ? out.replace(/\.mp4$/, '.raw.mp4') : out;
         run('node', ['render.mjs', `--story=${S.story}`, '--clip', `--range=${a}:${b}`, `--fps=${fps}`, ...(S.speed && S.speed !== 1 ? [`--speed=${S.speed}`] : []), `--out=${raw}`, ...(S.assets ? [`--assets=${S.assets}`] : []), ...pass], `render ${S.id}`);
         if (S.hold > 0) run('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-vf', `tpad=stop_mode=clone:stop_duration=${max ? Math.min(S.hold, .1) : S.hold}`, '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', out], `hold ${S.id}`);   // a real pause on the last frame
+        preview(out, out.replace(/\.mp4$/, '.jpg'));
+        if (!S.expected_motion) return {};
+        const E = S.expected_motion, mj = out.replace(/\.mp4$/, '.motion.json');
+        const r = spawnSync('node', ['tools/motion_check.mjs', `--in=${out}`, `--min=${E.min_changed_frac ?? .01}`, ...(E.intentional_still ? ['--still'] : []), `--json=${mj}`], { encoding: 'utf8' });
+        appendFileSync(dir + 'pipeline.log', r.stdout + r.stderr);
+        const M = existsSync(mj) ? JSON.parse(readFileSync(mj, 'utf8')) : null;
+        if (!M?.pass) throw new Error(`failed:motion — ${(r.stdout || r.stderr).trim().split('\n')[0]}`);
+        return { motion: M.results[0] };
       });
     } else if (S.type === 'ltx') {
       const secs = max ? Math.min(S.seconds, max) : S.seconds, frames = Math.max(9, Math.round(secs * fps / 8) * 8 + 1);   // LTX wants 8n + 1 frames
@@ -131,7 +160,12 @@ try {
       if (state[`segment:${S.id}`]?.substitute) report.substitutes.push({ segment: S.id, substitute: state[`segment:${S.id}`].substitute });
     } else throw new Error(`unknown segment type "${S.type}"`);
     segs.push(out);
+    } catch (e) { failed.push(S.id); }
+    report.segments[S.id] = { ok: !!state[`segment:${S.id}`]?.ok, clip: existsSync(out) ? out : null, preview: existsSync(out.replace(/\.mp4$/, '.jpg')) ? out.replace(/\.mp4$/, '.jpg') : null,
+      motion: state[`segment:${S.id}`]?.motion || null, error: state[`segment:${S.id}`]?.error || null };
   }
+  if (failed.length) throw new Error(`${failed.length} segment(s) failed: ${failed.join(', ')}. Fix, then rerun with --failed-only (passed segments are kept).`);
+  if (only) { log(`\nSCENES ONLY (${only.join(', ')}): rendered, not assembled`); report.ok = true; report.scenes_only = only; writeFileSync(dir + 'report.json', JSON.stringify(report, null, 1)); process.exit(0); }
 
   // 3. assemble: per-boundary transitions (the director's choice, or the job's single fade), then the sound: narration
   //    (cut per beat and placed where its shot actually starts, so pauses and transitions never drift it), SFX cues,
@@ -140,12 +174,14 @@ try {
   const have = f => { if (f && existsSync(f)) return f; if (f) report.substitutes.push({ segment: 'audio', substitute: `missing ${f}: skipped` }); return null; };
   const narr = have(job.narration?.audio || job.audio), amb = have(job.ambience?.file);
   const sfx = (job.sfx || []).filter(c => have(c.file));
-  await step('assemble', [segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
-    const d = segs.map(duration), starts = [0]; let chain = '', last = '[0:v]', t = 0;
+  await step('assemble', ['assemble/2', segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
+    // xfade needs inputs on one timebase and frame rate; without this ffmpeg silently cuts the output short (2 × 1.5 s
+    // segments came out 1.58 s long)
+    const d = segs.map(duration), starts = [0]; let chain = segs.map((_, i) => `[${i}:v]settb=AVTB,fps=${fps},format=yuv420p[n${i}];`).join(''), last = '[n0]', t = 0;
     for (let i = 1; i < segs.length; i++) {
       const [name, dur0] = TRANSITIONS[job.segments[i].transition] || ['fade', fade], dur = Math.min(dur0, d[i - 1] / 2, d[i] / 2);
       t += d[i - 1] - dur; starts.push(t);
-      chain += `${last}[${i}:v]xfade=transition=${name}:duration=${dur.toFixed(3)}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`;
+      chain += `${last}[n${i}]xfade=transition=${name}:duration=${dur.toFixed(3)}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`;
     }
     const total = t + d[segs.length - 1], inputs = segs.flatMap(s => ['-i', s]), A = [];
     let k = segs.length; const ms = x => Math.max(0, Math.round(x * 1000));
