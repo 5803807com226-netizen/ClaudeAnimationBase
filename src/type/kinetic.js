@@ -139,6 +139,32 @@ const TYPE_PRESETS = {
       c.restore();
     });
   },
+  // Cut-out Words (ransom-note collage): each phrase (between spaces; by: 'word' for every word) is a scrap of paper in
+  // its own colour with a ragged scissor edge and a soft shadow; scraps are laid down one by one (lifted, a small
+  // overshoot, a press) at their own tilt, and boil on held frames. papers: scrap colours; inks: text colours (cycled)
+  cutout(t, it, c, L, X, Y, ex) {
+    const st = it.style, stag = it.stagger ?? .14, d = it.unitDur ?? .3, rate = it.rate ?? 12, n = Math.floor(t * rate), boil = it.boil ?? 1;
+    const papers = it.papers || ['#F7F3EA', '#E8541E', '#9FD8CB', '#2E2E30'], inks = it.inks || ['#2E2E30', '#F7F3EA', '#2E2E30', '#F7F3EA'];
+    const scraps = [];
+    for (const l of L.lines) {
+      let g = null; const flush = () => { if (g) scraps.push({ text: g.text, x: X - l.w / 2 + (g.x0 + g.x1) / 2, y: Y + l.y, w: g.x1 - g.x0 }); g = null; };
+      for (const u of l.units) { if (u.space) { flush(); continue; } if (!g || it.by === 'word') { flush(); g = { text: '', x0: u.x, x1: u.x }; } g.text += u.text; g.x1 = u.x + u.w; }
+      flush();
+    }
+    scraps.forEach((sp, i) => {
+      const s0 = it.at + i * stag; if (t < s0) return;
+      const k = seg(t, s0, s0 + d), o = 1.2, e = k >= 1 ? 1 : 1 + (o + 1) * Math.pow(k - 1, 3) + o * Math.pow(k - 1, 2), a = t - s0 - d;
+      const sc = lerp(1.35, 1, e) * (a > 0 ? 1 - .03 * Math.exp(-14 * a) : 1), jit = q => (hash(n * 3.3 + i * 7.9 + q) - .5) * 2 * boil;
+      const rot = ((hash(i * 6.7 + it.at) - .5) * 2 * (it.tilt ?? 4) + .4 * jit(1)) * Math.PI / 180, pw = sp.w + L.size * .36, ph = L.size * 1.18, rnd = lcg(11 + i * 17);
+      const edge = []; for (let q = 0; q < 28; q++) { const f = q / 28, side = Math.floor(f * 4), u = f * 4 - side, j = () => (rnd() - .5) * L.size * .07;
+        edge.push(side === 0 ? [-pw / 2 + pw * u, -ph / 2 + j()] : side === 1 ? [pw / 2 + j(), -ph / 2 + ph * u] : side === 2 ? [pw / 2 - pw * u, ph / 2 + j()] : [-pw / 2 + j(), ph / 2 - ph * u]); }
+      c.save(); c.globalAlpha = ex.alpha * seg(t, s0, s0 + .05); c.translate(sp.x + jit(2) * 1.2 * TS(), sp.y + (ex.dy || 0) + jit(3) * 1.2 * TS()); c.rotate(rot); c.scale(sc * ex.s, sc * ex.s);
+      c.shadowColor = 'rgba(30,20,10,.3)'; c.shadowBlur = (6 + 14 * (1 - e)) * TS(); c.shadowOffsetY = (4 + 12 * (1 - e)) * TS();
+      c.fillStyle = papers[i % papers.length]; c.beginPath(); edge.forEach(([x, y], q) => q ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); c.shadowColor = 'transparent';
+      drawText(c, sp.text, 0, L.size * .03, { ...st, weight: it.weights ? it.weights[i % it.weights.length] : st.weight }, { color: inks[i % inks.length] });
+      c.restore();
+    });
+  },
   // Stop-motion Stamp: big letters land one by one (each character, grapheme-safe), each dropped in from slightly larger
   // with no tween in between (on twos), a small tilt each, and a held-frame boil so the word never looks digital
   stamp(t, it, c, L, X, Y, ex) {
@@ -261,4 +287,4 @@ function playType(spec) {
 
 // Verified aspect support per typography preset (tools/aspect_test.mjs; never list a ratio that has not passed).
 const TYPE_PRESET_ASPECTS = { pop: ['9:16', '16:9', '4:5'], slide: ['9:16', '16:9', '4:5'], impact: ['9:16', '16:9', '4:5'], highlight: ['9:16', '16:9', '4:5'], reveal: ['9:16', '16:9', '4:5'], counter: ['9:16', '16:9', '4:5'],
-  label: ['9:16', '16:9'], stamp: ['9:16', '16:9'] };   // label, stamp: fixture collage_reel
+  label: ['9:16', '16:9'], stamp: ['9:16', '16:9'], cutout: ['9:16', '16:9'] };   // label, stamp, cutout: fixtures collage_reel, collage_kit

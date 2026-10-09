@@ -36,9 +36,9 @@ SCENES.reel_hook = {
     L('tape_b', 'tape_mint.png', null, { size: [760], at: A([760, 1440], [1180, 1330]), rot: 4, step: 2, paper: SMALL, motion: [{ kind: 'wipe', at: .2, dur: .5, dir: 'left' }] }),
     L('globe', 'globe.png', G.globe, { size: [560], at: [540, 980], step: 2, subject: true, paper: PAPER, motion: [{ kind: 'appear', at: 1.25, flutter: 0 }, { kind: 'sway', amp: 1.5, hz: .5 }] }),
     L('fruit', 'tangerine.png', G.tangerine, { size: [470], at: [540, 990], step: 2, subject: true, paper: PAPER,
-      motion: [{ kind: 'place', at: .15, dur: .6, from: 'bottom', dist: 1100, rot: -10 }, { kind: 'peel', at: 1.3, dur: 1.3, pieces: 7, dist: 420, fall: 1000 }] }),
+      motion: [{ kind: 'place', at: .15, dur: .6, from: 'bottom', dist: 1100, rot: -10 }, { kind: 'peel', at: 1.3, dur: 1.2, pieces: 7 }] }),
     L('hand', 'hand_up.png', G.handUp, { size: [null, 760], at: [560, 1190], anchor: [.5, .08], step: 2, boil: false, edgeOk: true, paper: { shadow: SHADOW, grain: .2 },
-      motion: [{ kind: 'follow', target: 'fruit', grip: [30, 200], until: .95 }, { kind: 'leave', at: .95, dur: .45, to: 'bottom', dist: 1200, rot: -6 }] }),
+      motion: [{ kind: 'follow', target: 'fruit', grip: [30, 200], until: .9, release: [10, 45] }, { kind: 'leave', at: 1.05, dur: .45, to: 'bottom', dist: 1200, rot: -6 }] }),
   ],
   narration: [{ at: .3, end: 3.4, text: 'ยินดีต้อนรับสู่เชียงใหม่' }],
   type: [
@@ -53,16 +53,16 @@ SCENES.reel_hook = {
 const TREES2 = { '9:16': [[150, 1060], [930, 1090], [250, 1560], [990, 1660]], '16:9': [[-240, 1040], [1300, 1060], [80, 1380], [1430, 1420]] };
 SCENES.reel_road = {
   assets: DIR, duration: 4, background: '#F3F1EC', aspects: ['9:16', '16:9'], boil: { amp: 1.2, rot: .35 }, gen: GEN,
-  transition: { kind: 'push', dur: .7, focus: [540, 980], zoom: 5 },
+  transition: { kind: 'push', dur: .8, focus: [540, 980], zoom: 6 },
   camera: A([[0, 540, 1010, 1, 'ease'], [4, 540, 1060, 1.1, 'ease']], [[0, 540, 1030, 1, 'ease'], [4, 560, 1060, 1.07, 'ease']]),
   layers: [
     L('sky', 'tape_mint.png', null, { size: [2600], at: A([540, 820], [540, 760]), rot: -1, step: 2, paper: SMALL, motion: [{ kind: 'wipe', at: 0, dur: .6, dir: 'right' }] }),
     L('hill', 'hill.png', { engine: 'zimage', size: [1344, 768], matte: 'chroma', prompt: 'a broad gently rounded hill made of off-white textured paper with a soft grey shaded edge, simple shape, like a cut paper landscape' },
       { size: [2700], at: A([540, 930], [540, 900]), anchor: [.5, 0], paper: { shadow: { ...SHADOW, dy: -6, opacity: .18 }, grain: .3 }, edgeOk: true }),
     L('road', 'road_ribbon.png', { engine: 'zimage', size: [768, 1344], matte: 'chroma', prompt: 'a winding road ribbon of tangerine orange paper seen in perspective, wide at the bottom and narrowing as it curves up toward the horizon, clean cut paper edges' },
-      { size: A([null, 1050], [null, 720]), at: A([580, 1930], [640, 1540]), anchor: [.5, 1], paper: { shadow: { ...SHADOW, opacity: .2 } }, edgeOk: true, motion: [{ kind: 'wipe', at: .15, dur: 1.1, dir: 'up' }] }),
+      { size: A([null, 1050], [null, 720]), at: A([580, 1930], [640, 1540]), anchor: [.5, 1], paper: { shadow: { ...SHADOW, opacity: .2 } }, edgeOk: true, motion: [{ kind: 'wipe', at: 0, dur: 1.1, path: [[.5, 1.05], [.42, .72], [.6, .38], [.5, -.05]], width: .95 }] }),
     ...[0, 1, 2, 3].map(i => L(`tree${i}`, 'tree_teal.png', i ? null : G.treeTeal, { size: [i > 1 ? 380 : 300], anchor: [.5, .95], step: 2, paper: SMALL,
-      at: { '9:16': TREES2['9:16'][i], '16:9': TREES2['16:9'][i] }, motion: [{ kind: 'pop', at: .45 + i * .12, dur: .45 }, { kind: 'sway', amp: 1.5, hz: .45, phase: i * .3 }] })),
+      at: { '9:16': TREES2['9:16'][i], '16:9': TREES2['16:9'][i] }, motion: [{ kind: 'pop', at: .2 + i * .12, dur: .45 }, { kind: 'sway', amp: 1.5, hz: .45, phase: i * .3 }] })),
     L('temple', 'temple.png', { engine: 'zimage', size: [1024, 1024], matte: 'chroma', prompt: 'a northern Thai Lanna temple hall with layered sweeping roofs and gold trim, grey photo print with the roof in tangerine orange' },
       { size: [560], at: A([350, 1040], [140, 1000]), anchor: [.5, .95], step: 2, subject: true, paper: PAPER, motion: [{ kind: 'pop', at: .95, dur: .5 }] }),
     L('sign', 'road_sign.png', { engine: 'zimage', size: [832, 1216], matte: 'chroma', prompt: 'a blank highway direction sign board in deep teal on a single grey metal post, the board completely empty with no writing' },
@@ -72,7 +72,7 @@ SCENES.reel_road = {
         keys: A([[2.35, { x: 600, y: 1430, scale: 1 }], [3.9, { x: 470, y: 1180, scale: .72 }, 'easeIn']], [[2.35, { x: 720, y: 1260, scale: 1 }], [3.9, { x: 560, y: 1080, scale: .74 }, 'easeIn']]),
         motion: [{ kind: 'place', at: 1.6, dur: .6, from: 'top', dist: 1000, rot: 8 }] }),
     L('hand2', 'hand_down.png', G.handDown, { size: [null, 760], at: [600, 1300], anchor: [.5, .93], step: 2, boil: false, edgeOk: true, paper: { shadow: SHADOW, grain: .2 },
-      motion: [{ kind: 'follow', target: 'truck', grip: [10, -70], until: 2.25 }, { kind: 'leave', at: 2.25, dur: .45, to: 'top', dist: 1200, rot: 5 }] }),
+      motion: [{ kind: 'follow', target: 'truck', grip: [10, -70], until: 2.25, release: [0, -45] }, { kind: 'leave', at: 2.4, dur: .45, to: 'top', dist: 1200, rot: 5 }] }),
     L('plane', 'airplane.png', { engine: 'zimage', size: [1344, 768], matte: 'chroma', prompt: 'a small passenger airplane in side view flying to the right, grey photo print with a tangerine orange tail fin' },
       { size: [240], at: [0, 0], step: 2, paper: SMALL,
         keys: A([[.3, { x: -200, y: 700, rot: -8 }], [3.9, { x: 1300, y: 520, rot: -10 }, 'linear']], [[.3, { x: -560, y: 640, rot: -8 }], [3.9, { x: 1640, y: 520, rot: -10 }, 'linear']]),
@@ -88,7 +88,7 @@ const TREES3 = [[520, 1], [1130, 1], [1760, 1]];
 SCENES.reel_city = {
   assets: DIR, duration: 4, background: '#F3F1EC', aspects: ['9:16', '16:9'], boil: { amp: 1.2, rot: .35 }, gen: GEN,
   transition: { kind: 'slide', dur: .6, from: 'right' },
-  camera: A([[0, 420, 1100, 1.22, 'ease'], [4, 1420, 1100, 1.22, 'ease']], [[0, 620, 1020, 1, 'ease'], [4, 1320, 1020, 1, 'ease']]),
+  camera: A([[0, 420, 1100, 1.22, 'smooth'], [2, 900, 1090, 1.25, 'smooth'], [4, 1420, 1100, 1.22, 'smooth']], [[0, 620, 1020, 1, 'smooth'], [2, 960, 1010, 1.03, 'smooth'], [4, 1320, 1020, 1, 'smooth']]),
   layers: [
     L('ground', 'ground_mint.png', { engine: 'zimage', size: [1344, 768], matte: 'chroma', prompt: 'a long flat strip of pale aqua mint paper lying horizontally, the top edge torn with white fibres, plain' },
       { size: [4200], at: A([900, 1330], [900, 1300]), anchor: [.5, .2], paper: { shadow: { ...SHADOW, dy: -5, opacity: .15 }, grain: .3 }, edgeOk: true }),

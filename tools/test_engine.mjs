@@ -59,6 +59,22 @@ const results = await page.evaluate(async () => {
   ok('collage: follow rides on its target with the grip offset', f.x === 510 && f.y === 580);
   ok('collage: leave is gone after its exit', M('leave', { at: 0, dur: .5 }, 1).opacity === 0 && M('leave', { at: 1 }, .5).y === 0);
   ok('collage: walk advances at its speed', Math.abs(M('walk', { at: 0, speed: 100 }, 2).x - 200) < 1e-9);
+  ok('collage: drop falls from its height, lands and bounces lower each time', (() => {
+    const y = tt => M('drop', { at: 0, height: 900, gravity: 5200, bounce: .32, bounces: 2 }, tt).y, t1 = Math.sqrt(2 * 900 / 5200);
+    const peak1 = Math.min(...[...Array(40)].map((_, i) => y(t1 + i * .005)));
+    return Math.abs(y(0) + 900) < 1e-6 && Math.abs(y(t1)) < 1 && peak1 < -10 && peak1 > -900 * .32 * .32 - 1 && Math.abs(y(3)) < 1e-6;
+  })());
+  ok('collage: swing settles to rest', Math.abs(M('swing', { at: 0, amp: 30 }, 0).rot - 30) < 1e-6 && Math.abs(M('swing', { at: 0, amp: 30 }, 4).rot) < .01);
+  const cyc = t => [0, 1, 2].map(i => M('cycle', { index: i, count: 3, fps: 6, pingpong: true }, t).opacity).join('');
+  ok('collage: cycle shows exactly one frame at a time, ping-pong', ['100', '010', '001', '010', '100'].every((f, i) => cyc(i / 6 + .01) === f), [0, 1, 2, 3, 4].map(i => cyc(i / 6 + .01)).join(' '));
+  const fl0 = M('fly', { at: 1, dur: 1, path: [[0, 0], [100, 0], [200, 100]], orient: true, scaleTo: .5 }, .5, { x: 7, y: 8 });
+  const fl1 = M('fly', { at: 1, dur: 1, path: [[0, 0], [100, 0], [200, 100]], orient: true, scaleTo: .5 }, 2.5);
+  ok('collage: fly keeps its pose before it sets off, ends on the path end at scaleTo', fl0.x === 7 && fl0.rot === 0 && Math.hypot(fl1.x - 200, fl1.y - 100) < 1e-6 && Math.abs(fl1.scale - .5) < 1e-9);
+  const sp = smoothPath([[0, 0], [100, 50], [200, 0], [300, 80]]);
+  ok('collage: a smoothed path passes through every given point', [[0, 0], [100, 50], [200, 0], [300, 80]].every(p => sp.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-6)));
+  ok('collage: slam is hidden before, at size after its shake', M('slam', { at: 1 }, .5).opacity === 0 && Math.abs(M('slam', { at: 1, dur: .16 }, 2).scale - 1) < 1e-9 && M('slam', { at: 1 }, 2).x === 0);
+  const camS = cameraKeys([[0, 0, 0, 1], [1, 100, 0, 1, 'smooth'], [2, 300, 0, 1, 'smooth']]), vx = (a, b) => (camS(b)[0] - camS(a)[0]) / (b - a);
+  ok('camera: smooth keys carry the velocity through a key (no jerk)', Math.abs(vx(.999, 1) - vx(1, 1.001)) < 1 && Math.abs(camS(1)[0] - 100) < 1e-6 && Math.abs(vx(1.999, 2)) < 2, `${vx(.999, 1).toFixed(1)} vs ${vx(1, 1.001).toFixed(1)}`);
   ok('collage: every motion is in the capability catalog', Object.keys(COLLAGE_MOTIONS).every(n => CAPABILITY_CATALOG().some(c => c.id === 'collage.' + n)));
   return out;
 });

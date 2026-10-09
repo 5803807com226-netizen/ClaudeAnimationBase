@@ -9,7 +9,7 @@ Every preset is a **motion** on a layer of imported PNG artwork, or a **transiti
 | in the reference | preset | data |
 |---|---|---|
 | a hand brings the orange in, then withdraws | `place` (the object) + `follow` → `leave` (the hand) | `{ kind: 'follow', target: 'fruit', grip: [dx, dy], until }`, `{ kind: 'leave', at, to: 'bottom' }` |
-| the orange peel comes away and the globe is underneath | `peel` (the globe sits behind it with `appear`) | `{ kind: 'peel', at, dur, pieces: 7, dist, fall, spin }`; `assemble: true` runs it backwards |
+| the orange peel comes away and the globe is underneath | `peel` (the globe sits behind it with `appear`) | `{ kind: 'peel', at, dur, pieces: 7, speed, gravity, spin, back }` |
 | buildings, trees and the tree with oranges grow in, stop-motion | `pop` (anchor at the base) | `{ kind: 'pop', at, dur, overshoot }` |
 | the orange road and bridge arcs draw themselves | `wipe` | `{ kind: 'wipe', at, dur, dir: 'up' \| 'down' \| 'left' \| 'right', out }` |
 | the orange bounces down the stairs and rolls home with a dashed trail | `roll` | `{ kind: 'roll', at, dur, path: [[x, y], …], hops, hop, trail: { color, len, dy } }` |
@@ -24,7 +24,50 @@ Every preset is a **motion** on a layer of imported PNG artwork, or a **transiti
 | big newsprint letters stamped in one by one ("WELCOME") | type `stamp` | `{ preset: 'stamp', text, at, stagger, tilt }` |
 | camera pans along the campus, pushes in | scene `camera` keys + layer `depth` (parallax) | already in the engine |
 
-Also available: `spin`, transitions `fade` and `cut`. These are not in the test reel yet, so the catalog lists them as experimental.
+## The full vocabulary (every preset, what a professional uses it for)
+
+**Collage motions** (`motion: [{ kind, … }]`, applied in order; any value may be per format):
+
+| family | motion | use it for | key data |
+|---|---|---|---|
+| entrances | `place` | laying a cut-out on the page: overshoots a touch, presses down, small rotational wobble | `from, dist, rot, overshoot, wobble, press` |
+| | `pop` | stop-motion growth from the anchor (trees, buildings) | `dur, overshoot, from` |
+| | `drop` | falling in under gravity, bouncing lower each time | `height, gravity, bounce, bounces` |
+| | `slam` | stamping something down hard, with a short shake (titles, stickers, a big reveal) | `from` (scale), `shake` |
+| | `swing` | hanging things settling like a pendulum (signs, tags, lanterns); anchor at the pin | `amp, hz, decay, enter` |
+| | `wipe` | drawing on with a torn paper edge, from a side or along a path like a brush | `dir` or `path` + `width`, `tear` |
+| | `appear` | a replacement cut with a stop-motion flicker | `flutter` |
+| travel | `fly` | a smooth path, facing the way it goes and banking into turns; `scaleTo` for perspective | `path, orient, face, bank, scaleTo` |
+| | `roll` | rolling by distance; hops lose height, the shadow stays on the ground; dashed trail | `path, hops, hop, decay, trail` |
+| | `walk` | cut-out figures walking (bob and rock) | `speed, bob, steps, rock` |
+| | `orbit` | circling a point; the near half bigger | `center, rx, ry, hz, depth` |
+| | `flutter` | falling leaves, petals, paper scraps | `fall, sway, hz, rock` |
+| hands | `follow` | a hand carrying its object (slight drag), then letting go | `target, grip, until, release, drag` |
+| | `leave` | exits with anticipation (a wind-up, then away) | `to, dist, anticipate` |
+| life | `sway`, `float`, `pulse` | breeze, hover, breathing focus | `amp, hz` |
+| | `cycle` | **replacement animation**: several layers on one spot are frames shown one at a time (walk cycles, flags, flames, smoke) | `index, count, fps, pingpong` |
+| | `boil` | held-frame jitter (scene `boil` applies it to every stepped layer) | `amp, rot, rate` |
+| accents | `shake` | a decaying jolt on an impact | `amp, rot, dur` |
+| | `spin` | a turn about the anchor | `turns, dur` |
+| exits | `peel` | coming apart in torn wedges that are flicked off and tumble away, the paper's back showing, until out of frame | `pieces, stagger, speed, gravity, spin, back` |
+| | `vanish` | the reverse of `appear` | `flutter` |
+
+**Reel transitions** (`transition` on the incoming scene):
+
+| | |
+|---|---|
+| `push` | one continuous zoom: into the outgoing scene's `focus` while the next grows out of it (match cut); `paper: true` dips through paper |
+| `slide` | the next sheet slides over the last, with a shadowed edge |
+| `tear` | the scene is torn in two along a ragged edge with white fibres, and the halves are pulled apart |
+| `iris` | the next scene opens out of a ragged paper hole from `focus` (screen fractions) |
+| `whip` | a fast pan out one side and in from the other, with smear echoes |
+| `fade`, `cut` | dissolve, hard cut |
+
+Titles with no `out` of their own leave by themselves just before the transition out of their scene.
+
+**Camera:** key ease `'smooth'` makes consecutive keys ONE continuous move (velocity carried through every key, at rest only at the ends). The same option exists for the illustration preset `cameraMove` (`smooth: true`, plus `settle` for a landing overshoot).
+
+**Type presets** for collage: `label` (tape strips), `stamp` (letters land one by one), `cutout` (ransom-note paper scraps, one per phrase, laid down with a press; `papers` / `inks`).
 
 **Look.** White paper, grey halftone photo prints, tangerine-orange and mint accents. Use `look: { style: 'collage', off: ['vignette'], set: { paper: .3 } }` with a cool white `background` (`'#F3F1EC'`). The colours come from the generation `style` (see `collage_reel/scene.js` `GEN`), not from a filter.
 
@@ -67,6 +110,8 @@ A file used by several layers or scenes (one tree planted five times) is generat
 | road | ribbon road draws itself, trees and a temple pop, a hand sets down a red songthaew, a plane; slide |
 | town | the camera pans along the old city, people walk, trees blossom, the tangerine rolls; push |
 | end | the tangerine rolls home to a growing tangerine tree; "เชียงใหม่" stamps in |
+
+**`collage_kit`** (`src/stories/collage_kit/`) is the showcase and test fixture for the rest: six short scenes, one per family, joined by every transition. It uses the reel's cut-outs, so it needs no extra artwork: `node render.mjs --story=collage_kit --clip --out=out\collage_kit.mp4` once the reel's art exists.
 
 **Status.** Motion and layout were tested in the cloud with labelled **MOCK** stand-ins (not artwork):
 - `aspect_test --only=collage_reel` PASSes for 9:16 and 16:9;
@@ -112,8 +157,8 @@ node render.mjs --story=collage_reel --aspect=16:9 --clip --out=out\collage_reel
 
 ## Tests
 
-- `node tools/test_engine.mjs`: the motion maths (place, pop, wipe, appear / vanish flicker, roll path and spin, follow, leave, walk) and that every motion is in the capability catalog.
-- `node tools/aspect_test.mjs --only=collage_reel --aspects=9:16,16:9 --assets=out/mock_assets/collage_reel/`. In the cloud, run `node tools/gen_assets.mjs --story=collage_reel --mock --out=out/mock_assets/collage_reel/` first.
+- `node tools/test_engine.mjs`: the motion maths (place, pop, wipe, appear / vanish, roll, follow, leave, walk, drop bounces, swing settle, cycle frames, fly, smoothed paths, slam), the smooth camera's continuous velocity, and that every motion is in the capability catalog.
+- `node tools/aspect_test.mjs --only=collage_reel,collage_kit --aspects=9:16,16:9 --assets=out/mock_assets/collage_reel/`. In the cloud, run `node tools/gen_assets.mjs --story=collage_reel --mock --out=out/mock_assets/collage_reel/` first.
 - The capability catalog (`node tools/capabilities.mjs`) lists every motion as `collage.<name>` and every reel transition as `transition.<name>`, with verified formats (`COLLAGE_MOTION_ASPECTS`). The `label` and `stamp` type presets are in `TYPE_PRESET_ASPECTS`.
 
 **Not yet:** the shot-manifest compiler (AutoCinematic → `compile_plan`) does not emit collage scenes. The AutoCinematic Director sees these presets in the catalog, but a collage scene is still written as a manifest like `collage_reel`.
