@@ -73,8 +73,8 @@ WORLDS.snowforest = (o) => {
     { name: 'snowNear', depth: 1.25, tile: 620, draw: ({ x0, r, t }) => flakes(x0, 620, r, t, 7, 6, 110, 220) },
     { name: 'foreground', depth: 1.45, tile: 640, draw: ({ x0, r, grow }) => {
       if (r(1) > .35) return;
-      const x = x0 + 560 * r(2), g = clamp(grow(x)), y = G(x) + 470; if (g <= .02) return;   // mostly below frame: only the top frames the shot
-      pine(x, y, 420 * g, 1, P.fg, true);
+      const x = x0 + 560 * r(2), g = clamp(grow(x)), y = G(x) + 640; if (g <= .02) return;   // mostly below frame: only the top frames the shot
+      pine(x, y, 480 * g, 1, P.fg, true);
     } },
   ] };
 };

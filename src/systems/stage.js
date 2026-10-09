@@ -4,7 +4,8 @@
 // CHARACTERS.name = opts => character (see src/worlds, src/characters).
 //
 //   playStage({
-//     world: { theme, ground: x => y, opts, intro: s (the world draws itself across the frame first; 0 = no), ahead: px },
+//     world: { theme, ground: x => y, opts, intro: s (the world draws itself across the frame first; 0 = no), ahead: px,
+//              reveal: false (the whole environment from the first frame: no reveal front at all) },
 //     actors: [{ character: 'pip', opts, ...makeActor spec }],
 //     camera: { follow: 0, lag, lead, offset: [x, y], y: [[t, y], ...], zoom: [[t, z], ...], shakeOnLand: px },
 //     screen: [(t, ctx) => ...],   // extra screen-space painters behind the world (a moon, a shooting star)
@@ -28,7 +29,7 @@ function playStage(spec) {
     const c = camAt(t), x = hero.state(t).x + (W0.ahead ?? 360), full = c.right + 160;
     return W0.intro ? Math.max(x, lerp(c.left - 300, full, easeOut(seg(t, 0, W0.intro)))) : Math.max(x, full);
   };
-  const world = makeWorld({ ground: W0.ground, reveal, layers: theme.layers });
+  const world = makeWorld({ ground: W0.ground, reveal: W0.reveal === false ? null : reveal, layers: theme.layers });
   const fade = { in: .4, out: .4, color: spec.background || '#F4ECDF', ...spec.fade }, dur = spec.duration || DUR;
 
   shots([[0, (t) => {

@@ -4,7 +4,7 @@
 //
 //   track(t, keys)            pose keyframes as data: [[t, { channel: value, ... }], ...]; each channel eases between the keys
 //                             that set it and holds otherwise. Strings (a mouth shape) switch at their key.
-//   react(t, t0, kind, amt)   a reaction starting at t0: take, flinch, joy, relief, nod. Returns channel offsets
+//   react(t, t0, kind, amt)   a reaction starting at t0: take, notice, flinch, joy, relief, shake, nod. Returns channel offsets
 //                             (sq squash, dy body units, rot lean, eyes wider, brow up, happy eyes, arms up) to merge()
 //   merge(...poses)           adds numeric channels, later strings win
 //   gait(dist, stride, o)     a walk/run cycle from the distance travelled: leg swing, body bob, arm swing
@@ -36,6 +36,10 @@ const REACTIONS = {
   joy: a => a < 0 ? {} : { happy: a < 1.1 ? 1 : 0, arms: 1.1 * bump(a, 0, .9), dy: -.25 * bump(a, .05, .35), sq: .12 * Math.exp(-6 * a) * Math.cos(16 * a), brow: .4 * bump(a, 0, 1) },
   // relief: an exhale (settle down and wide), eyes close softly
   relief: a => a < 0 ? {} : { sq: .1 * bump(a, 0, .7), dy: .08 * bump(a, 0, .7), blink: bump(a, .05, .55) > .6 ? 1 : 0, brow: -.2 * bump(a, 0, .9) },
+  // notice: something caught the eye: a small lift and widened eyes (smaller than a take, no squash first)
+  notice: a => a < 0 ? {} : { dy: -.12 * bump(a, 0, .45), eyes: .45 * Math.exp(-2 * a), brow: .5 * Math.exp(-1.5 * a) },
+  // shake: shaking something off (snow, water): a quick side-to-side wiggle that dies away
+  shake: a => a < 0 || a > .7 ? {} : { rot: .12 * Math.sin(a * 38) * (1 - a / .7), sq: .05 * Math.abs(Math.sin(a * 38)) * (1 - a / .7), blink: a < .5 ? 1 : 0 },
   // nod: two dips
   nod: a => a < 0 ? {} : { rot: .12 * Math.sin(seg(a, 0, .5) * TAU * 2) * (1 - seg(a, 0, .5)) },
 };

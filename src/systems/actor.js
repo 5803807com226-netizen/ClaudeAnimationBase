@@ -9,8 +9,10 @@
 //     look: [[t, target], ...],  // target: [x, y], t => [x, y], or 'ahead'
 //     reactions: [[t0, kind, amt], ...], mouth: [[t, shape], ...], blinks: [t, ...],
 //     channels: [[t, { name: value }], ...],   // any extra keyed channels the character reads (e.g. glow)
-//     gait: { swing, bob, arms }, lean: { k, ka, max },
-//     fx: { shadow, dust, impact, trail, speed }  // colours and switches; false turns one off. trail.glow: a trail of light
+//     gait: { swing, bob, arms, squash (per-step squash, for heavy walkers) }, lean: { k, ka, max },
+//     idle: { breath, sway } (breathing and weight shift while standing still),
+//     fx: { shadow, dust, impact, trail, speed, light }  // colours and switches; false turns one off. light: { color, r, a }
+//                                                 // a pool of light on the ground under a glowing character (glow channel scales it). trail.glow: a trail of light
 //                                                 // (additive) instead of paint, for characters that shine on dark grounds
 //   });
 //   a.state(t) · a.channels(t) · a.head(t) · a.events · a.draw(t)
@@ -37,13 +39,15 @@ function makeActor(spec) {
     const R = merge(...(spec.reactions || []).map(([t0, kind, amt]) => react(t, t0, kind, amt)));
     const [hx, hy] = head(t), [tx, ty] = saccade(t, LOOK);
     const tuck = air ? .6 * (1 - Math.abs(1 - 2 * s.hp.k)) + .25 : 0, up = (air ? .9 : 0) + (R.arms || 0);
+    const idle = spec.idle && Math.abs(s.v) < 30 && !air && s.hp.phase === 'ground' ? { breath: spec.idle.breath ?? .03, sway: spec.idle.sway ?? .02 } : null;
     return {
       legL: moving ? g.legL : tuck, legR: moving ? g.legR : -tuck, tuck,
       armL: up + (moving ? g.arms * .5 : 0), armR: -up + (moving ? g.arms * .5 : 0),
       look: lookAt(hx, hy, tx, ty, 260, 200), blink: Math.max(blinkAt(t, spec.blinks || []), R.blink || 0),
       wide: (R.eyes || 0) + (air ? .35 : 0), happy: R.happy || 0, brow: R.brow || 0,
       ...track(t, MOUTH), open: air ? .4 + .5 * (1 - Math.abs(1 - 2 * s.hp.k)) : 0,
-      sq: s.hp.sq + (R.sq || 0), rot: lean(s.v, s.a, spec.lean) + (R.rot || 0), dy: (moving ? g.bob : 0) + (R.dy || 0),
+      sq: s.hp.sq + (R.sq || 0) + (moving && spec.gait?.squash ? spec.gait.squash * Math.abs(Math.cos(g.phase)) ** 4 : 0) + (idle ? idle.breath * .5 * (1 + Math.sin(t * 2.4)) : 0),
+      rot: lean(s.v, s.a, spec.lean) + (R.rot || 0) + (idle ? idle.sway * Math.sin(t * 1.3) : 0), dy: (moving ? g.bob : 0) + (R.dy || 0),
       ...(spec.channels ? track(t, spec.channels) : {}),
     };
   }
@@ -51,6 +55,7 @@ function makeActor(spec) {
   const body = t => { const s = state(t); return [s.x - 6, s.y - (C.feet - .2) * U]; };
   function draw(t) {
     const s = state(t), ch = channels(t), lift = s.gy - s.y;
+    if (fx.light) glow(s.x, s.gy - 4, U * (fx.light.r ?? 2.2) * (.8 + .2 * (ch.glow ?? 1)), fx.light.color, (fx.light.a ?? .45) * (ch.glow ?? 1) * (1 - .4 * clamp(lift / 200)));   // light on the ground
     if (fx.shadow) { boilSeed((spec.id || 'actor') + '|shadow'); paint(ellPts(s.x, s.gy + 4, U * (.95 - .45 * clamp(lift / 220)), U * .16, 16), { wash: fx.shadow.color, washOp: fx.shadow.op * (1 - .5 * clamp(lift / 220)), ink: null }); }
     if (fx.dust) {
       const ev = steps.map(ft => ({ t: ft, x: state(ft).x - 14 * Math.sign(state(ft).v || 1), y: state(ft).gy, n: 2, size: U * .17, dir: Math.sign(state(ft).v) || 1 }));
