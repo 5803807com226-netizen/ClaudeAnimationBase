@@ -3,3 +3,4 @@ out/
 .cache/
 tools/comfy/engines.local.json
 __pycache__/
+src/stories/_plan_*/

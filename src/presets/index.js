@@ -13,7 +13,9 @@ const PRESETS = {};
 // Verified aspect support per preset: ratios its gallery demo has PASSED in tools/aspect_test.mjs (low-res frames, framing
 // checked by eye). Never list a ratio that has not passed; a new preset starts with [] and is added after its test.
 const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16', '16:9', '4:5'], shapeMorph: ['9:16', '16:9', '4:5'],
-  brushWipe: ['9:16', '16:9', '4:5'], objectReveal: ['9:16', '16:9', '4:5'], particleBurst: ['9:16', '16:9', '4:5'] };
+  brushWipe: ['9:16', '16:9', '4:5'], objectReveal: ['9:16', '16:9', '4:5'], particleBurst: ['9:16', '16:9', '4:5'],
+  // map capabilities: fixture = the compiled Magellan prototype plan (aspect_test target map_proto); production formats only
+  mapView: ['9:16', '16:9'], mapBase: ['9:16', '16:9'], routeDraw: ['9:16', '16:9'], mapMarker: ['9:16', '16:9'], mapLabel: ['9:16', '16:9'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
 const presetK = (t, o) => easeBy(o.ease)(seg(t, o.at, o.at + o.dur));   // eased 0..1 progress of the main move
@@ -67,5 +69,5 @@ function capabilityOf(P, kind, aspects) {
 window.CAPABILITY_CATALOG = () => [
   ...Object.values(PRESETS).map(P => capabilityOf(P, 'preset', PRESET_ASPECTS[P.name])),
   ...(typeof TYPE_PRESETS === 'undefined' ? [] : Object.keys(TYPE_PRESETS).map(n => capabilityOf({ name: n, label: n, about: 'kinetic typography item preset (playType / typeOverlay)',
-    defaults: { text: '', x: .5, y: .5, maxWidth: .84 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
+    defaults: { text: '', end: 1, x: .5, y: .5, maxWidth: .84, maxLines: 3, safe: 'title', style: {}, out: null, by: 'word', stagger: .08 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
 ];

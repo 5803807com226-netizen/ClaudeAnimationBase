@@ -1,0 +1,54 @@
+{
+  "schema": "shot_manifest/1",
+  "project_id": "magellan_proto",
+  "_comment": "Technical prototype for the Magellan-Elcano pilot: route drawing over a real map, geographic camera, labels, narration-cue timing. The SRT is PROVISIONAL (hand-timed text, no voice yet).",
+  "aspect": "9:16",
+  "fps": 24,
+  "target_seconds": 10,
+  "tolerance_seconds": 1,
+  "mode": "motion_only",
+  "strategy": { "name": "historical_map_documentary", "look": "documentary", "background": "#C9D8D6", "ai_video": "forbidden" },
+  "audio": { "narration": { "timing": "magellan_proto.srt", "measured": false } },
+  "data": {
+    "sanlucar": { "lonlat": [-6.35, 36.78], "date": "1519-09-20", "event": "fleet of five ships leaves Sanlúcar de Barrameda",
+      "source": "Antonio Pigafetta, Relazione del primo viaggio intorno al mondo (tr. J. A. Robertson, 1906), vol. 1; place: modern coordinates of Sanlúcar de Barrameda", "confidence": "high" },
+    "tenerife": { "lonlat": [-16.25, 28.47], "date": "1519-09-26", "event": "fleet reaches Tenerife, Canary Islands",
+      "source": "Pigafetta (Robertson 1906), vol. 1; place: modern coordinates of Santa Cruz de Tenerife", "confidence": "high" },
+    "santo_agostinho": { "lonlat": [-34.95, -8.35], "date": "1519-11-29", "event": "landfall on the Brazilian coast near Cape Santo Agostinho",
+      "source": "Pigafetta (Robertson 1906), vol. 1", "confidence": "medium", "note": "date and cape to be re-checked against the pilot's source PDF" },
+    "rio": { "lonlat": [-43.17, -22.91], "date": "1519-12-13", "event": "fleet anchors in Guanabara Bay (Rio de Janeiro)",
+      "source": "Pigafetta (Robertson 1906), vol. 1; place: modern coordinates of Rio de Janeiro", "confidence": "high" },
+    "leg_spain_canaries": { "coords": [[-6.35, 36.78], [-9.5, 34.0], [-16.25, 28.47]], "source": "documented stops (sanlucar, tenerife); the line between them is schematic",
+      "confidence": "schematic", "note": "[-9.5, 34.0] is an offshore drawing point, not a documented position" },
+    "leg_canaries_brazil": { "coords": [[-16.25, 28.47], [-24.0, 12.0], [-34.95, -8.35], [-37.6, -17.5], [-43.17, -22.91]], "source": "documented stops (tenerife, santo_agostinho, rio); the line between them is schematic",
+      "confidence": "schematic", "note": "[-24.0, 12.0] and [-37.6, -17.5] are offshore drawing points, not documented positions" }
+  },
+  "shots": [
+    { "id": "P01", "say": [1, 1], "treatment": "animated_map", "backend": "javascript_motion",
+      "purpose": "establish Spain and the departure: where and when it starts",
+      "camera": { "cap": "mapView", "params": { "from": { "center": [-7, 37], "zoom": 9 }, "to": { "center": [-11, 32], "zoom": 5.5 }, "at": 0, "dur": 4.2, "ease": "ease" } },
+      "layers": [
+        { "id": "base", "cap": "mapBase", "params": {} },
+        { "id": "leg1", "cap": "routeDraw", "params": { "coords": { "$data": "leg_spain_canaries", "field": "coords" }, "at": 1.4, "dur": 2.6 } },
+        { "id": "m_sanlucar", "cap": "mapMarker", "params": { "lonlat": { "$data": "sanlucar", "field": "lonlat" }, "at": 0.3 } },
+        { "id": "l_sanlucar", "cap": "mapLabel", "params": { "lonlat": { "$data": "sanlucar", "field": "lonlat" }, "text": "ซานลูการ์ เด บาร์ราเมดา", "at": 0.5, "dx": 20, "dy": -18 } },
+        { "id": "m_tenerife", "cap": "mapMarker", "params": { "lonlat": { "$data": "tenerife", "field": "lonlat" }, "at": 3.6 } },
+        { "id": "date", "cap": "type.reveal", "params": { "text": "20 กันยายน ค.ศ. 1519", "at": 0.6, "end": 4.2, "x": 0.5, "y": 0.12, "maxWidth": 0.84 } }
+      ],
+      "expected_motion": { "min_changed_frac": 0.01 } },
+    { "id": "P02", "say": [2, 2], "treatment": "animated_map", "backend": "javascript_motion", "transition_in": "cut",
+      "purpose": "the Atlantic crossing: Canaries to the Brazilian coast and Rio",
+      "camera": { "cap": "mapView", "params": { "from": { "center": [-11, 32], "zoom": 5.5 }, "to": { "center": [-34, -12], "zoom": 2.6 }, "at": 0, "dur": 5.2, "arc": 0.15, "ease": "ease" } },
+      "layers": [
+        { "id": "base", "cap": "mapBase", "params": {} },
+        { "id": "leg1", "cap": "routeDraw", "params": { "coords": { "$data": "leg_spain_canaries", "field": "coords" }, "progress": [1, 1], "head": "none", "at": 0, "dur": 0.1 } },
+        { "id": "leg2", "cap": "routeDraw", "params": { "coords": { "$data": "leg_canaries_brazil", "field": "coords" }, "at": 0.4, "dur": 4.6 } },
+        { "id": "m_sanlucar", "cap": "mapMarker", "params": { "lonlat": { "$data": "sanlucar", "field": "lonlat" }, "at": 0, "dur": 0.01, "pulse": false } },
+        { "id": "m_tenerife", "cap": "mapMarker", "params": { "lonlat": { "$data": "tenerife", "field": "lonlat" }, "at": 0, "dur": 0.01 } },
+        { "id": "l_canaries", "cap": "mapLabel", "params": { "lonlat": { "$data": "tenerife", "field": "lonlat" }, "text": "หมู่เกาะคานารี", "at": 0.2, "out": 2.6 } },
+        { "id": "m_rio", "cap": "mapMarker", "params": { "lonlat": { "$data": "rio", "field": "lonlat" }, "at": 4.8 } },
+        { "id": "l_rio", "cap": "mapLabel", "params": { "lonlat": { "$data": "rio", "field": "lonlat" }, "text": "ริโอเดจาเนโร · 13 ธ.ค. 1519", "at": 5.0, "align": "right", "dx": -20 } }
+      ],
+      "expected_motion": { "min_changed_frac": 0.01 } }
+  ]
+}
