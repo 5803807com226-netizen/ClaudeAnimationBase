@@ -51,12 +51,14 @@ const TYPE_PRESETS = {
       const bw = Math.max(...L.lines.map(l => l.w)) + L.size * .5, k1 = easeOut(seg(t, it.at - .15, it.at + .2)), k2 = easeIn(seg(t, it.at + .2, it.at + .5));
       if (k1 > 0 && k2 < 1) { c.save(); c.fillStyle = it.bar; c.globalAlpha = ex.alpha; c.fillRect(X - bw / 2 + bw * k2, Y - L.h / 2 + (ex.dy || 0), bw * (k1 - k2), L.h); c.restore(); }
     }
+    // with a bar, each word starts only once the retracting bar has uncovered it (text never slides in over the bar)
+    const bw0 = Math.max(...L.lines.map(l => l.w)) + L.size * .5, uncover = x => it.at + .2 + .3 * Math.cbrt(clamp((x + bw0 / 2) / bw0));
     let i = 0;
     for (const l of L.lines) {
       c.save(); c.beginPath(); c.rect(X - l.w / 2 - L.size, Y + l.y - L.lh / 2 + (ex.dy || 0), l.w + L.size * 2, L.lh); c.clip();   // the mask: this line's box
       for (const u of l.units) {
         if (u.space) continue;
-        const s0 = it.at + .1 + i++ * stag, k = typeEase(it.ease || 'expo')(seg(t, s0, s0 + d)); if (t < s0) continue;
+        const s0 = it.bar ? Math.max(it.at + .1 + i++ * stag, uncover(u.x + u.w - l.w / 2)) : it.at + .1 + i++ * stag, k = typeEase(it.ease || 'expo')(seg(t, s0, s0 + d)); if (t < s0) continue;
         drawText(c, u.text, X - l.w / 2 + u.x + u.w / 2 + dir[0] * (1 - k) * l.w * .5, Y + l.y + (ex.dy || 0) + dir[1] * (1 - k) * L.lh, st, { s: ex.s, alpha: ex.alpha });
       }
       c.restore();
@@ -156,13 +158,29 @@ function typeOverlay(spec) {
     for (let k = 0; k < 10 && tooWide(); k++) { st = { ...st, size: st.size * .92 }; L = layout(it.text, st, mw); }
     if (st !== it.style) { if (it.suffixStyle?.size) it.suffixStyle = { ...it.suffixStyle, size: it.suffixStyle.size * st.size / it.style.size }; it.style = st; }
     let X = (it.x ?? .5) * W, Y = (it.y ?? .5) * H; const bw = it.preset === 'counter' ? cw(st) : Math.max(...L.lines.map(l => l.w)), bh = L.h;
+    const sa = safeArea(it.safe || 'title');
     if (it.safe !== false) {
-      const sa = safeArea(it.safe || 'title');
       X = clamp(X, sa.x0 + bw / 2, Math.max(sa.x0 + bw / 2, sa.x1 - bw / 2)); Y = clamp(Y, sa.y0 + bh / 2, Math.max(sa.y0 + bh / 2, sa.y1 - bh / 2));
     }
+    if (spec.subjects) Y = avoidSubjects(it, X, Y, bw, bh, sa);
     return (it._fit = { L, X, Y, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
   };
-  window.TYPE_INFO = t => ({ safe: safeArea('title'), items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
+  // Collision-aware layout: spec.subjects(t) → [{ x0, y0, x1, y1 }] screen boxes of what text must never cover (a
+  // character, the focal object). Each item is placed ONCE for its whole time on screen (no jitter): if its box would
+  // touch any subject at any moment of its life, it moves to the nearest free height inside the safe area, trying the
+  // item's prefer side first ('up' | 'down').
+  function avoidSubjects(it, X, Y, bw, bh, sa) {
+    const end = it.out ? it.out.at + (it.out.dur ?? .35) : (spec.duration ?? DUR), pad = .012 * H, boxes = [];
+    for (let tt = it.at - .1; tt <= end; tt += .1) boxes.push(...spec.subjects(tt));
+    const hits = y => boxes.some(b => X - bw / 2 - pad < b.x1 && X + bw / 2 + pad > b.x0 && y - bh / 2 - pad < b.y1 && y + bh / 2 + pad > b.y0);
+    if (!hits(Y)) return Y;
+    const dirs = it.prefer === 'down' ? [1, -1] : [-1, 1];
+    for (let d = 8; d < H; d += 8) for (const s of dirs) {
+      const y = Y + s * d; if (y - bh / 2 >= sa.y0 && y + bh / 2 <= sa.y1 && !hits(y)) return y;
+    }
+    console.warn(`type: "${it.text}" cannot avoid the subjects inside the safe area`); return Y;
+  }
+  window.TYPE_INFO = t => ({ safe: safeArea('title'), subjects: spec.subjects ? spec.subjects(t) : [], items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
   const draw = t => {
     const c = typeLayer(); c.clearRect(0, 0, W, H);
     for (const it of items) {

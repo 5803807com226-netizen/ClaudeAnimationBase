@@ -45,3 +45,32 @@ function parallax(depth, fn) {
   if (!CAM) return fn();
   push(); translate((CAM.cx - PARALLAX_REF[0]) * (1 - depth), (CAM.cy - PARALLAX_REF[1]) * (1 - depth)); fn(); pop();
 }
+
+// Object-driven transition: ONE object carries the viewer from one idea to the next. It leaves its source with an
+// anticipation squash, travels a smooth path (via points), morphs its outline and colour on the way (any two SHAPES,
+// resampled so they don't twist), stretches along the motion, and settles with a little overshoot. Pure function of t.
+//   objectTransition(t, { at, dur, from: { x, y, size, shape, color }, to: { ... }, via: [[x, y], ...],
+//     ease, anticipate (s, .18), morph: [k0, k1] (when the outline changes, as fractions of the trip, [.15, .85]),
+//     ink, sw, inside: (mk, size) => draw content in the object's local space (e.g. lines on a message) })
+//   → { x, y, k (trip 0..1), mk (morph 0..1), size }: so other elements can follow or react to it.
+// objectTransitionAt(t, o) gives the same pose without drawing (for layout, subjects and followers).
+function objectTransitionAt(t, o) {
+  const F = o.from, T = o.to, k = easeBy(o.ease || 'ease')(seg(t, o.at, o.at + o.dur)), m = o.morph || [.15, .85], mk = ease(seg(k, m[0], m[1]));
+  const P = through([[F.x, F.y], ...(o.via || []), [T.x, T.y]], 10), L = [0];   // the path, at constant speed
+  for (let i = 1; i < P.length; i++) L.push(L[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const d = k * L[L.length - 1]; let i = 1; while (i < L.length - 1 && L[i] < d) i++;
+  const f = (d - L[i - 1]) / ((L[i] - L[i - 1]) || 1), x = lerp(P[i - 1][0], P[i][0], f), y = lerp(P[i - 1][1], P[i][1], f);
+  return { x, y, k, mk, size: lerp(F.size, T.size, mk) };
+}
+function objectTransition(t, o) {
+  const { x, y, k, mk, size } = objectTransitionAt(t, o), F = o.from, T = o.to, A = resamplePts(SHAPES[F.shape](0, 0, F.size)), B = resamplePts(SHAPES[T.shape](0, 0, T.size));
+  const pts = A.map((p, j) => [lerp(p[0], B[j][0], mk), lerp(p[1], B[j][1], mk)]);
+  const pre = seg(t, o.at - (o.anticipate ?? .18), o.at), go = Math.sin(Math.PI * seg(k, 0, .5));            // squash, then stretch
+  const settle = .06 * spring(t, o.at + o.dur, 6, 16), sq = .08 * Math.sin(Math.PI * pre) * (t < o.at ? 1 : 0);
+  const sx = 1 + sq - .05 * go + settle, sy = 1 - sq + .07 * go - settle;
+  push(); translate(x, y); scale(sx, sy);
+  paint(pts, { wash: mixCol(F.color, T.color, mk), ink: o.ink ?? PAL.ink, sw: o.sw ?? 1.1, curv: .3 });
+  if (o.inside) o.inside(mk, size);
+  pop();
+  return { x, y, k, mk, size };
+}

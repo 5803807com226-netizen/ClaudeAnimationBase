@@ -3,6 +3,7 @@
 //   - page errors while loading or drawing                                   → FAIL
 //   - the followed character's box outside the action-safe area (STAGE_INFO) → FAIL
 //   - a text block outside the frame / the title-safe area (TYPE_INFO)       → FAIL
+//   - a text block overlapping a declared subject (typeOverlay subjects)     → FAIL
 //   - a flat, light band along an edge (probably uncovered paper/canvas)    → NEEDS_REVIEW
 //   - letterbox / black bars (the frame must fill edge to edge)              → FAIL (unless --letterbox)
 // Every page load and frame has an explicit timeout; nothing waits without a limit.
@@ -35,6 +36,7 @@ function check(r, t) {
   for (const it of r.type?.items || []) {
     if (out(it, { x0: 0, y0: 0, x1: r.W, y1: r.H })) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overflows the frame`);
     else if (out(it, r.type.safe)) fails.push(`${t}s: text "${it.id}" ${fmt(it)} leaves the title-safe area ${fmt(r.type.safe)}`);
+    for (const s of r.type.subjects || []) if (it.x0 < s.x1 && it.x1 > s.x0 && it.y0 < s.y1 && it.y1 > s.y0) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overlaps a subject ${fmt(s)}`);
   }
   // a flat AND light band looks like bare paper / an empty canvas; smooth dark skies are fine
   // (a look with no texture, e.g. infographic, is meant to be flat)
