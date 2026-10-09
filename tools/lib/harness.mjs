@@ -30,6 +30,16 @@ export async function openTarget(browser, T, opts, errors) {
   if (T.loop && !(await page.evaluate(n => { if (!LOOPS[n]) return false; window.LOOP = LOOPS[n]; return true; }, T.loop))) throw new Error('no loop ' + T.loop);
   return page;
 }
+// Full-frame check: letterbox bars, either reported by the page or seen as flat near-black bands along BOTH the top and
+// bottom (or left and right) edges. Bars are only allowed when the story explicitly asked for them (allow = true).
+export function barCheck(r, t, allow = false) {
+  const e = r.edges, dark = b => b && b.sd < 3 && b.lum < 22;
+  if (allow) return [];
+  if (r.bars) return [`${t}s: letterbox bars of ${r.bars} px (styles must render full-frame)`];
+  if (dark(e.top) && dark(e.bottom)) return [`${t}s: flat black bands at the top and bottom edges (letterbox?)`];
+  if (dark(e.left) && dark(e.right)) return [`${t}s: flat black bands at the left and right edges (pillarbox?)`];
+  return [];
+}
 export const cleanErrors = e => [...new Set(e)].filter(m => !/INVALID/.test(m));
 
 // Render time t and return a small JPEG cell plus raw data for checks: edge bands, whole-frame statistics and the
@@ -63,7 +73,7 @@ export function probe(page, t, cell = CELL) {
       const a = stage.actors[0], k = cw / W, w = (a.x1 - a.x0) * k, h = (a.y1 - a.y0) * k, X0 = a.x0 * k, Y0 = a.y0 * k;
       subject = { inner: stats(X0 + w * .2, Y0 + h * .2, X0 + w * .8, Y0 + h * .8), ring: stats(X0 - w * .6, Y0 - h * .3, X0 + w * 1.6, Y0 + h * 1.1) };
     }
-    return { url, cw, ch, edges, frame: stats(0, 0, cw, ch), subject, stage, type, W, H, aspect: ASPECT(), look: typeof LOOK !== 'undefined' ? LOOK.name : null, clean: typeof LOOK !== 'undefined' && !LOOK.grain && !LOOK.paper };
+    return { url, cw, ch, edges, frame: stats(0, 0, cw, ch), subject, stage, type, W, H, aspect: ASPECT(), look: typeof LOOK !== 'undefined' ? LOOK.name : null, clean: typeof LOOK !== 'undefined' && !LOOK.grain && !LOOK.paper, bars: typeof lookBars === 'function' ? lookBars() : 0 };
   }, t, cell), FRAME_MS, `frame ${t}s`);
 }
 

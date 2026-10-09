@@ -6,7 +6,8 @@
 //
 // Choosing (the Creative Director's call, as data):
 //   PROJECT.look = 'cinematic'                                            a style by name
-//   PROJECT.look = { style: 'watercolor', off: ['letterbox', 'haze'], set: { vignette: { amt: .2 }, glow: 1.2 } }
+//   PROJECT.look = { style: 'watercolor', off: ['haze'], set: { vignette: { amt: .2 }, glow: 1.2 } }
+//   PROJECT.look = { style: 'cinematic', set: { letterbox: 2.39 } }        bars only when a story asks for them explicitly
 //   ?look=documentary on the page, --look=documentary on render.mjs      (overrides, e.g. for before/after sheets)
 //   chooseLook({ subject: 'data' | 'product' | 'nature' | 'drama' | 'news' | 'kids' | 'abstract', characters, tone })
 // Without a look a project renders exactly as before ('classic').
@@ -14,7 +15,9 @@
 // Effects (each can be turned off by name or retuned with set):
 //   grade { contrast, saturate, brightness }   tint { color, amt }   light { amt, color, shade, from: [fx, fy] }
 //   paper (texture strength)   grain (strength)   vignette { amt, color }   haze { amt, color: 'auto' | colour }
-//   glow (× glow() strength)   shadow (× actor contact-shadow opacity)   letterbox (target ratio, wide formats only)
+//   glow (× glow() strength)   shadow (× actor contact-shadow opacity)
+//   letterbox: OFF in every style; every frame renders full-bleed, edge to edge. Only an explicit
+//     set: { letterbox: 2.39 } adds bars (target ratio, wide formats only). No style may turn it on by default.
 //   camera { handheld (px at 1080), breathe (zoom amount), shake (× landing shake) }
 const LOOK_STYLES = {
   classic: {},   // the engine's original finish: paper under the scene, grain and vignette baked together
@@ -26,7 +29,7 @@ const LOOK_STYLES = {
     paper: .06, grain: .35, vignette: { amt: .14, color: '#3E3448' }, haze: { amt: .22 }, glow: 1.1 },
   cinematic: { grade: { contrast: 1.12, saturate: .92 }, tint: { color: '#1F3D5C', amt: .16 },
     light: { amt: .3, color: '#FFB46A', shade: '#18304F', from: [.22, .12] }, grain: .55, vignette: { amt: .48, color: '#120E18' },
-    haze: { amt: .38 }, glow: 1.3, shadow: 1.15, letterbox: 2.39, camera: { handheld: 1.5, breathe: .012, shake: .8 } },
+    haze: { amt: .38 }, glow: 1.3, shadow: 1.15, camera: { handheld: 1.5, breathe: .012, shake: .8 } },
   documentary: { grade: { contrast: 1.04, saturate: .88 }, light: { amt: .08, color: '#FFF4E2', shade: '#4A4A52', from: [.5, 0] },
     grain: .8, vignette: { amt: .2, color: '#24222A' }, haze: { amt: .2 }, glow: .85, camera: { handheld: 4, shake: 1.2 } },
   infographic: { grade: { contrast: 1.03, saturate: 1.05 }, grain: 0, glow: .6, shadow: .6, camera: { shake: 0 } },
@@ -35,6 +38,7 @@ const LOOK_STYLES = {
   product: { grade: { contrast: 1.07, saturate: 1.04 }, light: { amt: .18, color: '#FFF8EE', shade: '#2E3140', from: [.5, -.05] },
     grain: .15, vignette: { amt: .36, color: '#15161C' }, glow: 1.2, shadow: 1.3, camera: { breathe: .01, shake: .5 } },
 };
+for (const [k, s] of Object.entries(LOOK_STYLES)) if (s.letterbox) console.warn(`look style "${k}" turns letterbox on by default; styles must render full-frame`);
 const LOOK_EFFECTS = ['grade', 'tint', 'light', 'paper', 'grain', 'vignette', 'haze', 'glow', 'shadow', 'letterbox', 'camera'];
 
 // The Creative Director's helper: a style from a short brief. Plain rules, easy to extend; the story can still override.
@@ -63,7 +67,8 @@ const LOOK = (() => {
     glow: st.glow ?? 1, shadow: st.shadow ?? 1, letterbox: st.letterbox || 0, camera: { handheld: 0, breathe: 0, shake: 1, ...st.camera } };
 })();
 
-// Letterbox bar height (px): only on frames wider than tall that are less wide than the target ratio. Tall formats never
+// Letterbox bar height (px), 0 unless the story explicitly set letterbox: only on frames wider than tall that are less
+// wide than the target ratio. Tall formats never
 // get bars (they would waste a phone screen); safeArea() in responsive.js keeps characters and text clear of the bars.
 const lookBars = () => LOOK.letterbox && W > H && W / H < LOOK.letterbox ? Math.round((H - W / LOOK.letterbox) / 2) : 0;
 

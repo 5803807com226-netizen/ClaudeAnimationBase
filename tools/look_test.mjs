@@ -4,7 +4,8 @@
 //   - page errors                                                                  → FAIL
 //   - more than 4 % of the frame crushed to black or blown to white (and worse than before) → FAIL
 //   - the character's colours shift too far from the original (identity)           → FAIL > 60, NEEDS_REVIEW > 38 (RGB distance)
-//   - the character or text leaves the safe area (e.g. under letterbox bars)       → FAIL
+//   - the character or text leaves the safe area                                   → FAIL
+//   - letterbox / black bars: every style must fill the frame edge to edge          → FAIL (unless --letterbox)
 //   - flat, low-contrast frame (luma σ < 12)                                       → NEEDS_REVIEW
 //   - the character separates from its surroundings much less than before         → NEEDS_REVIEW
 // Every load and frame has a time limit. Output: out/look/<target>_<aspect>.jpg, out/look/report.md / report.json.
@@ -12,7 +13,7 @@
 //   node tools/look_test.mjs [--only=phase2_lumo] [--looks=classic,cinematic] [--aspect=9:16] [--frames=2] [--w=200]
 //                            [--frame-timeout=30 (s)] [--chrome=<path>] [--soft-gl] [--verbose]
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { args, launch, openTarget, probe, writeSheet, cleanErrors } from './lib/harness.mjs';
+import { args, launch, openTarget, probe, writeSheet, cleanErrors, barCheck } from './lib/harness.mjs';
 
 const OUT = 'out/look', CELL = +(args.w || 200);
 const TARGETS = [
@@ -39,6 +40,7 @@ function check(r, base, t) {
   const tol = 4 * Math.min(r.W, r.H) / 1080, out = (b, s) => b.x0 < s.x0 - tol || b.y0 < s.y0 - tol || b.x1 > s.x1 + tol || b.y1 > s.y1 + tol;
   for (const a of r.stage?.actors || []) if (out(a, r.stage.safe)) fails.push(`${t}s: character ${fmt(a)} outside the safe area ${fmt(r.stage.safe)}`);
   for (const it of r.type?.items || []) if (out(it, r.type.safe)) fails.push(`${t}s: text "${it.id}" outside the safe area`);
+  fails.push(...barCheck(r, t, !!args.letterbox));
   return { fails, review, metrics: { lum: +f.lum.toFixed(1), contrast: +f.lsd.toFixed(1), sat: +f.sat.toFixed(3), clip: +(clip * 100).toFixed(2), separation: r.subject ? +(sep(r.subject) ?? 0).toFixed(1) : null } };
 }
 

@@ -4,6 +4,7 @@
 //   - the followed character's box outside the action-safe area (STAGE_INFO) → FAIL
 //   - a text block outside the frame / the title-safe area (TYPE_INFO)       → FAIL
 //   - a flat, light band along an edge (probably uncovered paper/canvas)    → NEEDS_REVIEW
+//   - letterbox / black bars (the frame must fill edge to edge)              → FAIL (unless --letterbox)
 // Every page load and frame has an explicit timeout; nothing waits without a limit.
 //
 //   node tools/aspect_test.mjs [--only=phase2_lumo,preset_popBounce] [--aspects=9:16,4:5] [--frames=2] [--w=180]
@@ -11,7 +12,7 @@
 // Output: out/aspect/<target>.jpg (columns: 9:16 · 16:9 · 4:5, rows: times) and out/aspect/report.json / report.md.
 // Exit code 1 if any target FAILs.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { args, launch, openTarget, probe, writeSheet, cleanErrors } from './lib/harness.mjs';
+import { args, launch, openTarget, probe, writeSheet, cleanErrors, barCheck } from './lib/harness.mjs';
 
 const ASPECTS = args.aspects ? String(args.aspects).split(',') : ['9:16', '16:9', '4:5'], OUT = 'out/aspect';
 // Targets: story id or studio loop, and the times to check (a few per target, spread over its length).
@@ -37,6 +38,7 @@ function check(r, t) {
   // a flat AND light band looks like bare paper / an empty canvas; smooth dark skies are fine
   // (a look with no texture, e.g. infographic, is meant to be flat)
   if (!r.clean) for (const [e, { sd, lum }] of Object.entries(r.edges)) if (sd < 1.2 && lum > 200) review.push(`${t}s: flat light ${e} edge (σ ${sd.toFixed(1)}, lum ${lum.toFixed(0)}): uncovered background?`);
+  fails.push(...barCheck(r, t, !!args.letterbox));   // every frame full-bleed unless --letterbox says bars are intended
   return { fails, review };
 }
 const fmt = b => `[${[b.x0, b.y0, b.x1, b.y1].map(v => Math.round(v)).join(',')}]`;
