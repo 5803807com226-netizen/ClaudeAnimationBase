@@ -6,6 +6,7 @@
 // Each particle's path is closed-form from hash(i), so nothing is simulated frame to frame.
 definePreset('particleBurst', {
   label: 'Particle Burst', about: 'hash-seeded particles on easeOut arcs with gravity, tumble, shrink and a glow() flash',
+  meta: { version: '1.0.0', category: 'fx', tags: ['particles', 'burst', 'confetti', 'sparks', 'celebration', 'impact'], params: { shape: { enum: ['star', 'circle', 'heart', 'square', 'mix'] }, count: { min: 1, max: 120 } } },
   defaults: { x: W / 2, y: ny(520 / 1080), size: 420 * US(), count: 26, pSize: 26 * US(), shape: 'mix', colors: [PAL.ochre, PAL.rose, PAL.clay, PAL.cream, PAL.teal], angle: -Math.PI / 2, arc: TAU, gravity: 260, glow: PAL.ochre, spin: 3, seed: 0, ease: 'easeOut', dur: 1.4 },
   run(t, o) {
     const age = seg(t, o.at, o.at + o.dur); if (t < o.at || age >= 1) return;

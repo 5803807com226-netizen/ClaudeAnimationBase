@@ -27,8 +27,10 @@ import { mkdirSync, writeFileSync, existsSync, statSync, renameSync, readdirSync
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { homedir } from 'node:os';
+import { syncPresetFiles } from './tools/lib/capfiles.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
+syncPresetFiles();   // capability discovery: refresh src/presets/files.js from the files in src/presets/
 const CHROMES = [args.chrome, process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
   ...playwrightChromes()];

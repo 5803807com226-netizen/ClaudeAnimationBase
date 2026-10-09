@@ -5,6 +5,7 @@
 // Pass the scene as `inner` and it is wrapped in camBegin/camEnd; without it, you must call camEnd() yourself.
 definePreset('cameraMove', {
   label: 'Camera Pan & Zoom', about: 'camBegin/camEnd driven by eased from → to keyframes, plus drift and shake',
+  meta: { version: '1.0.0', category: 'camera', tags: ['camera', 'pan', 'zoom', 'push', 'pull', 'drift', 'shake'], params: { drift: { min: 0, max: 60 }, shake: { min: 0, max: 40 } }, camera: 'camera', layers: ['camera'] },
   defaults: { from: [W / 2, H / 2, 1], to: [W / 2, H / 2, 1.3], rot: [0, 0], drift: 0, shake: 0, dur: 3 },
   run(t, o, inner) {
     const k = presetK(t, o), v = o.keys ? kf(t, o.keys, easeBy(o.ease)) : null, [sx, sy] = o.shake ? shakeXY(t, o.shake) : [0, 0];

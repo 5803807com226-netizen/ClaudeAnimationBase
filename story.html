@@ -34,12 +34,9 @@
 <script src="src/timeline.js"></script>
 <!-- motion presets -->
 <script src="src/presets/index.js"></script>
-<script src="src/presets/camera.js"></script>
-<script src="src/presets/pop.js"></script>
-<script src="src/presets/morph.js"></script>
-<script src="src/presets/wipe.js"></script>
-<script src="src/presets/reveal.js"></script>
-<script src="src/presets/burst.js"></script>
+<!-- capability files, discovered from src/presets/ (generated list: tools/lib/capfiles.mjs) -->
+<script src="src/presets/files.js"></script>
+<script>PRESET_FILES.forEach(f => document.write(`<script src="${f}"><\/script>`));</script>
 <script src="src/presets/scene.js"></script>
 <!-- cutout characters -->
 <script src="src/rig/cutout.js"></script>

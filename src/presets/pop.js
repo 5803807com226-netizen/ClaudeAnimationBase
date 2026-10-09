@@ -4,6 +4,7 @@
 //   wobble      follow-through wobble after the pop (0 = none)     beat  true to pulse with the music's beat
 definePreset('popBounce', {
   label: 'Pop & Bounce', about: 'backOut pop-in, spring wobble, then jump() hops with squash and stretch',
+  meta: { version: '1.0.0', category: 'object', tags: ['pop', 'bounce', 'entrance', 'emphasis', 'hop'], params: { shape: { enum: ['star', 'circle', 'heart', 'square'] } } },
   defaults: { x: W / 2, y: ny(700 / 1080), size: 110 * US(), color: PAL.ochre, shape: 'star', hops: 2, hopH: 1.2, hopGap: .75, wobble: .12, beat: false, ease: 'backOut', dur: .55 },
   run(t, o) {
     if (t < o.at) return;

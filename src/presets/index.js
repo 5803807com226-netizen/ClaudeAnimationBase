@@ -41,3 +41,31 @@ function presetItem(o) {
 }
 // Run fn in a frame placed at (x, y), rotated and scaled (sx, sy): the object's local space.
 function presetPlace(x, y, rot, sx, sy, fn) { push(); translate(x, y); rotate(rot); scale(sx, sy); fn(); pop(); }
+
+// ---------- capability catalog (read by tools/capabilities.mjs for the Director and the plan compiler) ----------
+// Every registered preset is discoverable: its parameter schema is inferred from `defaults` (number, string, boolean,
+// color, array), and an optional `meta` in the preset spec adds category, tags, constraints and required assets:
+//   meta: { version, category, tags: [], params: { name: { min, max, enum, type } }, assets: [{ param, type }], camera, layers }
+// Status is 'verified' only for presets with aspects that PASSED tools/aspect_test.mjs; otherwise 'experimental'.
+const PRESET_DEMO_ONLY = new Set(['x', 'y', 'size']);   // sized from the frame at load: their defaults are not limits
+function inferParam(v) {
+  if (typeof v === 'number') return { type: 'number' };
+  if (typeof v === 'boolean') return { type: 'boolean' };
+  if (typeof v === 'string') return /^#[0-9a-f]{3,8}$/i.test(v) ? { type: 'color' } : { type: 'string' };
+  if (Array.isArray(v)) return { type: 'array' };
+  return { type: v === null ? 'any' : typeof v };
+}
+function capabilityOf(P, kind, aspects) {
+  const m = P.meta || {}, params = {};
+  for (const [k, v] of Object.entries({ at: 0, dur: 1, ease: 'ease', ...P.defaults })) params[k] = { ...inferParam(v), ...(PRESET_DEMO_ONLY.has(k) ? {} : { default: v }) };
+  for (const [k, v] of Object.entries(m.params || {})) params[k] = { ...params[k], ...v };
+  if (params.ease) params.ease.enum = Object.keys(EASES);
+  return { id: kind === 'type' ? 'type.' + P.name : P.name, kind, version: m.version || '1.0.0', category: m.category || kind,
+    label: P.label || P.name, about: P.about || '', tags: m.tags || [], params, assets: m.assets || [], camera: m.camera || 'world',
+    layers: m.layers || ['object'], aspects: aspects || [], status: (aspects || []).length ? 'verified' : 'experimental' };
+}
+window.CAPABILITY_CATALOG = () => [
+  ...Object.values(PRESETS).map(P => capabilityOf(P, 'preset', PRESET_ASPECTS[P.name])),
+  ...(typeof TYPE_PRESETS === 'undefined' ? [] : Object.keys(TYPE_PRESETS).map(n => capabilityOf({ name: n, label: n, about: 'kinetic typography item preset (playType / typeOverlay)',
+    defaults: { text: '', x: .5, y: .5, maxWidth: .84 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
+];

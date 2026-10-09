@@ -5,12 +5,14 @@ import puppeteer from 'puppeteer-core';
 import { existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { syncPresetFiles } from './capfiles.mjs';
 
 export const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
 export const LOAD_MS = 60000, FRAME_MS = 1000 * +(args['frame-timeout'] || 30), CELL = +(args.w || 180);
 export const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, bad) => setTimeout(() => bad(new Error(`timeout after ${ms / 1000} s: ${what}`)), ms))]);
 
 export async function launch() {
+  syncPresetFiles();   // capability discovery (see capfiles.mjs)
   const CHROME = [args.chrome, process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(p => p && existsSync(p));
   if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
