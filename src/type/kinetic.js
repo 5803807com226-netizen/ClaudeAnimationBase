@@ -15,6 +15,8 @@
 //     fade: { in, out, color }, duration,
 //   })
 // `say: i` takes the text and timing of narration[i]; at/end/dur override. Presets: TYPE_PRESETS below.
+// Selective text in an illustrated story: const text = typeOverlay({ narration, items }); then text.draw(t) in your shot,
+// after camEnd() (screen space). Same items, presets, fitting and safe areas (see src/stories/story_pilot_v4).
 // Responsive (responsive.js): x, y, maxWidth, maxLines and any style value may be a per-aspect map
 // ({ '9:16': …, '16:9': …, '4:5': … } or { tall, wide }). Text shrinks to fit its width and line limit, and every block
 // is kept inside the title-safe area (safe: 'title' | 'action' | false).
@@ -131,9 +133,12 @@ function counterWidths(it, num, st) {
   return { nw, sw };
 }
 
-function playType(spec) {
+// Kinetic text as a LAYER, for illustrated stories that use typography selectively: returns { items, draw(t) }; call
+// draw(t) in screen space (after the camera) inside your own shot. Same item spec, presets, fitting and safe areas as
+// playType (which is built on it). Sets window.TYPE_INFO for the tests.
+function typeOverlay(spec) {
   registerFonts(spec.fonts);
-  const N = spec.narration || [], dur = spec.duration || DUR;
+  const N = spec.narration || [];
   const res = o => o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, av(v)])) : o;
   const items = spec.items.map((it0, i) => {
     const it = res(it0), n = it.say != null ? N[it.say] : null, at = it.at ?? n?.at ?? 0;
@@ -144,7 +149,8 @@ function playType(spec) {
   // maxWidth and the line count fits maxLines; then the block's box, clamped into the safe area
   const fitted = it => {
     if (it._fit) return it._fit;
-    const mw = (it.maxWidth ?? .86) * W; let st = it.style, L = layout(it.text, st, mw);
+    const mw = Math.min((it.maxWidth ?? .86) * W, it.safe !== false ? safeArea(it.safe || 'title').w : Infinity);   // never wider than the safe area
+    let st = it.style, L = layout(it.text, st, mw);
     const cw = st => { const { nw, sw } = counterWidths({ ...it, suffixStyle: it.suffixStyle && { ...it.suffixStyle, size: it.suffixStyle.size * st.size / it.style.size } }, counterText(it, it.to), st); return nw + sw; };
     const tooWide = () => it.preset === 'counter' ? cw(st) > mw + 1 : L.lines.some(l => l.w > mw + 1) || (it.maxLines && L.lines.length > it.maxLines);
     for (let k = 0; k < 10 && tooWide(); k++) { st = { ...st, size: st.size * .92 }; L = layout(it.text, st, mw); }
@@ -157,10 +163,7 @@ function playType(spec) {
     return (it._fit = { L, X, Y, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
   };
   window.TYPE_INFO = t => ({ safe: safeArea('title'), items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
-  const fade = { in: .3, out: .3, color: spec.background || '#F4ECDF', ...spec.fade };
-  shots([[0, (t) => {
-    if (spec.background) background(spec.background);
-    (spec.decor || []).forEach(f => f(t));
+  const draw = t => {
     const c = typeLayer(); c.clearRect(0, 0, W, H);
     for (const it of items) {
       if (t < it.at - .5) continue;
@@ -169,6 +172,17 @@ function playType(spec) {
       TYPE_PRESETS[it.preset](t, it, c, f.L, f.X, f.Y, ex);
     }
     compositeType();
+  };
+  return { items, draw };
+}
+
+function playType(spec) {
+  const dur = spec.duration || DUR, { items, draw } = typeOverlay(spec);
+  const fade = { in: .3, out: .3, color: spec.background || '#F4ECDF', ...spec.fade };
+  shots([[0, (t) => {
+    if (spec.background) background(spec.background);
+    (spec.decor || []).forEach(f => f(t));
+    draw(t);
     if (fade.in && t < fade.in) flash(1 - t / fade.in, fade.color);
     if (fade.out && t > dur - fade.out) flash((t - (dur - fade.out)) / fade.out, fade.color);
   }]]);
