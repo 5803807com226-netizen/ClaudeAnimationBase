@@ -16,7 +16,7 @@
 //   --preview  after every layer passes, a low-res contact sheet of the scene with these assets (out/gen/<story>_<scene>.jpg)
 // Manual import stays: a layer without `gen`, with gen.engine 'manual', or a file you put there yourself (no record in
 // _generated.json) is never overwritten unless you pass --force; it is only validated.
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, statSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { loadStory, checkLayer, neededWidth, neededSize } from './lib/manifest.mjs';
@@ -53,14 +53,30 @@ if (!args.mock && !args.dry) {
   if (!existsSync(f)) { console.error(`no engine config: copy tools/comfy/engines.example.json to ${f} and point it at your exported API workflows (or use --mock / --dry)`); process.exit(1); }
   ENGINES = JSON.parse(readFileSync(f, 'utf8'));
 }
-async function generateRaw(g, S, L, attempt, label) {   // → path of the raw image in the cache (generated at most once per key)
+// the cache identity of a generated source image (same prompt, workflow, seed and size = same image)
+function rawKeyFor(g, S, L, attempt) {
   const { positive, negative } = prompts(S, g), seedBase = g.seed ?? ((S.gen?.seed ?? 0) + parseInt(sha(g.character || L.id).slice(0, 6), 16) % 100000);
   const seed = seedBase + attempt * 1009, [w, h] = g.size || [1024, 1024];
-  const eng = args.mock ? { workflow: 'mock' } : ENGINES.engines[g.engine];
+  const eng = args.mock ? { workflow: 'mock' } : ENGINES?.engines[g.engine];
   if (!eng) throw new Error(`no engine "${g.engine}" in the engine config`);
   const wfHash = args.mock ? 'mock' : sha(readFileSync(eng.workflow)), bad = args.mock && mockBad.has(L.id) && attempt === 0;
   const key = sha('raw', g.engine, wfHash, positive, negative, seed, w, h, g.ref || '', bad ? 'bad' : '');
-  const out = `${CACHE}/${key}.raw.png`, meta = { key, engine: g.engine, seed, size: [w, h], positive, negative, mock: !!args.mock };
+  return { key, seed, w, h, eng, bad, positive, negative, out: `${CACHE}/${key}.raw.png` };
+}
+// was this layer's file made by this pipeline? A run interrupted before writing its record must not turn generated
+// files into "manual" ones
+// → only when the file is byte-for-byte one of this pipeline's processed outputs in the cache; a file made by hand never
+// matches, so it is never overwritten
+function generatedBefore(L, g, rec, file) {
+  if (rec[L.id]) return true;
+  if (!existsSync(file)) return false;
+  const size = statSync(file).size, mine = sha(readFileSync(file));
+  for (const n of readdirSync(CACHE)) if (n.endsWith('.png') && !/\.(raw|matte)\.png$/.test(n) && statSync(`${CACHE}/${n}`).size === size && sha(readFileSync(`${CACHE}/${n}`)) === mine) return true;
+  return false;
+}
+async function generateRaw(g, S, L, attempt, label) {   // → path of the raw image in the cache (generated at most once per key)
+  const { key, seed, w, h, eng, bad, positive, negative, out } = rawKeyFor(g, S, L, attempt);
+  const meta = { key, engine: g.engine, seed, size: [w, h], positive, negative, mock: !!args.mock };
   if (existsSync(out)) return { ...meta, path: out, cached: true };
   if (args.dry) return { ...meta, path: out, dry: true };
   if (args.offline) throw new Error(`--offline: no cached source image for this prompt and seed (key ${key}); run without --offline to generate it`);
@@ -96,7 +112,8 @@ for (const [sid, S0] of list) {
   for (const L of order) {
     if (only && !only.includes(L.id)) continue;
     const g = L.gen, f = dir + L.file, row = { id: L.id, file: L.file, status: '', how: '' }; rows.push(row);
-    const manual = !g || g.engine === 'manual' || (existsSync(f) && !rec[L.id] && !args.force);
+    const manual = !g || g.engine === 'manual' || (existsSync(f) && !args.force && !generatedBefore(L, g, rec, f));
+    if (!manual && existsSync(f) && !rec[L.id]) console.log(`    ${L.id}: adopting the generated file (it matches a cached pipeline output; its record was missing)`);
     if (manual) { const c = checkLayer(L, S, P); row.how = existsSync(f) ? 'manual file' : 'manual (missing)'; row.status = c.fails.length ? 'FAIL' : 'PASS'; row.msg = c.fails[0]; continue; }
     if (args.dry) {
       const src = g.engine === 'derive' ? g.source : g;
@@ -107,7 +124,7 @@ for (const [sid, S0] of list) {
     let ok = false, last = null;
     // start from the attempt that last succeeded for this exact prompt (its output is cached), not from a known-bad one
     const prev = rec[L.id], src0 = g.engine === 'derive' ? g.source : g, first = prev?.status === 'PASS' && src0 && prev.positive === prompts(S, src0).positive ? prev.attempt || 0 : 0;
-    for (let attempt = first; attempt <= first + RETRIES && !ok; attempt++) {
+    for (let attempt = first; attempt <= (args.offline ? RETRIES + 3 : first + RETRIES) && !ok; attempt++) {
       try {
         if (g.engine === 'derive') {   // layers made from another layer, on its canvas (so they align exactly)
           const base = dir + byId[g.from].file; if (!existsSync(base)) throw new Error(`base layer ${g.from} is not ready`);
@@ -135,9 +152,10 @@ for (const [sid, S0] of list) {
         ok = !c.fails.length; if (!ok) console.log(`    ${L.id}: attempt ${attempt + 1} invalid: ${last}`);
         if (g.engine === 'derive') row.how = `derived (${g.op} from ${g.from})`;
         rec[L.id].status = ok ? 'PASS' : 'FAIL'; rec[L.id].warns = c.warns;
-      } catch (e) { last = e.message; console.log(`    ${L.id}: ${e.message}`); if (/not ready|unknown derive|asks for|no engine|--offline/.test(e.message)) break; }
+      } catch (e) { const miss = /--offline/.test(e.message); if (!(miss && last)) last = e.message; if (!miss || args.verbose) console.log(`    ${L.id}: ${e.message}`); if (/not ready|unknown derive|asks for|no engine/.test(e.message)) break; }
     }
     row.status = ok ? 'PASS' : 'FAIL'; row.msg = ok ? '' : last; if (!ok) failed++;
+    if (!args.dry) writeFileSync(recFile, JSON.stringify(rec, null, 1));   // after every layer: an interrupted run keeps its records
   }
   if (!args.dry) writeFileSync(recFile, JSON.stringify(rec, null, 1));
   console.log('\n' + rows.map(r => `  ${r.status.padEnd(5)} ${r.id.padEnd(10)} ${r.file.padEnd(22)} ${r.how}${r.msg ? '  · ' + r.msg : ''}`).join('\n'));

@@ -120,28 +120,49 @@ def matte(a):
             fringe = (box(shadow.astype(np.float32), 4) > 0) & (lum < .55 * Lm)   # its half-keyed outer edge (grey into green) too
             alpha = np.where(fringe, 0, alpha)
             alpha, _, _ = keep_attached(alpha)
-    # 3. edges: take the background colour back out of half-covered pixels, then make sure no green dominates there
-    if bg is not None:
-        soft = (alpha > .02) & (alpha < .98); A = np.maximum(alpha, .02)[..., None]
-        un = (px - (1 - A) * bg[None, None, :]) / A
-        plausible = (un.min(-1) > -24) & (un.max(-1) < 280)   # only where the pixel really is object + background mixed
-        px = np.where((soft & plausible)[..., None], np.clip(un, 0, 255), px)
-    # despill against the object's OWN colour: each pixel near the edge may carry no more green, relative to its red/blue,
-    # than the clean interior of the object close to it (yellow stays yellow, cream stays cream; only spill goes)
-    solid = alpha > .99; inner = solid.copy()
-    for _ in range(6): inner = inner & np.roll(inner, 1, 0) & np.roll(inner, -1, 0) & np.roll(inner, 1, 1) & np.roll(inner, -1, 1)
+    # 3. edges, solved against the object's OWN nearby colour F (the mean of its clean interior close by) and the rendered
+    # background B. The edge band scales with the image (spill reaches further on large strips).
+    h, w = alpha.shape; e = max(6, int(round(min(h, w) * .006)))
+    solid = alpha > .99; inner = box(solid.astype(np.float32), e) > .999            # solid pixels at least e px from the edge
     band = (alpha > 0) & ~inner
     if band.any() and inner.any():
+        den = box(inner.astype(np.float32), 10); F = np.stack([box(px[:, :, c] * inner, 10) for c in range(3)], -1)
+        for r in (24, 60, 150):                                                       # widen until every edge pixel has a reference
+            if (den[band] > 1e-6).all(): break
+            d2 = box(inner.astype(np.float32), r); F2 = np.stack([box(px[:, :, c] * inner, r) for c in range(3)], -1)
+            F = np.where((den > 1e-6)[..., None], F, F2); den = np.where(den > 1e-6, den, d2)
+        F = F / np.maximum(den, 1e-6)[..., None]; has = den > 1e-6
+        gr = lambda c: (c[..., 1] - np.maximum(c[..., 0], c[..., 2])) / np.maximum(c[..., 1], 1)
+        if bg is not None:
+            # a half-covered pixel greener than its paper is paper + background: its coverage is its position on the line
+            # B → F, and its colour is un-mixed with that coverage (blue + green = teal fringes become the blue paper again)
+            d = F - bg[None, None, :]; dd = (d * d).sum(-1)
+            a_p = np.clip(((px - bg[None, None, :]) * d).sum(-1) / np.maximum(dd, 1), 0, 1)
+            resid = np.linalg.norm(px - (bg[None, None, :] + a_p[..., None] * d), axis=-1)
+            # greener than its paper AND lying between paper and background (darker paper texture is neither)
+            greener = band & has & (gr(px) > gr(F) + .01) & (a_p < .985) & (dd > 40 ** 2) & (resid < .35 * np.sqrt(dd))
+            mixed = greener & (alpha < .98)
+            spilled = greener & (alpha >= .98) & (a_p > .3)                           # opaque paper tinted by spill: keep it opaque
+            alpha = np.where(mixed, a_p, alpha)
+            A = np.maximum(alpha, .02)[..., None]; un = np.clip((px - (1 - A) * bg[None, None, :]) / A, 0, 255)
+            soft = (alpha > .02) & (alpha < .98)
+            plausible = ((px - (1 - A) * bg[None, None, :]) / A).min(-1) > -24
+            S = np.maximum(a_p, .3)[..., None]; unspill = np.clip((px - (1 - S) * bg[None, None, :]) / S, 0, 255)   # its colour, un-mixed
+            px = np.where(((soft & plausible) | mixed)[..., None], un, np.where(spilled[..., None], unspill, px))
+            # what is still greener than its paper after un-mixing takes the paper's own hue at its own brightness: spill
+            # that does not follow a clean paper↔green mix would otherwise stay as a cyan / olive rim on coloured paper
+            still = (greener & (gr(px) > gr(F) + .01)) | mixed   # mixed edge pixels: their true colour IS the paper's (no overshoot)
+            lum = px.mean(-1, keepdims=True); Fl = np.maximum(F.mean(-1, keepdims=True), 1)
+            px = np.where(still[..., None], np.clip(F * np.clip(lum / Fl, .6, 1.4), 0, 255), px)
+        # despill: near the edge, no pixel may carry more green, relative to its red/blue, than its paper (+ a little);
+        # only real green tints are touched, so white / cream fibres, yellow, coral and skin stay as they are
         hi_rb = np.maximum(px[:, :, 0], px[:, :, 2])
-        ratio = np.where(inner, px[:, :, 1] / np.maximum(hi_rb, 1), 0)          # the interior's green : max(red, blue)
-        num, den = ratio * inner, inner.astype(np.float32)
-        for r in (10, 24, 60):                                                     # widen until every edge pixel has a reference
-            ref = box(num, r) / np.maximum(box(den, r), 1e-6)
-            if (box(den, r)[band] > 1e-6).all(): break
-        ref = np.where(box(den, r) > 1e-6, ref, 1.0)
+        ref = np.where(has, F[..., 1] / np.maximum(np.maximum(F[..., 0], F[..., 2]), 1), 1.0)
         allowed = ref * hi_rb + 6
-        tinted = (px[:, :, 1] >= hi_rb - 4) & (px[:, :, 1] - np.minimum(px[:, :, 0], px[:, :, 2]) > 25)   # a real green tint only:
-        px[:, :, 1] = np.where(band & tinted, np.minimum(px[:, :, 1], np.maximum(allowed, 0)), px[:, :, 1])   # white / cream fibres untouched
+        tinted = (px[:, :, 1] >= hi_rb - 4) & (px[:, :, 1] - np.minimum(px[:, :, 0], px[:, :, 2]) > 25)
+        px[:, :, 1] = np.where(band & tinted, np.minimum(px[:, :, 1], np.maximum(allowed, 0)), px[:, :, 1])
+    alpha, n2, p2 = keep_attached(np.where(alpha < .04, 0, alpha))                # the edge solve can free tiny fragments
+    report['specks_removed'] = report.get('specks_removed', 0) + n2
     al = Image.fromarray(np.clip(alpha * 255, 0, 255).astype(np.uint8))
     cut = Image.fromarray(np.clip(px, 0, 255).astype(np.uint8)).convert('RGBA'); cut.putalpha(al)
     # remaining dark rim on the outer edge (a baked shadow that could not be separated): suggest regenerating
@@ -155,6 +176,19 @@ def matte(a):
     print(json.dumps(report))
 
 
+def resize_rgba(img, size):
+    """Resize with premultiplied alpha (transparent pixels cannot bleed their colour into the edge), then drop the
+    resampling ringing: faint alpha and fragments no longer attached to the artwork."""
+    if img.mode != 'RGBA' or np.asarray(img)[:, :, 3].min() == 255: return img.convert(img.mode).resize(size, Image.LANCZOS)
+    a = np.asarray(img).astype(np.float32) / 255; al = a[:, :, 3]
+    ch = [Image.fromarray((a[:, :, c] * al).astype(np.float32), 'F').resize(size, Image.LANCZOS) for c in range(3)]
+    A = np.clip(np.asarray(Image.fromarray(al.astype(np.float32), 'F').resize(size, Image.LANCZOS)), 0, 1)
+    A, _, _ = keep_attached(np.where(A < 10 / 255, 0, A), soft_t=10 / 255)         # ringing below the visible threshold, and islands
+    rgb = np.stack([np.asarray(c) for c in ch], -1) / np.maximum(A, 1e-4)[..., None]
+    out = np.dstack([np.clip(rgb, 0, 1), A]); out[A <= 0] = 0
+    return Image.fromarray((out * 255 + .5).astype(np.uint8), 'RGBA')
+
+
 def fit(a):
     img = Image.open(a.inp)
     if a.cover:
@@ -162,9 +196,9 @@ def fit(a):
         if img.width / img.height > r: w = int(img.height * r); x = (img.width - w) // 2; img = img.crop((x, 0, x + w, img.height))
         else: h = int(img.width / r); y = (img.height - h) // 2; img = img.crop((0, y, img.width, y + h))
     if a.width and img.width < a.width:
-        img = img.resize((a.width, round(img.height * a.width / img.width)), Image.LANCZOS)
+        img = resize_rgba(img, (a.width, round(img.height * a.width / img.width)))
     if a.height and img.height < a.height:
-        img = img.resize((round(img.width * a.height / img.height), a.height), Image.LANCZOS)
+        img = resize_rgba(img, (round(img.width * a.height / img.height), a.height))
     img.save(a.out)
 
 

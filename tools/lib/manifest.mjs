@@ -75,11 +75,18 @@ function matteQuality(px, w, h) {
   }
   const area = new Map(); for (const [s, e, l] of runs) { const r = find(l); area.set(r, (area.get(r) || 0) + e - s); }
   const sizes = [...area.values()].sort((a, b) => b - a), big = sizes[0] || 0, specks = sizes.filter(a => a < big * .01);
+  // contamination is green BEYOND the artwork's own colour: the solid interior's 99th percentile of green excess
+  // (G - max(R, B)) is the paper's natural ceiling (a pale cyan-blue paper may sit near 0; yellow paper far below)
+  const ex = []; for (let i = 0; i < w * h; i += 7) if (A(i) > 245) ex.push(px[i * 4 + 1] - Math.max(px[i * 4], px[i * 4 + 2]));
+  ex.sort((a, b) => a - b); const ceil = ex.length ? ex[Math.floor(ex.length * .99)] : 0;
+  // …and its green SHARE (g / (r + g + b)): catches cyan / teal rims on blue or lavender paper, where blue stays on top
+  const gs = []; for (let i = 0; i < w * h; i += 7) if (A(i) > 245) gs.push(px[i * 4 + 1] / Math.max(1, px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]));
+  gs.sort((a, b) => a - b); const gceil = gs.length ? gs[Math.floor(gs.length * .99)] : 1;
   let visN = 0, edgeN = 0, gVis = 0, gEdge = 0, lumSum = [], rimN = 0, rimDark = 0;
   const isVis = (x, y) => x >= 0 && y >= 0 && x < w && y < h && vis[y * w + x];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x; if (!vis[i]) continue;
-    const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], a = px[i * 4 + 3], tint = g >= Math.max(r, b) - 2 && g - Math.min(r, b) > 25;
+    const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], a = px[i * 4 + 3], tint = (g >= Math.max(r, b) - 2 && g - Math.min(r, b) > 25 && g - Math.max(r, b) > ceil + 6) || (g - Math.min(r, b) > 20 && g / Math.max(1, r + g + b) > gceil + .02);
     visN++; if (tint) gVis++;
     if (a < 235) { edgeN++; if (tint) gEdge++; }
     if (a > 245 && (y * 7 + x * 13) % 9 === 0) lumSum.push((r + g + b) / 3);

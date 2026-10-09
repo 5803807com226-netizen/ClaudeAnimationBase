@@ -82,4 +82,53 @@ for case in ('shadow_on_green', 'neutral_shadow', 'hard_neutral_shadow'):
               ('no tinted halo where the shadow was (pink / magenta)', m['halo'] < .002), ('fibres keep their colour (no pink cast)', m['fibre_pink'] < .1)]
     for name, p in checks: print(f'  {"PASS" if p else "FAIL"}  {name}'); ok &= bool(p)
     subprocess.run([PY, 'tools/comfy/imageops.py', 'compare', '--in', *rows, '--labels', ','.join(labels), '--out', f'{D}{case}_compare.jpg'], check=True)
+# ---- coloured paper strips (sky blue, lavender cloud): full chain matte → Lanczos upscale, scored by the validator itself
+def paper(kind, seed=5):
+    rnd = np.random.default_rng(seed)
+    if kind == 'sky': w, h, col = 1792, 768, np.array([191, 217, 230.])
+    else: w, h, col = 1344, 832, np.array([158, 152, 170.])
+    yy, xx = np.mgrid[0:h, 0:w]
+    bg = np.stack([np.zeros((h, w)) + rnd.normal(0, 3, (h, w)), 165 + 20 * (xx / w) + rnd.normal(0, 3, (h, w)), 62 + rnd.normal(0, 3, (h, w))], -1)
+    if kind == 'sky':   # a long strip, straight-ish top, torn bottom
+        top = h * .2 + 4 * np.sin(xx / 90); bot = h * .78 + 18 * np.sin(xx / 37) + 9 * np.sin(xx / 11 + 1) + 5 * np.sin(xx / 4.3)
+        d_in = np.minimum(yy - top, bot - yy); d_in = np.minimum(d_in, np.minimum(xx - 40, w - 40 - xx))
+    else:               # two overlapping bumpy discs
+        def blob(cx, cy, rx, ry):
+            a = np.arctan2((yy - cy) / ry, (xx - cx) / rx); r = np.hypot((yy - cy) / ry, (xx - cx) / rx)
+            return (1 + .07 * np.sin(a * 7) + .03 * np.sin(a * 23) - r) * min(rx, ry)
+        d_in = np.maximum(blob(w * .42, h * .52, w * .3, h * .3), blob(w * .62, h * .45, w * .22, h * .26))
+    cov = np.clip(d_in + .5, 0, 1)                                                  # antialiased edge
+    # real paper colour varies: lighting and a slight cyan cast in the sky blue (G sometimes ≈ B)
+    tex = col + rnd.normal(0, 5, (h, w, 1)) + (np.array([-6, 6, 0.]) if kind == 'sky' else 0) * ((xx / w)[..., None] > .6)
+    sh = np.clip(1 - np.clip(-d_in - 6, 0, None) / 18, 0, 1) * (d_in < 0) * (yy > h * .5)   # a soft shadow cast on the green
+    bg = bg * (1 - .5 * sh[..., None])
+    img = bg * (1 - cov[..., None]) + tex * cov[..., None]
+    spill = np.clip(1 - np.abs(d_in) / 5, 0, 1) * (d_in > 0)                        # green bleeding 5 px into the paper's edge
+    img[..., 1] += 45 * spill; img[..., 0] -= 30 * spill
+    im = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)); dr = ImageDraw.Draw(im)
+    for k in range(70 if kind == 'sky' else 40):                                    # torn fibres
+        x = rnd.uniform(60, w - 60)
+        if kind == 'sky': y0 = h * .78 + 18 * np.sin(x / 37) + 9 * np.sin(x / 11 + 1) + 5 * np.sin(x / 4.3) - 2; L = rnd.uniform(5, 13); dr.line([(x, y0), (x + rnd.uniform(-3, 3), y0 + L)], fill=(246, 242, 232), width=1)
+    for k in range(200):                                                            # background specks
+        x, y = rnd.uniform(0, w), rnd.uniform(0, h); s = rnd.uniform(.6, 2)
+        dr.ellipse([x - s, y - s, x + s, y + s], fill=(120, 122, 118) if k % 2 else (70, 130, 80))
+    return im
+
+def chain(script, raw, out, width):
+    run(script, raw, out + '.m.png'); subprocess.run([PY, script, 'fit', '--in', out + '.m.png', '--out', out, '--width', str(width)], check=True)
+
+def vq(path):   # the validator's own matte-quality numbers (tools/lib/manifest.mjs)
+    r = subprocess.run(['node', '-e', f"import('./tools/lib/manifest.mjs').then(m => console.log(JSON.stringify(m.readPng('{path}').quality)))"], capture_output=True, text=True)
+    return json.loads(r.stdout)
+
+for kind, width in (('sky', 2600), ('cloud', 900)):
+    rp = f'{D}{kind}_raw.png'; paper(kind).save(rp); rows, labels = [], []
+    if OLD:
+        chain(OLD, rp, f'{D}{kind}_old.png', width); print(f'{kind} BEFORE: {vq(f"{D}{kind}_old.png")}'); rows.append(f'{D}{kind}_old.png'); labels.append('before')
+    chain('tools/comfy/imageops.py', rp, f'{D}{kind}_new.png', width); q = vq(f'{D}{kind}_new.png'); print(f'{kind} AFTER:  {q}')
+    rows.append(f'{D}{kind}_new.png'); labels.append('after')
+    for name, p in [('validator: < 5 detached specks', q['specks'] < 5 and q['speckArea'] <= .001), ('validator: green edge < 5 %', q['greenEdge'] < .05),
+                    ('validator: green artwork < 1 %', q['greenVisible'] < .01), ('validator: dark rim < 6 %', q['darkRim'] < .06)]:
+        print(f'  {"PASS" if p else "FAIL"}  {name}'); ok &= bool(p)
+    subprocess.run([PY, 'tools/comfy/imageops.py', 'compare', '--in', *rows, '--labels', ','.join(labels), '--out', f'{D}{kind}_compare.jpg'], check=True)
 print('all passed' if ok else 'FAILED'); sys.exit(0 if ok else 1)
