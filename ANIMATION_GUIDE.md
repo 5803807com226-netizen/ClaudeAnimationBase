@@ -39,6 +39,7 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 - **Clawd's reactions are painted marks, never letters**: `!`, `?`, zzz, sweat, hearts, a bulb, a rain cloud. Use the emotes (see the reference).
 - **A sign that repeats the story is the classic failure.** If Clawd holds a sign saying "I'm lost", the shot has failed. Show Clawd being lost: looking left, then right, the map upside down, a sweat drop.
 - If the prompt truly needs a word (a name, a shop sign that is the joke), use `letter()`. Paint it into the scene, keep it to one or two words and use it once.
+- **Typography mode is the exception.** A story whose config sets `PROJECT.mode = 'typography'` is about the words (kinetic text, titles, numbers) and uses [src/type/](src/type/) (see "Kinetic typography"). The rule above still holds for every illustration scene. Text is never baked into generated or painted images: it is always live text.
 
 ### 3. Something happens in every scene
 
@@ -223,6 +224,7 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
 | `src/presets/` | motion presets: `preset()`, the six presets, `presetShot()` (shots as data), the gallery loops |
 | `story.html`, `src/stories/` | data-driven stories on their own canvas size (e.g. vertical), see "Stories" |
+| `src/type/` | typography mode: Thai-safe text and kinetic presets, see "Kinetic typography" |
 | `src/scenes/preset_example.js` | a 9-second story built only from presets (`?loop=example`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
@@ -363,6 +365,33 @@ playStage({
 ```
 
 Examples, same systems: [phase1_demo](src/stories/phase1_demo/) (Pip, code-painted, meadow) and [phase2_lumo](src/stories/phase2_lumo/) (Lumo, **PNG layers**, snow forest). Lumo's layers come from `tools/make_lumo_layers.py` as stand-ins; an illustrator's PNGs with the same names, sizes and anchors (listed in [lumo.js](src/characters/lumo.js)) replace them as they are. Expression layers are picked per frame from the pose (`img.pick`). PNG characters preview in a browser only over http (`npx http-server`, then open `story.html?story=phase2_lumo`); `render.mjs` loads them directly.
+
+### Kinetic typography (Phase 3A)
+
+Typography mode draws text with the browser's own text engine on a 2D layer composited over the frame, because Thai needs real shaping: stacked vowels and tone marks, Sara Am, marks above and below the consonant. p5.brush can't do this. [src/type/text.js](src/type/text.js) holds the text toolkit:
+- **fonts:** Kanit (display) and Sarabun (body) are bundled in `assets/fonts`, SIL OFL; `registerFonts()` adds others, and each role has a fallback list (Leelawadee UI, Noto Sans Thai, Tahoma, Loma);
+- **segmentation:** grapheme clusters and Thai word segmentation, both from `Intl.Segmenter`;
+- **layout:** word-based line wrapping (Thai has no spaces between words);
+- **timing:** `wordTimes()` derives each word's moment from a narration span.
+
+Units are always whole grapheme clusters, so a reveal never shows a mark without its consonant. `node tools/test_thai_segmentation.mjs` checks this.
+
+[src/type/kinetic.js](src/type/kinetic.js) is `playType(spec)`, a typography scene built from data. Narration timestamps are the input: `say: i` takes a line's text and times. Positions are fractions of the frame, and sizes are px at a 1080 short side, so the same data renders at 9:16 and 16:9. `background: null` leaves the canvas behind the text unpainted, ready for transparent overlays.
+
+| preset | does | options |
+|---|---|---|
+| `pop` | words (or characters, `by: 'char'`) drop in, overshoot and wobble to rest, staggered | `stagger`, `unitDur` |
+| `slide` | words slide out from behind a mask edge; an optional accent bar sweeps first | `from`, `bar`, `stagger`, `ease` |
+| `impact` | the text slams in from large and hits: squash, shake, burst lines, a ring | `from`, `dur`, `burst` |
+| `highlight` | each word gets a marker swipe and a small pop at its moment | `words` (times), `keep`, `style.highlight`, `style.highlightText` |
+| `reveal` | grapheme by grapheme, paced by the narration's word timing | `cursor`, `unitDur` |
+| `counter` | a number counts from → to, with locale formatting (`digits: 'thai'` for Thai digits), prefix and suffix, a landing pop | `from`, `to`, `dur`, `decimals`, `prefix`, `suffix`, `suffixStyle`, `flash` |
+
+Every item also takes `out: { at, dur, kind: 'fade' | 'up' | 'scale' }`. Demo: `story.html?story=type_demo` (9:16), and `type_demo_wide` (16:9, the same story file).
+
+### Known issues
+
+- **phase2_lumo:** a faint grey smear appears beside Lumo right after the big landing (the landing trail). It is recorded and not yet fixed.
 
 ### Stories (data-driven, any canvas size)
 
