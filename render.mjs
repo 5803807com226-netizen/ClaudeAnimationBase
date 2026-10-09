@@ -39,8 +39,36 @@ const CHROME = CHROMES.find(p => p && existsSync(p));
 if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
 const fps = +(args.fps || 24), FRAMES_DIR = 'out/frames';
 const run = (cmd, a) => new Promise((ok, bad) => { const p = spawn(cmd, a, { stdio: 'inherit' }); p.on('close', c => c ? bad(new Error(cmd + ' exited ' + c)) : ok()); });
-const times = s => String(s).split(',').map(Number);
-const span = s => String(s).split(':').map(Number);
+// Option parsing, validated: a bad value stops with a clear message instead of reaching the page as NaN (puppeteer sends
+// NaN to the page as null, which used to fail deep inside renderSheet).
+const fail = msg => { console.error(`render.mjs: ${msg}\n  (see the usage notes at the top of render.mjs)`); process.exit(1); };
+const num = (name, v, { min = -Infinity, int = false } = {}) => {
+  const n = Number(v);
+  if (v === true || String(v).trim() === '' || !Number.isFinite(n)) fail(`--${name} needs a number, got "${v === true ? '' : v}"`);
+  if (n < min) fail(`--${name} must be at least ${min}, got ${n}`);
+  if (int && !Number.isInteger(n)) fail(`--${name} must be a whole number, got ${n}`);
+  return n;
+};
+// --sheet / --stills: times in seconds separated by commas (0.5,1,2.4). A range a:b is --strip's (every frame in it).
+const times = (s, name = 'sheet') => {
+  if (s === true) fail(`--${name} needs a value, e.g. --${name}=0.5,1,2.4`);
+  if (String(s).includes(':')) fail(`--${name}=${s}: --${name} takes times separated by commas, e.g. --${name}=0,1.5,3,4.5. ` +
+    `For every frame between two times use --strip=${String(s).replace(/,/g, ':')} (and --range=a:b for --clip / --frames / --png).`);
+  return String(s).split(',').map(v => num(name, v, { min: 0 }));
+};
+// --strip / --range: a:b in seconds, a <= b
+const span = (s, name = 'strip') => {
+  const parts = String(s === true ? '' : s).split(':');
+  if (parts.length !== 2) fail(`--${name} takes a range start:end in seconds, e.g. --${name}=0:4.9583; got "${s === true ? '' : s}"`);
+  const [a, b] = parts.map(v => num(name, v, { min: 0 }));
+  if (b < a) fail(`--${name}=${s}: the end (${b}) is before the start (${a})`);
+  return [a, b];
+};
+const box4 = (s, name) => { const v = String(s === true ? '' : s).split(',').map(x => num(name, x)); if (v.length !== 4) fail(`--${name} takes x,y,w,h (four numbers), got "${s}"`); if (v[2] <= 0 || v[3] <= 0) fail(`--${name}: w and h must be positive`); return v; };
+if (args.cols != null) num('cols', args.cols, { min: 1, int: true });
+if (args.w != null) num('w', args.w, { min: 16, int: true });
+if (args.workers != null) num('workers', args.workers, { min: 1, int: true });
+if (args.fps != null) num('fps', args.fps, { min: 1 });
 // comma-separated fields, keeping commas inside parentheses ('PLK.MX(1.38),PLK.WL,500,300'); numbers stay numbers
 const fields = s => { const out = []; let d = 0, cur = ''; for (const ch of String(s)) { if (ch === ',' && !d) { out.push(cur); cur = ''; continue; } d += ch === '(' ? 1 : ch === ')' ? -1 : 0; cur += ch; } out.push(cur); return out.map(v => isNaN(+v) ? v : +v); };
 
@@ -91,16 +119,18 @@ const lengthOf = page => page.evaluate(() => window.LOOP ? window.LOOP.len : DUR
 if (args.sheet || args.strip) {
   const page = await openPage(), out = args.out || 'out/sheet.jpg'; mkdirSync(dirname(out), { recursive: true });
   let ts;
-  if (args.strip) { const [a, b] = span(args.strip); ts = []; for (let i = Math.round(a * fps); i <= Math.round(b * fps); i++) ts.push(i / fps); }
-  else ts = times(args.sheet);
-  const crop = args.crop ? times(args.crop) : null, at = args['crop-at'] ? fields(args['crop-at']) : null;
+  if (args.strip) { const [a, b] = span(args.strip, 'strip'); ts = []; for (let i = Math.round(a * fps); i <= Math.round(b * fps); i++) ts.push(i / fps); }
+  else ts = times(args.sheet, 'sheet');
+  const len = await lengthOf(page), late = ts.filter(t => t > len + 1e-6);
+  if (late.length) console.warn(`render.mjs: ${late.join(', ')} s is past the end of this ${args.loop ? 'loop' : 'video'} (${len} s); those frames hold its last state`);
+  const crop = args.crop ? box4(args.crop, 'crop') : null, at = args['crop-at'] ? fields(args['crop-at']) : null;
   const { url, ms } = await page.evaluate((ts, c, w, crop, at) => window.renderSheet(ts, c, w, crop, at), ts, +(args.cols || (args.strip ? 6 : 3)), +(args.w || (args.strip ? 320 : 640)), crop, at);
   writeFileSync(out, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'));
   console.log(`${out}  (${ts.length} frames)  ms/frame: ${ms.join(' ')}`);
 } else if (args.stills) {
   const page = await openPage(), out = args.out || 'out/stills'; mkdirSync(out, { recursive: true });
   console.log('GPU:', await page.evaluate(() => window.gpuInfo()));
-  for (const s of times(args.stills)) {
+  for (const s of times(args.stills, 'stills')) {
     const t0 = Date.now(), buf = await frameOf(page, s, 'image/png');
     const f = `${out}/t${s.toFixed(2).replace('.', '_')}.png`; writeFileSync(f, buf);
     console.log(`${f}  ${Date.now() - t0} ms`);
@@ -108,7 +138,7 @@ if (args.sheet || args.strip) {
 } else if (args.png) {
   // PNG sequence (for GIFs): a loop's full cycle (frame n equals frame 0, so it isn't rendered), or --range=a:b.
   const probe = await openPage(), len = await lengthOf(probe); await probe.close();
-  const [a, b] = args.range ? span(args.range) : [0, len], n = Math.round((b - a) * fps);
+  const [a, b] = args.range ? span(args.range, 'range') : [0, len], n = Math.round((b - a) * fps);
   const out = args.out || `out/${args.loop ? 'loop_' + args.loop : 'png'}`, workers = +(args.workers || 3); mkdirSync(out, { recursive: true });
   let next = 0; const start = Date.now();
   await Promise.all(Array.from({ length: workers }, async (_, w) => {
@@ -119,7 +149,7 @@ if (args.sheet || args.strip) {
 } else if (args.frames) {
   // Parallel and resumable: each worker pulls the next missing frame; files are written atomically.
   const probe = await openPage(), len = await lengthOf(probe); await probe.close();
-  const [a, b] = args.range ? span(args.range) : [0, len], workers = +(args.workers || 4);
+  const [a, b] = args.range ? span(args.range, 'range') : [0, len], workers = +(args.workers || 4);
   mkdirSync(FRAMES_DIR, { recursive: true });
   const first = Math.round(a * fps), last = Math.min(Math.ceil(len * fps) - 1, Math.round(b * fps) - 1);
   const todo = []; for (let i = first; i <= last; i++) { const f = `${FRAMES_DIR}/f${String(i).padStart(5, '0')}.jpg`; if (!existsSync(f) || statSync(f).size < 1000) todo.push(i); }
@@ -139,7 +169,7 @@ if (args.sheet || args.strip) {
   }));
 } else if (args.clip) {
   const page = await openPage(), len = await lengthOf(page);
-  const [a, b] = args.range ? span(args.range) : typeof args.clip === 'string' ? span(args.clip) : [0, len];
+  const [a, b] = args.range ? span(args.range, 'range') : typeof args.clip === 'string' ? span(args.clip, 'clip') : [0, len];
   const audio = args.audio || await page.evaluate(() => PROJECT.audio || '');
   const out = args.out || 'out/clip.mp4'; mkdirSync(dirname(out), { recursive: true });
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
