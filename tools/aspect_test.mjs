@@ -24,6 +24,9 @@ const TARGETS = [
   { name: 'look_infographic', story: 'look_infographic', times: [2.4, .6, 3.6] },
   { name: 'collage_test', story: 'collage_test', times: [1.8, .5, 2.95] },
   { name: 'pilot_collage', story: 'pilot_collage', times: [2.4, .6, 1.3, 2.95] },
+  // collage motion kit (COLLAGE_MOTIONS, reel transitions, type label / stamp): the collage_reel story is its fixture
+  // (artwork: --assets=out/mock_assets/collage_reel/ after gen_assets --mock --out=… in the cloud; the real art locally)
+  { name: 'collage_reel', story: 'collage_reel', times: [1.9, 3.5, 5.6, 7.75, 9.8, 13.6] },
   { name: 'story_pilot_v4', story: 'story_pilot_v4', times: [0, 1.5, 2.8, 4.9, 8.6, 9.6, 12, 14.96] },
   // map capabilities (mapView, mapBase, routeDraw, mapMarker, mapLabel): the compiled Magellan prototype plan is their
   // fixture. Compile first: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_proto.json --allow-experimental

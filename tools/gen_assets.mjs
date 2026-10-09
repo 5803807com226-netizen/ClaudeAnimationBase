@@ -61,7 +61,7 @@ function rawKeyFor(g, S, L, attempt) {
   const seed = seedBase + attempt * 1009, [w, h] = g.size || [1024, 1024];
   const eng = args.mock ? { workflow: 'mock' } : ENGINES?.engines[g.engine];
   if (!eng) throw new Error(`no engine "${g.engine}" in the engine config`);
-  const wfHash = args.mock ? 'mock' : sha(readFileSync(eng.workflow)), bad = args.mock && mockBad.has(L.id) && attempt === 0;
+  const wfHash = args.mock ? 'mock/4' : sha(readFileSync(eng.workflow)), bad = args.mock && mockBad.has(L.id) && attempt === 0;
   const key = sha('raw', g.engine, wfHash, positive, negative, seed, w, h, g.ref || '', bad ? 'bad' : '');
   return { key, seed, w, h, eng, bad, positive, negative, out: `${CACHE}/${key}.raw.png` };
 }
@@ -83,13 +83,13 @@ async function generateRaw(g, S, L, attempt, label) {   // → path of the raw i
   if (args.dry) return { ...meta, path: out, dry: true };
   if (args.offline) throw new Error(`--offline: no cached source image for this prompt and seed (key ${key}); run without --offline to generate it`);
   console.log(`    ${label}: generating (${args.mock ? 'mock' : g.engine}, seed ${seed}, ${w}×${h})`);
-  if (args.mock) py('mock', '--out', out, '--prompt', g.prompt, '--size', `${w},${h}`, '--seed', String(seed), ...(bad ? ['--bad'] : []));
+  if (args.mock) py('mock', '--out', out, '--prompt', g.prompt, '--size', `${w},${h}`, '--seed', String(seed), '--label', L.id, ...(bad ? ['--bad'] : []));
   else writeFileSync(out, await comfyGenerate({ server: ENGINES.server, ...eng }, { positive, negative, seed, width: w, height: h, ref: g.ref ? readFileSync(g.ref) : null }, { timeout: +(args.timeout || 600) }));
   return { ...meta, path: out, cached: false };
 }
 // raw → finished layer: remove the background (or not), crop with a margin, size to what the closest shot needs
 function finish(raw, g, L, S, P, tol) {
-  const ns = neededSize(L, S, P), need = Math.ceil(ns.px * 1.04), dimArg = ns.dim === 'h' ? '--height' : '--width', key = sha('fin', OPS, raw.key, g.matte || 'chroma', g.margin ?? .04, tol, g.unshadow ?? true, ns.dim, need, L.fill ? g.size : '');
+  const ns = (!L._src && SHARED_NEED[(S.assets || '') + L.file]) || neededSize(L, S, P), need = Math.ceil(ns.px * 1.04), dimArg = ns.dim === 'h' ? '--height' : '--width', key = sha('fin', OPS, raw.key, g.matte || 'chroma', g.margin ?? .04, tol, g.unshadow ?? true, ns.dim, need, L.fill ? g.size : '');
   const out = `${CACHE}/${key}.png`, repFile = `${CACHE}/${key}.report.json`;
   if (existsSync(out)) return { path: out, report: existsSync(repFile) ? JSON.parse(readFileSync(repFile, 'utf8')) : {} };
   let report = {};
@@ -103,17 +103,28 @@ function finish(raw, g, L, S, P, tol) {
 
 const { project: P, scenes } = loadStory(args.story);
 const list = Object.entries(scenes).filter(([k]) => !args.scene || k === args.scene);
+const dirOf = (sid, S0) => (args.out || (args.mock ? `out/mock_assets/${args.story}/${sid}/` : S0.assets)).replace(/\/?$/, '/');
+// A file used by several layers (in any scene of the story, e.g. one tree planted five times) is made ONCE, by the first
+// layer that has a gen block, at the size its most demanding use needs; the other uses are only validated.
+const SHARED_NEED = {}, made = {};
+for (const [sid, S0] of Object.entries(scenes)) for (const L of S0.layers) {
+  const f = dirOf(sid, S0) + L.file, n = neededSize(L, { ...S0, assets: dirOf(sid, S0) }, P), cur = SHARED_NEED[f];
+  if (!cur || (cur.dim === n.dim && n.px > cur.px)) SHARED_NEED[f] = cur && cur.dim !== n.dim ? cur : n;
+}
 let failed = 0;
 for (const [sid, S0] of list) {
-  const dir = (args.out || (args.mock ? `out/mock_assets/${args.story}/${sid}/` : S0.assets)).replace(/\/?$/, '/'), S = { ...S0, assets: dir };
+  const dir = dirOf(sid, S0), S = { ...S0, assets: dir };
   mkdirSync(dir, { recursive: true });
   const recFile = dir + '_generated.json', rec = existsSync(recFile) ? JSON.parse(readFileSync(recFile, 'utf8')) : {};
   console.log(`scene ${sid} → ${dir}${args.mock ? '  (MOCK stand-ins, not artwork)' : ''}${args.dry ? '  (dry run)' : ''}`);
-  const byId = Object.fromEntries(S.layers.map(L => [L.id, L])), order = [...S.layers].sort((a, b) => (a.gen?.engine === 'derive') - (b.gen?.engine === 'derive'));
+  const byId = Object.fromEntries(S.layers.map(L => [L.id, L])), order = [...S.layers].sort((a, b) => (a.gen?.engine === 'derive') - (b.gen?.engine === 'derive') || !a.gen - !b.gen);
   const rows = [];
   for (const L of order) {
     if (only && !only.includes(L.id)) continue;
     const g = L.gen, f = dir + L.file, row = { id: L.id, file: L.file, status: '', how: '' }; rows.push(row);
+    if (made[f] && args.dry) { row.how = `shared (made for ${made[f]})`; row.status = 'PLAN'; continue; }
+    if (made[f]) { const c = checkLayer(L, S, P); row.how = `shared (made for ${made[f]})`; row.status = c.fails.length ? 'FAIL' : 'PASS'; row.msg = c.fails[0]; if (c.fails.length) failed++; continue; }
+    if (g && g.engine !== 'derive') made[f] = L.id;
     const manual = !g || g.engine === 'manual' || (existsSync(f) && !args.force && !generatedBefore(L, g, rec, f));
     if (!manual && existsSync(f) && !rec[L.id]) console.log(`    ${L.id}: adopting the generated file (it matches a cached pipeline output; its record was missing)`);
     if (manual) { const c = checkLayer(L, S, P); row.how = existsSync(f) ? 'manual file' : 'manual (missing)'; row.status = c.fails.length ? 'FAIL' : 'PASS'; row.msg = c.fails[0]; continue; }
@@ -132,7 +143,7 @@ for (const [sid, S0] of list) {
           const base = dir + byId[g.from].file; if (!existsSync(base)) throw new Error(`base layer ${g.from} is not ready`);
           const srcRaw = g.source ? await generateRaw(g.source, S, { id: L.id + '_src' }, attempt, L.id) : null;
           const src = srcRaw ? (g.op === 'region' ? srcRaw.path   // region: the raw edit itself, on the same framing as the base
-            : finish(srcRaw, g.source, { ...L, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1).path) : null;
+            : finish(srcRaw, g.source, { ...L, _src: true, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1).path) : null;
           const key = sha('derive', g.op, readFileSync(base), src ? readFileSync(src) : '', g.colors || '', g.mirror || '', g.rect || '', g.feather ?? ''), out = `${CACHE}/${key}.png`;
           if (!existsSync(out)) {
             if (g.op === 'screen_glow') py('screen_glow', '--base', base, '--out', out, ...(g.colors ? ['--colors', g.colors.join(',')] : []));

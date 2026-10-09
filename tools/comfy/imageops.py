@@ -270,6 +270,53 @@ def mock(a):
         for i in range(n):
             t = i / n * 2 * np.pi; r = 1 + rnd.uniform(-j, j); pts.append((cx + np.cos(t) * rx * r, cy + np.sin(t) * ry * r))
         d.polygon(pts, fill=col)
+    p0, p = p, p.split(',')[0]   # the subject: the first clause (style words such as 'tangerine orange accents' come later)
+    def tri(pts, col): d.polygon([(cx + x * w, cy + y * h) for x, y in pts], fill=col)
+    def box(x0, y0, x1, y1, col, r=0): d.rounded_rectangle([cx + x0 * w, cy + y0 * h, cx + x1 * w, cy + y1 * h], int(r * min(w, h)), fill=col)
+    if 'smartphone' in p:
+        d.rounded_rectangle([cx - w * .22, h * .18, cx + w * .26, h * .99], 60, fill=(222, 178, 150))           # the hand
+        d.rounded_rectangle([cx - w * .2, h * .08, cx + w * .2, h * .74], 46, fill=(28, 28, 32))               # the phone
+        d.rounded_rectangle([cx - w * .17, h * .11, cx + w * .17, h * .71], 30, fill=(18, 19, 24))             # its dark screen
+    elif 'tangerine tree' in p or 'fruit tree' in p:
+        box(-.03, 0, .03, .45, (120, 100, 85)); blob(w * .42, h * .3, (30, 84, 96), j=.12); cy0 = cy
+        for k in range(14): x, y = rnd.uniform(-.33, .33) * w, rnd.uniform(-.24, .2) * h; d.ellipse([cx + x - w * .03, cy0 + y - w * .03, cx + x + w * .03, cy0 + y + w * .03], fill=(236, 110, 30))
+    elif 'tangerine fruit' in p:
+        blob(w * .36, h * .36, (236, 110, 30), j=.015); tri([(.0, -.36), (.18, -.46), (.06, -.33)], (30, 88, 100))
+    elif 'globe' in p:
+        box(-.2, .36, .2, .42, (120, 120, 125), .02); box(-.02, .26, .02, .38, (120, 120, 125))
+        blob(w * .3, h * .3, (205, 214, 214), j=.0); cyy = cy
+        for k in range(5): x, y = rnd.uniform(-.18, .18) * w, rnd.uniform(-.18, .14) * h; r = rnd.uniform(.04, .09) * w; d.ellipse([cx + x - r, cyy + y - r * .7, cx + x + r, cyy + y + r * .7], fill=[(222, 80, 40), (110, 190, 170), (232, 130, 50)][k % 3])
+    elif 'human hand' in p:
+        box(-.16, -.05, .16, .5, (200, 200, 196), .08)
+        for k in range(4): box(-.15 + k * .08, -.42 + abs(k - 1.5) * .04, -.09 + k * .08, .0, (200, 200, 196), .03)
+        box(.12, -.12, .3, -.02, (200, 200, 196), .04)
+    elif 'tree' in p:
+        box(-.03, .05, .03, .48, (110, 96, 84)); blob(w * .38, h * .3, (236, 160, 186) if 'blossom' in p else (30, 84, 96), j=.14)
+    elif 'truck' in p or 'car ' in p or 'vehicle' in p:
+        box(-.4, -.2, .38, .18, (200, 46, 40), .06); box(-.3, -.32, .2, -.18, (210, 70, 60), .04)
+        for x in (-.24, .22): d.ellipse([cx + (x - .08) * w, cy + .1 * h, cx + (x + .08) * w, cy + .1 * h + .16 * w], fill=(40, 40, 44))
+    elif 'airplane' in p:
+        box(-.42, -.06, .42, .06, (225, 225, 225), .06); tri([(-.08, 0), (.08, 0), (-.18, .32)], (200, 200, 205)); tri([(-.08, 0), (.08, 0), (-.18, -.32)], (200, 200, 205)); tri([(.3, 0), (.42, 0), (.42, -.2)], (232, 110, 40))
+    elif 'road sign' in p or 'sign board' in p:
+        box(-.03, -.05, .03, .48, (130, 130, 130)); box(-.4, -.42, .4, -.02, (30, 110, 130), .03)
+    elif 'gate' in p or 'pagoda' in p or 'chedi' in p or 'temple' in p or 'house' in p or 'building' in p:
+        col = (196, 120, 90) if 'brick' in p else (215, 205, 190); box(-.38, -.1, .38, .44, col, .01)
+        tri([(-.44, -.08), (.44, -.08), (0, -.46)], (150, 60, 50) if 'temple' in p or 'house' in p else (200, 170, 90))
+        for k in range(3): box(-.26 + k * .2, .12, -.16 + k * .2, .44, (90, 80, 76))
+    elif 'person' in p or 'people' in p or 'walking' in p:
+        d.ellipse([cx - w * .1, h * .06, cx + w * .1, h * .06 + w * .2], fill=(60, 60, 64)); box(-.17, -.3, .17, .12, (232, 110, 40) if 'orange' in p else (70, 70, 76), .06); box(-.13, .1, -.02, .46, (50, 50, 56)); box(.02, .1, .13, .46, (50, 50, 56))
+    elif 'ribbon' in p or 'winding road' in p:
+        for k in range(26): u = k / 25; x = .25 * np.sin(u * 3.2) * w; y = (.44 - .88 * u) * h; r = (.16 - .1 * u) * w; d.ellipse([cx + x - r, cy + y - r * .5, cx + x + r, cy + y + r * .5], fill=(232, 84, 30))
+    elif 'hill' in p or 'ground' in p:
+        d.ellipse([-w * .2, h * .18, w * 1.2, h * 1.6], fill=(176, 218, 214) if 'mint' in p else (242, 240, 234))
+    elif 'tape' in p or 'mint paper' in p:
+        box(-.46, -.16, .46, .16, (156, 214, 200), .01)
+    if any(k in p for k in ('tangerine fruit', 'tangerine tree', 'globe', 'human hand', 'tree', 'truck', 'car ', 'vehicle', 'airplane', 'road sign', 'sign board', 'gate', 'pagoda', 'chedi', 'temple', 'house', 'building', 'person', 'people', 'walking', 'ribbon', 'winding road', 'hill', 'ground', 'tape', 'mint paper')):
+        from PIL import ImageFont   # a clear label: this is a stand-in, never artwork
+        lab = f'MOCK {a.label}' if a.label else 'MOCK'; f = ImageFont.load_default(size=max(14, min(w, h) // 12)); tb = d.textbbox((0, 0), lab, font=f)
+        d.rectangle([cx - (tb[2] - tb[0]) / 2 - 8, cy - 4, cx + (tb[2] - tb[0]) / 2 + 8, cy + tb[3] - tb[1] + 12], fill=(30, 30, 30)); d.text((cx - (tb[2] - tb[0]) / 2, cy), lab, font=f, fill=(255, 255, 255))
+        img.save(a.out); return
+    p = p0
     if 'smartphone' in p:
         d.rounded_rectangle([cx - w * .22, h * .18, cx + w * .26, h * .99], 60, fill=(222, 178, 150))           # the hand
         d.rounded_rectangle([cx - w * .2, h * .08, cx + w * .2, h * .74], 46, fill=(28, 28, 32))               # the phone
@@ -321,6 +368,6 @@ if __name__ == '__main__':
     s = sub.add_parser('screen_glow'); s.add_argument('--base', required=True); s.add_argument('--out', required=True); s.add_argument('--colors', default='#FFF4DE,#F4E6CC')
     s = sub.add_parser('beside'); s.add_argument('--base', required=True); s.add_argument('--source', required=True); s.add_argument('--out', required=True); s.add_argument('--mirror', action='store_true')
     s = sub.add_parser('region'); s.add_argument('--base', required=True); s.add_argument('--source', required=True); s.add_argument('--out', required=True); s.add_argument('--rect', required=True); s.add_argument('--feather', type=float, default=.03)
-    s = sub.add_parser('mock'); s.add_argument('--out', required=True); s.add_argument('--prompt', required=True); s.add_argument('--size', required=True); s.add_argument('--seed', type=int, default=0); s.add_argument('--bad', action='store_true')
+    s = sub.add_parser('mock'); s.add_argument('--out', required=True); s.add_argument('--prompt', required=True); s.add_argument('--size', required=True); s.add_argument('--seed', type=int, default=0); s.add_argument('--bad', action='store_true'); s.add_argument('--label', default='')
     s = sub.add_parser('compare'); s.add_argument('--in', dest='inp', nargs='+', required=True); s.add_argument('--labels'); s.add_argument('--out', required=True); s.add_argument('--cell', type=int, default=300)
     a = ap.parse_args(); {'compare': compare, 'matte': matte, 'fit': fit, 'screen_glow': screen_glow, 'beside': beside, 'region': region, 'mock': mock}[a.cmd](a)

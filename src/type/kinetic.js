@@ -111,6 +111,49 @@ const TYPE_PRESETS = {
     });
     if (it.cursor && cur && t < it.end + .4 && Math.floor(t * 4) % 2 === 0) { c.save(); c.globalAlpha = ex.alpha; c.fillStyle = it.cursor; c.fillRect(cur[0] + 4 * TS(), cur[1] - L.size * .45, 6 * TS(), L.size * .9); c.restore(); }
   },
+  // Taped Label: each phrase (text between spaces; by: 'line' for whole lines, 'word' for every word) sits on its own strip of dark label tape (bar colour) that unrolls
+  // from the left, uncovering its text; strips tilt slightly and, held on twos (rate), boil like stop-motion paper
+  label(t, it, c, L, X, Y, ex) {
+    const st = it.style, stag = it.stagger ?? .12, d = it.unitDur ?? .35, padX = L.size * (it.padX ?? .28), padY = L.size * (it.padY ?? .12), rate = it.rate ?? 12;
+    const boil = it.boil ?? 1, n = Math.floor(t * rate), strips = [];
+    for (const l of L.lines) {
+      if (it.by === 'line') { strips.push({ text: l.units.map(u => u.text).join(''), x: X, y: Y + l.y, w: l.w }); continue; }
+      let g = null; const flush = () => { if (g) strips.push({ text: g.text, x: X - l.w / 2 + (g.x0 + g.x1) / 2, y: Y + l.y, w: g.x1 - g.x0 }); g = null; };
+      for (const u of l.units) {   // Thai has no spaces between words: phrases (space-separated) keep words whole on one strip
+        if (u.space) { flush(); continue; }
+        if (!g || it.by === 'word') { flush(); g = { text: '', x0: u.x, x1: u.x }; }
+        g.text += u.text; g.x1 = u.x + u.w;
+      }
+      flush();
+    }
+    strips.forEach((sp, i) => {
+      const s0 = it.at + i * stag, k = easeOut(seg(t, s0, s0 + d)); if (t < s0) return;
+      const j = (q) => (hash(n * 3.7 + i * 11.3 + q) - .5) * 2 * boil, rot = ((hash(i * 5.1 + it.at) - .5) * 2 * (it.tilt ?? 1.6) + .35 * j(1)) * Math.PI / 180;
+      const bw = sp.w + padX * 2, bh = L.size * .92 + padY * 2, x0 = -bw / 2;
+      c.save(); c.globalAlpha = ex.alpha; c.translate(sp.x + j(2) * 1.2 * TS(), sp.y + (ex.dy || 0) + j(3) * 1.2 * TS()); c.rotate(rot); c.scale(ex.s, ex.s);
+      if (it.shadow !== false) { c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 10 * TS(); c.shadowOffsetY = 5 * TS(); }
+      c.fillStyle = it.bar || st.highlight || '#2E2E30'; c.beginPath();   // the tape: square ends with a slightly ragged cut on the right
+      c.moveTo(x0, -bh / 2); c.lineTo(x0 + bw * k, -bh / 2); for (let q = 1; q <= 4; q++) c.lineTo(x0 + bw * k - (q % 2) * 5 * TS(), -bh / 2 + bh * q / 4); c.lineTo(x0, bh / 2); c.closePath(); c.fill();
+      c.shadowColor = 'transparent'; c.beginPath(); c.rect(x0, -bh, bw * k, bh * 2); c.clip();
+      drawText(c, sp.text, 0, L.size * .02, st, { color: st.color || '#F7F3EA' });
+      c.restore();
+    });
+  },
+  // Stop-motion Stamp: big letters land one by one (each character, grapheme-safe), each dropped in from slightly larger
+  // with no tween in between (on twos), a small tilt each, and a held-frame boil so the word never looks digital
+  stamp(t, it, c, L, X, Y, ex) {
+    const st = it.style, stag = it.stagger ?? .07, rate = it.rate ?? 12, n = Math.floor(t * rate), boil = it.boil ?? 1; let i = 0;
+    for (const l of L.lines) for (const u of l.units) {
+      if (u.space) continue;
+      u.g.forEach((g, j) => {
+        const s0 = it.at + i * stag, idx = i++; if (t < s0) return;
+        const f = Math.floor((t - s0) * rate), sc = f === 0 ? 1.35 : f === 1 ? .94 : 1, gw = (u.gx[j + 1] ?? u.w) - u.gx[j];
+        const jit = q => (hash(n * 2.3 + idx * 9.7 + q) - .5) * 2 * boil;
+        const rot = ((hash(idx * 4.1 + it.at) - .5) * 2 * (it.tilt ?? 3) + jit(1) * .6) * Math.PI / 180;
+        drawText(c, g, X - l.w / 2 + u.x + u.gx[j] + gw / 2 + jit(2) * 1.5 * TS(), Y + l.y + (ex.dy || 0) + jit(3) * 1.5 * TS(), st, { s: sc * ex.s, rot, alpha: ex.alpha });
+      });
+    }
+  },
   // Animated Number Counter: from → to with easing, locale formatting (Thai digits with digits: 'thai'), a prefix and
   // suffix (in suffixStyle), a pop as each new value lands on its final digits, and an impact when it arrives
   counter(t, it, c, L, X, Y, ex) {
@@ -217,4 +260,5 @@ function playType(spec) {
 }
 
 // Verified aspect support per typography preset (tools/aspect_test.mjs; never list a ratio that has not passed).
-const TYPE_PRESET_ASPECTS = { pop: ['9:16', '16:9', '4:5'], slide: ['9:16', '16:9', '4:5'], impact: ['9:16', '16:9', '4:5'], highlight: ['9:16', '16:9', '4:5'], reveal: ['9:16', '16:9', '4:5'], counter: ['9:16', '16:9', '4:5'] };
+const TYPE_PRESET_ASPECTS = { pop: ['9:16', '16:9', '4:5'], slide: ['9:16', '16:9', '4:5'], impact: ['9:16', '16:9', '4:5'], highlight: ['9:16', '16:9', '4:5'], reveal: ['9:16', '16:9', '4:5'], counter: ['9:16', '16:9', '4:5'],
+  label: ['9:16', '16:9'], stamp: ['9:16', '16:9'] };   // label, stamp: fixture collage_reel

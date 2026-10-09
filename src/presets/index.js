@@ -72,4 +72,9 @@ window.CAPABILITY_CATALOG = () => [
   ...Object.values(PRESETS).map(P => capabilityOf(P, 'preset', PRESET_ASPECTS[P.name])),
   ...(typeof TYPE_PRESETS === 'undefined' ? [] : Object.keys(TYPE_PRESETS).map(n => capabilityOf({ name: n, label: n, about: 'kinetic typography item preset (playType / typeOverlay)',
     defaults: { text: '', end: 1, x: .5, y: .5, maxWidth: .84, maxLines: 3, safe: 'title', style: {}, out: null, by: 'word', stagger: .08 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
+  // collage motions: a layer's `motion: [{ kind, ... }]` in a collage manifest (src/collage/collage.js); artwork is imported PNGs
+  ...(typeof COLLAGE_MOTIONS === 'undefined' ? [] : Object.entries(COLLAGE_MOTIONS).map(([n, M]) => ({ ...capabilityOf({ name: n, label: n, about: M.about, defaults: M.defaults,
+    meta: { category: 'collage', tags: ['collage', 'cutout', 'paper', 'stop-motion'], layers: ['collage layer'], camera: 'world', assets: ['png cut-out (the layer)'] } }, 'collage', COLLAGE_MOTION_ASPECTS[n]), id: 'collage.' + n }))),
+  ...(typeof COLLAGE_TRANSITIONS === 'undefined' ? [] : Object.entries(COLLAGE_TRANSITIONS).map(([n, about]) => ({ ...capabilityOf({ name: n, label: n, about: `collage reel transition: ${about}`,
+    defaults: { dur: .6, focus: null, zoom: 4, from: 'right', color: '' }, meta: { category: 'transition', tags: ['collage', 'transition', 'reel'], layers: ['scene'], camera: 'screen' } }, 'transition', COLLAGE_MOTION_ASPECTS['transition.' + n]), id: 'transition.' + n }))),
 ];
