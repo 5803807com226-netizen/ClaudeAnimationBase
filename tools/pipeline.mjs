@@ -16,10 +16,18 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, sta
 import { spawnSync, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { comfyGenerate } from './comfy/client.mjs';
+import { direct, TRANSITIONS } from './lib/director.mjs';
+import { windows, loadBeats, cueTimes } from './lib/timeline.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 if (!args.job) { console.error('usage: node tools/pipeline.mjs --job=jobs/<id>.json'); process.exit(1); }
 const job = JSON.parse(readFileSync(args.job, 'utf8')), fps = job.fps || 24, [W, H] = job.size || [1080, 1920];
+// a beat-based job (narration beats with intents) is expanded by the director into segments; segment jobs pass through
+const plan = job.beats ? direct(job) : null; if (plan) job.segments = plan.segments;
+// continuity grade for AI-video / still shots, so they sit with the JavaScript segments (same warmth, contrast, grain)
+const GRADES = { collage: 'eq=contrast=1.04:saturation=0.92:gamma=1.02,colorbalance=rs=0.04:gs=0.01:bs=-0.04,noise=alls=7:allf=t,vignette=PI/5',
+  watercolor: 'eq=contrast=0.98:saturation=0.88:gamma=1.04,colorbalance=rs=0.03:bs=-0.02,noise=alls=5:allf=t,vignette=PI/6', none: '' };
+const grade = GRADES[job.continuity?.look ?? 'collage'] ?? '';
 const dir = `out/pipeline/${job.id}/`; mkdirSync(dir, { recursive: true });
 const stateFile = dir + 'state.json', state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')) : {};
 const PY = args.python || (process.platform === 'win32' ? 'python' : 'python3'), CACHE = process.env.ASSET_CACHE || '.cache/assets';
@@ -79,12 +87,16 @@ try {
     if (S.type === 'story') {
       let [a, b] = S.range; if (max) b = Math.min(b, a + max);
       const inputs = [S, a, b, fileHash(`src/stories/${S.story}/story.js`), fileHash(`src/stories/${S.story}/scene.js`), fileHash(`src/stories/${S.story}/config.js`), fileHash('src/collage/collage.js'), fileHash('src/core.js')];
-      await step(`segment:${S.id}`, inputs, out, () => { run('node', ['render.mjs', `--story=${S.story}`, '--clip', `--range=${a}:${b}`, `--fps=${fps}`, `--out=${out}`, ...(S.assets ? [`--assets=${S.assets}`] : []), ...pass], `render ${S.id}`); });
+      await step(`segment:${S.id}`, inputs, out, () => {
+        const raw = S.hold > 0 ? out.replace(/\.mp4$/, '.raw.mp4') : out;
+        run('node', ['render.mjs', `--story=${S.story}`, '--clip', `--range=${a}:${b}`, `--fps=${fps}`, ...(S.speed && S.speed !== 1 ? [`--speed=${S.speed}`] : []), `--out=${raw}`, ...(S.assets ? [`--assets=${S.assets}`] : []), ...pass], `render ${S.id}`);
+        if (S.hold > 0) run('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-vf', `tpad=stop_mode=clone:stop_duration=${max ? Math.min(S.hold, .1) : S.hold}`, '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', out], `hold ${S.id}`);   // a real pause on the last frame
+      });
     } else if (S.type === 'ltx') {
       const secs = max ? Math.min(S.seconds, max) : S.seconds, frames = Math.max(9, Math.round(secs * fps / 8) * 8 + 1);   // LTX wants 8n + 1 frames
       const engines = existsSync('tools/comfy/engines.local.json') ? JSON.parse(readFileSync('tools/comfy/engines.local.json', 'utf8')) : null;
       const eng = engines?.engines?.[S.engine || 'ltx'];
-      await step(`segment:${S.id}`, [S, secs, args['mock-ltx'] ? 'mock' : eng && fileHash(eng.workflow), S.image && fileHash(S.image)], out, async () => {
+      await step(`segment:${S.id}`, [S, secs, grade, args['mock-ltx'] ? 'mock' : eng && fileHash(eng.workflow), S.image && fileHash(S.image)], out, async () => {
         let clip = null, substitute = null;
         const ck = sha('ltx', S.prompt, S.negative || '', frames, W, H, S.image ? fileHash(S.image) : '', eng ? fileHash(eng.workflow) : 'none');
         const cached = [`${CACHE}/ltx_${ck}.mp4`, `${CACHE}/ltx_${ck}.webm`, `${CACHE}/ltx_${ck}.webp`].find(existsSync);
@@ -109,7 +121,8 @@ try {
         const vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${fps},format=yuv420p`;
         const src = clip ? ['-i', clip] : ['-loop', '1', '-i', S.image || job.fallbackImage];
         if (!clip && !(S.image || job.fallbackImage)) throw new Error('no LTX clip and no image to hold instead');
-        const zoom = clip ? '' : `,zoompan=z='min(zoom+0.0008,1.08)':d=${Math.round(secs * fps)}:s=${W}x${H}:fps=${fps}`;
+        const nF = Math.round(secs * fps), move = { push: `z='min(zoom+0.0008,1.08)'`, pull: `z='if(eq(on,0),1.08,max(zoom-0.0008,1))'`, drift: `z=1.04:x='iw/2-(iw/zoom/2)+on*0.4'`, hold: `z=1` }[S.camera || 'push'] || `z='min(zoom+0.0008,1.08)'`;
+        const zoom = (clip ? (S.camera && S.camera !== 'hold' ? `,zoompan=${move}:d=1:s=${W}x${H}:fps=${fps}` : '') : `,zoompan=${move}:d=${nF}:s=${W}x${H}:fps=${fps}`) + (grade ? ',' + grade : '');
         run('ffmpeg', ['-y', '-loglevel', 'error', ...src, ...(textPng ? ['-i', textPng] : []), '-t', String(secs),
           '-filter_complex', `[0:v]${vf}${zoom}[v]${textPng ? `;[1:v]format=rgba,fade=t=in:st=0.3:d=0.3:alpha=1[t];[v][t]overlay=0:0:format=auto[o]` : ''}`,
           '-map', textPng ? '[o]' : '[v]', '-r', String(fps), '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', out], `normalise ${S.id}`);
@@ -120,19 +133,41 @@ try {
     segs.push(out);
   }
 
-  // 3. assemble: crossfades between segments, the audio if there is one
-  const final = `${dir}${job.id}.mp4`, fade = args.fade != null ? +args.fade : job.fade ?? .3, audio = job.audio && existsSync(job.audio) ? job.audio : null;
-  if (job.audio && !audio) report.substitutes.push({ segment: 'audio', substitute: `no audio file at ${job.audio}: the video is silent` });
-  await step('assemble', [segs.map(fileHash), fade, audio && fileHash(audio)], final, () => {
-    const d = segs.map(duration); let chain = '', last = '[0:v]', t = 0;
-    for (let i = 1; i < segs.length; i++) { t += d[i - 1] - fade; chain += `${last}[${i}:v]xfade=transition=fade:duration=${fade}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`; }
-    const total = d.reduce((s, v) => s + v, 0) - fade * (segs.length - 1);
-    run('ffmpeg', ['-y', '-loglevel', 'error', ...segs.flatMap(s => ['-i', s]), ...(audio ? ['-i', audio] : []),
-      '-filter_complex', (chain || '[0:v]null') .replace(/;$/, '') + (chain ? '' : '[x0]') + (audio ? `;[${segs.length}:a]apad,atrim=0:${total.toFixed(3)}[a]` : ''),
-      '-map', chain ? last : '[x0]', ...(audio ? ['-map', '[a]', '-c:a', 'aac', '-b:a', '192k'] : []),
+  // 3. assemble: per-boundary transitions (the director's choice, or the job's single fade), then the sound: narration
+  //    (cut per beat and placed where its shot actually starts, so pauses and transitions never drift it), SFX cues,
+  //    an optional low ambience bed. No music. Missing sound files are skipped and reported.
+  const final = `${dir}${job.id}.mp4`, fade = args.fade != null ? +args.fade : job.fade ?? .3;
+  const have = f => { if (f && existsSync(f)) return f; if (f) report.substitutes.push({ segment: 'audio', substitute: `missing ${f}: skipped` }); return null; };
+  const narr = have(job.narration?.audio || job.audio), amb = have(job.ambience?.file);
+  const sfx = (job.sfx || []).filter(c => have(c.file));
+  await step('assemble', [segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
+    const d = segs.map(duration), starts = [0]; let chain = '', last = '[0:v]', t = 0;
+    for (let i = 1; i < segs.length; i++) {
+      const [name, dur0] = TRANSITIONS[job.segments[i].transition] || ['fade', fade], dur = Math.min(dur0, d[i - 1] / 2, d[i] / 2);
+      t += d[i - 1] - dur; starts.push(t);
+      chain += `${last}[${i}:v]xfade=transition=${name}:duration=${dur.toFixed(3)}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`;
+    }
+    const total = t + d[segs.length - 1], inputs = segs.flatMap(s => ['-i', s]), A = [];
+    let k = segs.length; const ms = x => Math.max(0, Math.round(x * 1000));
+    if (narr) {
+      inputs.push('-i', narr); const n = k++;
+      if (plan) plan.windows.forEach((w, i) => A.push(`[${n}:a]atrim=${w.start}:${w.end},asetpts=PTS-STARTPTS,adelay=${ms(starts[i])}:all=1[n${i}]`));
+      else A.push(`[${n}:a]anull[n0]`);
+    }
+    const byBeat = Object.fromEntries(job.segments.map((S, i) => [S.beat || S.id, starts[i]]));
+    sfx.forEach((c, i) => { inputs.push('-i', c.file); const at = c.at ?? ((byBeat[c.beat] ?? 0) + (c.offset || 0));
+      A.push(`[${k++}:a]volume=${c.gain ?? 1},adelay=${ms(at)}:all=1[s${i}]`); });
+    if (amb) { inputs.push('-stream_loop', '-1', '-i', amb); A.push(`[${k++}:a]volume=${job.ambience.gain ?? .12},afade=t=in:d=1,afade=t=out:st=${Math.max(0, total - 1.5).toFixed(2)}:d=1.5[amb]`); }
+    const labels = A.map(f => f.match(/\[(\w+)\]$/)[1]);
+    const mix = labels.length ? `;${A.join(';')};${labels.map(l => `[${l}]`).join('')}amix=inputs=${labels.length}:normalize=0,apad,atrim=0:${total.toFixed(3)}[a]` : '';
+    const grain = job.continuity?.globalGrain ? `,noise=alls=${job.continuity.globalGrain}:allf=t` : '';
+    run('ffmpeg', ['-y', '-loglevel', 'error', ...inputs,
+      '-filter_complex', `${chain}${last}null${grain}[v]${mix}`,
+      '-map', '[v]', ...(mix ? ['-map', '[a]', '-c:a', 'aac', '-b:a', '192k'] : []),
       '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(fps), '-movflags', '+faststart', '-t', total.toFixed(3), final], 'assemble');
-    return { seconds: +total.toFixed(2), audio: !!audio };
+    return { seconds: +total.toFixed(2), audio: !!mix, starts: starts.map(x => +x.toFixed(2)) };
   });
+  const audio = state.assemble?.audio;
   report.output = final; report.seconds = duration(final); report.ok = true;
   log(`\nDONE → ${final}  (${report.seconds.toFixed(2)} s${audio ? ', with audio' : ', silent'})`);
   for (const s of report.substitutes) log(`  NOTE ${s.segment}: ${s.substitute}`);

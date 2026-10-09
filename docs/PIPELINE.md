@@ -35,3 +35,25 @@ AutoCinematic needs no code from this repo, only the job file (patch-only integr
   "segments": [ { "id", "type": "story", "story", "range": [a, b], "assets" },
                 { "id", "type": "ltx", "engine": "ltx", "prompt", "negative", "seconds", "image", "text": "line|line", "textY" } ] }
 ```
+
+## Beat jobs (director + audio-driven timeline)
+
+Instead of `segments`, a job may give `beats` (see `jobs/hybrid_pilot_40.json`):
+
+- Each beat is `{ id, intent, at, end, text, visual: { type: 'story' | 'ltx', … } }`.
+- `tools/lib/director.mjs` turns beats into segments. Each beat's `intent` sets:
+  - the transition into it;
+  - the on-screen text policy;
+  - the camera move for AI and still shots;
+  - an extra pause.
+
+  The intents are `hook`, `setup`, `build`, `turn`, `reflect` and `end`; any beat can override them.
+- `tools/lib/timeline.mjs` sets each beat's window from narration timing. The timing comes from `narration.srt` or `narration.whisper` when that file exists; otherwise the beats' `at`/`end` are provisional.
+- A story clip is fitted to its beat's window by playing it a little faster or slower (never more than ±25%), then holding its last frame.
+- Sound (no music):
+  - `narration.audio` is cut per beat and placed where that beat's shot actually starts, so pauses and transitions never drift it;
+  - `sfx: [{ beat, offset, file, gain }]`;
+  - `ambience: { file, gain }` is a looped bed.
+
+  Missing files are skipped and listed in the report.
+- `continuity: { look: 'collage' | 'watercolor' | 'none', globalGrain }` grades LTX and still shots so they sit with the JavaScript segments. `globalGrain` adds one light grain over everything.

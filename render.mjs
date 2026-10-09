@@ -8,7 +8,7 @@
 //         (x,y in world px, may be page expressions like PLK.MX(1.38); w,h in screen px) through each frame's camera
 //     node render.mjs --stills=1.2,3.4 --out=out/stills                                     full-res PNGs
 //   Make the video:
-//     node render.mjs --clip [--range=0:4] --out=out/video.mp4                               straight to MP4 (one worker)
+//     node render.mjs --clip [--range=0:4] [--speed=0.8] --out=out/video.mp4                 straight to MP4 (one worker)
 //     node render.mjs --frames [--range=0:8] --workers=4                                     JPEG frames → out/frames (parallel, resumable)
 //     node render.mjs --encode --out=out/video.mp4                                           out/frames → MP4
 //   Standalone loops (LOOPS in the page): add --loop=<name> to any of the above (times are then loop times), or
@@ -180,9 +180,10 @@ if (args.sheet || args.strip) {
     ...(audio ? ['-ss', String(a), '-t', String(b - a), '-i', audio, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : []),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out],
     { stdio: ['pipe', 'inherit', 'inherit'] });
-  const n = Math.round((b - a) * fps), start = Date.now();
+  // --speed=0.8 plays the range slower (more frames over the same story time): fits a segment to its narration beat
+  const speed = args.speed ? num('speed', args.speed, { min: .1 }) : 1, n = Math.round((b - a) * fps / speed), start = Date.now();
   for (let i = 0; i < n; i++) {
-    const buf = await frameOf(page, a + i / fps, 'image/jpeg', .93);
+    const buf = await frameOf(page, a + i * speed / fps, 'image/jpeg', .93);
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
     if (i % 24 === 0 || i === n - 1) console.log(`frame ${i + 1}/${n}  ${((Date.now() - start) / (i + 1)).toFixed(0)} ms/frame`);
   }

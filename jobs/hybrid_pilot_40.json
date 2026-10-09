@@ -1,0 +1,32 @@
+{
+  "_comment": "35-40 s Hybrid Pilot, beat format: the director (tools/lib/director.mjs) turns narration beats + intents into shots, transitions, speed/hold and camera. Timing is provisional until narration.srt / narration.whisper exists; then the measured timing drives every cut. Sound files that are missing are skipped and reported. No music.",
+  "id": "hybrid_pilot_40",
+  "fps": 24,
+  "size": [1080, 1920],
+  "assets": [{ "story": "pilot_collage" }],
+  "fallbackImage": "assets/stories/pilot_collage/s1/s1_message.png",
+  "continuity": { "look": "watercolor", "globalGrain": 3 },
+  "narration": { "audio": "assets/audio/hybrid_pilot_40_narration.wav", "srt": "assets/audio/hybrid_pilot_40_narration.srt" },
+  "ambience": { "file": "assets/audio/room_tone.wav", "gain": 0.1 },
+  "sfx": [
+    { "beat": "b1", "offset": 0.4, "file": "assets/sfx/phone_buzz.wav", "gain": 0.6 },
+    { "beat": "b4", "offset": 0.0, "file": "assets/sfx/paper_soft.wav", "gain": 0.5 }
+  ],
+  "beats": [
+    { "id": "b1", "intent": "hook", "at": 0, "end": 3.4, "text": "ข้อความเดียวจากเขา ทำเราหงุดหงิดได้ทั้งวัน",
+      "visual": { "type": "story", "story": "pilot_collage", "range": [0, 3] } },
+    { "id": "b2", "intent": "setup", "at": 4.2, "end": 7.8, "text": "ทั้งที่เขาพิมพ์มาแค่ครั้งเดียว",
+      "visual": { "type": "story", "story": "story_pilot_v4", "range": [3.0, 6.2] } },
+    { "id": "b3", "intent": "build", "at": 9.4, "end": 13.8, "text": "แต่เราอ่านข้อความนั้นซ้ำในหัวไม่รู้กี่รอบ",
+      "visual": { "type": "story", "story": "story_pilot_v4", "range": [6.2, 10.2] } },
+    { "id": "b4", "intent": "turn", "at": 15.2, "end": 19.4, "text": "ตกลงเขาทำให้เราทุกข์ หรือใจเราเองกันแน่?",
+      "visual": { "type": "story", "story": "story_pilot_v4", "range": [10.2, 15] } },
+    { "id": "b5", "intent": "reflect", "at": 22.0, "end": 27.6, "text": "ข้อความยังเหมือนเดิม แต่เราเลือกได้ ว่าจะอ่านมันอีกกี่รอบ",
+      "show": "key", "key": "ข้อความยังเหมือนเดิม|แต่เราเลือกได้",
+      "visual": { "type": "ltx", "engine": "ltx", "image": "assets/stories/pilot_collage/s1/s1_message.png", "textY": 0.14,
+        "prompt": "slow cinematic pull-back from a torn coral-red paper speech bubble resting on warm kraft paper, the light softens and warms, a faint draft lifts the paper fibres, calm and still, shallow depth of field, handmade editorial paper collage style",
+        "negative": "text, letters, words, numbers, digits, typography, logo, watermark, signature, subtitles, fast motion, flicker, distortion, morphing, extra objects" } },
+    { "id": "b6", "intent": "end", "at": 29.6, "end": 33.6, "text": "วางมันลง แล้วกลับมาหายใจ", "show": "none",
+      "visual": { "type": "story", "story": "pilot_collage", "range": [0, 3] } }
+  ]
+}
