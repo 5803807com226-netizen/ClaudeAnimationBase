@@ -18,7 +18,8 @@
 //   Aspect ratio: add --aspect=9:16 | 16:9 | 4:5 to any command (stories, loops and the studio video); without it a
 //   project keeps its own format. Visual style: --look=cinematic (watercolor, collage, illustration, documentary,
 //   infographic, abstract, product, classic; see src/look.js) overrides the project's look. Collage scenes: --assets=<dir>
-//   plays them with the artwork from another folder (e.g. a mock preview). Low-res previews: --sheet / --strip with --w; full res: --clip or --frames.
+//   plays them with the artwork from another folder (e.g. a mock preview). --query=k=v adds a page parameter a story reads (e.g.
+//   the_last_smoke's freezecam). Low-res previews: --sheet / --strip with --w; full res: --clip or --frames.
 //   Music: --audio=assets/song.mp3 (or PROJECT.audio) is muxed into --clip and --encode. Other flags: --fps=24,
 //   --chrome=<path to Chrome/Chromium>.
 import puppeteer from 'puppeteer-core';
@@ -105,10 +106,12 @@ const browser = await puppeteer.launch({
 async function openPage(tag = '') {
   const page = await browser.newPage();
   page.on('console', m => { if (['error', 'warn'].includes(m.type())) console.log(`[page${tag}]`, m.text()); });
-  page.on('pageerror', e => console.log(`[page error${tag}]`, e.message));
-  const query = (args.story ? '&story=' + encodeURIComponent(args.story) : '') + (args.aspect ? '&aspect=' + encodeURIComponent(args.aspect) : '') + (args.look ? '&look=' + encodeURIComponent(args.look) : '') + (args.assets ? '&assets=' + encodeURIComponent(args.assets) : '');
+  const thrown = [];   // an uncaught error while the page loads means the story did not run: never render a placeholder in its place
+  page.on('pageerror', e => { console.log(`[page error${tag}]`, e.message); thrown.push(e.message); });
+  const query = (args.story ? '&story=' + encodeURIComponent(args.story) : '') + (args.aspect ? '&aspect=' + encodeURIComponent(args.aspect) : '') + (args.look ? '&look=' + encodeURIComponent(args.look) : '') + (args.assets ? '&assets=' + encodeURIComponent(args.assets) : '') + (args.query ? '&' + args.query : '');
   await page.goto(pathToFileURL(resolve(args.story ? 'story.html' : 'studio.html')).href + '?render' + query, { waitUntil: 'networkidle0' });
   await page.waitForFunction('window.ready === true', { timeout: 60000 });
+  if (thrown.length && !args['allow-page-errors']) { console.error(`render.mjs: the page threw while loading (${thrown[0]}); nothing rendered. Fix the story (or pass --allow-page-errors).`); process.exit(1); }
   if (args.loop) {
     const ok = await page.evaluate(name => { if (!LOOPS[name]) return false; window.LOOP = LOOPS[name]; return true; }, args.loop);
     if (!ok) { console.error(`no loop named "${args.loop}"`); process.exit(1); }

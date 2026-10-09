@@ -9,7 +9,7 @@
 // gen block: { engine: 'zimage' | 'qwen' | 'manual' | 'derive', prompt, negative, size: [w, h] (generation size), seed,
 //   matte: 'chroma' | 'rembg' | 'none', unshadow (remove a baked neutral shadow; default true, false for dark-edged art), margin (clear margin, fraction of width), style (replaces the scene's) | false,
 //   character (a name: the same seed family wherever it appears), ref (reference image, for workflows with LoadImage),
-//   op / from / source / mirror / colors (derive: 'screen_glow' | 'beside', on another layer's canvas) }
+//   op / from / source / mirror / colors / rect / feather (derive: 'screen_glow' | 'beside' | 'region', on another layer's canvas) }
 //   --dry      print the plan and the exact prompts; generate nothing
 //   --offline  never call ComfyUI: reprocess cached source images only (e.g. after a matting fix); fails if one is missing
 //   --mock     no image model: synthetic stand-ins, written to out/mock_assets/<story>/<scene>/ (never the real art folder)
@@ -129,11 +129,13 @@ for (const [sid, S0] of list) {
         if (g.engine === 'derive') {   // layers made from another layer, on its canvas (so they align exactly)
           const base = dir + byId[g.from].file; if (!existsSync(base)) throw new Error(`base layer ${g.from} is not ready`);
           const srcRaw = g.source ? await generateRaw(g.source, S, { id: L.id + '_src' }, attempt, L.id) : null;
-          const src = srcRaw ? finish(srcRaw, g.source, { ...L, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1).path : null;
-          const key = sha('derive', g.op, readFileSync(base), src ? readFileSync(src) : '', g.colors || '', g.mirror || ''), out = `${CACHE}/${key}.png`;
+          const src = srcRaw ? (g.op === 'region' ? srcRaw.path   // region: the raw edit itself, on the same framing as the base
+            : finish(srcRaw, g.source, { ...L, size: [neededWidth(L, S, P) * .3], keys: null, scale: 1, fill: false }, S, { ...P }, 1).path) : null;
+          const key = sha('derive', g.op, readFileSync(base), src ? readFileSync(src) : '', g.colors || '', g.mirror || '', g.rect || '', g.feather ?? ''), out = `${CACHE}/${key}.png`;
           if (!existsSync(out)) {
             if (g.op === 'screen_glow') py('screen_glow', '--base', base, '--out', out, ...(g.colors ? ['--colors', g.colors.join(',')] : []));
             else if (g.op === 'beside') py('beside', '--base', base, '--source', src, '--out', out, ...(g.mirror ? ['--mirror'] : []));
+            else if (g.op === 'region') py('region', '--base', base, '--source', src || base, '--out', out, '--rect', g.rect.join(','), '--feather', String(g.feather ?? .03));
             else throw new Error(`unknown derive op "${g.op}"`);
           }
           copyFileSync(out, f); rec[L.id] = { key, attempt, op: g.op, from: g.from, positive: srcRaw?.positive, source: srcRaw && { seed: srcRaw.seed }, mock: !!args.mock };

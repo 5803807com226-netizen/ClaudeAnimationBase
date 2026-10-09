@@ -77,7 +77,7 @@ function rigPose(ch, x, y, u, poseFn, t) {
     const tg = typeof ik.target === 'function' ? ik.target(T) : ik.target, [a1, a2] = ik2(S.x, S.y, tg[0], tg[1], L1, L2, ik.bend ?? 1);
     const parentA = S.a - (pose[p.name].rot || 0), d1 = Math.atan2(lo.joint[1], lo.joint[0]), d2 = Math.atan2(end.joint[1], end.joint[0]);
     const up = pose[p.name], low = pose[ik.lower] = { ...(pose[ik.lower] || {}) };
-    const r1 = a1 - d1 - parentA, r2 = a2 - d2 - a1;
+    const r1 = a1 - d1 - parentA, r2 = a2 - d2 - (a1 - d1);   // the lower bone turns relative to the upper bone's FRAME (a1 - d1), not its bone line
     up.rot = lerpAng(up.rot || 0, r1, clamp(ik.k)); low.rot = lerpAng(low.rot || 0, r2, clamp(ik.k));
     T = rigSolve(ch, x, y, u, pose);
   }

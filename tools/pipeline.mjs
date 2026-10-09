@@ -174,12 +174,17 @@ try {
   const have = f => { if (f && existsSync(f)) return f; if (f) report.substitutes.push({ segment: 'audio', substitute: `missing ${f}: skipped` }); return null; };
   const narr = have(job.narration?.audio || job.audio), amb = have(job.ambience?.file);
   const sfx = (job.sfx || []).filter(c => have(c.file));
-  await step('assemble', ['assemble/2', segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
+  await step('assemble', ['assemble/3', segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
     // xfade needs inputs on one timebase and frame rate; without this ffmpeg silently cuts the output short (2 × 1.5 s
     // segments came out 1.58 s long)
     const d = segs.map(duration), starts = [0]; let chain = segs.map((_, i) => `[${i}:v]settb=AVTB,fps=${fps},format=yuv420p[n${i}];`).join(''), last = '[n0]', t = 0;
     for (let i = 1; i < segs.length; i++) {
-      const [name, dur0] = TRANSITIONS[job.segments[i].transition] || ['fade', fade], dur = Math.min(dur0, d[i - 1] / 2, d[i] / 2);
+      const tr = job.segments[i].transition;
+      if (tr === 'cut' || tr === 'match') {   // a real hard cut: shots butt end to end, nothing overlaps, so narration and
+        t += d[i - 1]; starts.push(t);       // SFX placed on the shot timeline never drift (a 0.04 s dissolve per cut did)
+        chain += `${last}[n${i}]concat=n=2:v=1:a=0[x${i}];`; last = `[x${i}]`; continue;
+      }
+      const [name, dur0] = TRANSITIONS[tr] || ['fade', fade], dur = Math.min(dur0, d[i - 1] / 2, d[i] / 2);
       t += d[i - 1] - dur; starts.push(t);
       chain += `${last}[n${i}]xfade=transition=${name}:duration=${dur.toFixed(3)}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`;
     }

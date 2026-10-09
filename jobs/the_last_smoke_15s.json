@@ -1,0 +1,143 @@
+{
+ "id": "the_last_smoke_15s",
+ "fps": 24,
+ "size": [
+  1080,
+  1920
+ ],
+ "aspect": "9:16",
+ "fade": 0,
+ "continuity": {
+  "look": "none"
+ },
+ "_comment": "The Last Smoke, 15 s, 5 x 3 s hard cuts (no overlap: narration and SFX stay on the shot timeline). SFX times are the story's real contact frames: footfalls S02 +0.70 / +2.05 s, staff taps +1.35 / +2.50 s (story.js STRIKE / TAPS). Missing sound files are skipped and listed in report.json. No music.",
+ "narration": {
+  "audio": "assets/stories/the_last_smoke/narration_th.wav"
+ },
+ "ambience": {
+  "file": "assets/stories/the_last_smoke/sfx/wind.wav",
+  "gain": 0.06
+ },
+ "sfx": [
+  {
+   "beat": "S01",
+   "offset": 1.0,
+   "file": "assets/stories/the_last_smoke/sfx/cloth.wav",
+   "gain": 0.3
+  },
+  {
+   "beat": "S02",
+   "offset": 0.7,
+   "file": "assets/stories/the_last_smoke/sfx/footstep_1.wav",
+   "gain": 0.5
+  },
+  {
+   "beat": "S02",
+   "offset": 1.35,
+   "file": "assets/stories/the_last_smoke/sfx/staff_tap_1.wav",
+   "gain": 0.45
+  },
+  {
+   "beat": "S02",
+   "offset": 2.05,
+   "file": "assets/stories/the_last_smoke/sfx/footstep_2.wav",
+   "gain": 0.5
+  },
+  {
+   "beat": "S02",
+   "offset": 2.5,
+   "file": "assets/stories/the_last_smoke/sfx/staff_tap_2.wav",
+   "gain": 0.45
+  },
+  {
+   "beat": "S03",
+   "offset": 0.8,
+   "file": "assets/stories/the_last_smoke/sfx/breath.wav",
+   "gain": 0.4
+  },
+  {
+   "beat": "S04",
+   "offset": 1.2,
+   "file": "assets/stories/the_last_smoke/sfx/leather_creak.wav",
+   "gain": 0.25
+  },
+  {
+   "beat": "S05",
+   "offset": 1.5,
+   "file": "assets/stories/the_last_smoke/sfx/fire_distant.wav",
+   "gain": 0.12
+  }
+ ],
+ "segments": [
+  {
+   "id": "S01",
+   "type": "story",
+   "story": "the_last_smoke",
+   "range": [
+    0,
+    3
+   ],
+   "transition": "cut",
+   "expected_motion": {
+    "min_changed_frac": 0.005,
+    "intentional_still": false
+   }
+  },
+  {
+   "id": "S02",
+   "type": "story",
+   "story": "the_last_smoke",
+   "range": [
+    3,
+    6
+   ],
+   "transition": "cut",
+   "expected_motion": {
+    "min_changed_frac": 0.005,
+    "intentional_still": false
+   }
+  },
+  {
+   "id": "S03",
+   "type": "story",
+   "story": "the_last_smoke",
+   "range": [
+    6,
+    9
+   ],
+   "transition": "cut",
+   "expected_motion": {
+    "min_changed_frac": 0.005,
+    "intentional_still": false
+   }
+  },
+  {
+   "id": "S04",
+   "type": "story",
+   "story": "the_last_smoke",
+   "range": [
+    9,
+    12
+   ],
+   "transition": "cut",
+   "expected_motion": {
+    "min_changed_frac": 0.005,
+    "intentional_still": false
+   }
+  },
+  {
+   "id": "S05",
+   "type": "story",
+   "story": "the_last_smoke",
+   "range": [
+    12,
+    15
+   ],
+   "transition": "cut",
+   "expected_motion": {
+    "min_changed_frac": 0.005,
+    "intentional_still": false
+   }
+  }
+ ]
+}

@@ -243,6 +243,18 @@ def beside(a):
     out.save(a.out)
 
 
+def region(a):
+    """An overlay cut from SOURCE onto BASE's canvas: the source resized to the base canvas, kept only inside a feathered
+    rectangle (fractions x0,y0,x1,y1 of the canvas), alpha elsewhere. Overlays made this way (closed eyes over an open-eye
+    face, a head over its own body) are registered to the pixel, so swapping or turning them never pops."""
+    base = Image.open(a.base).convert('RGBA'); src = Image.open(a.source).convert('RGBA').resize(base.size, Image.LANCZOS)
+    w, h = base.size; x0, y0, x1, y1 = [float(v) for v in a.rect.split(',')]; f = max(1, int(a.feather * min(w, h)))
+    m = Image.new('L', base.size, 0); ImageDraw.Draw(m).rectangle([x0 * w + f, y0 * h + f, x1 * w - f, y1 * h - f], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(f / 2))
+    alpha = np.minimum(np.asarray(m, np.float32), np.asarray(src.getchannel('A'), np.float32)).astype(np.uint8)
+    src.putalpha(Image.fromarray(alpha)); src.save(a.out)
+
+
 def mock(a):
     """Deterministic stand-in images shaped by the prompt's keywords, on a chroma green background (or a full-bleed
     texture for backdrops), so the whole pipeline can be tested without an image model. Clearly not artwork."""
@@ -308,6 +320,7 @@ if __name__ == '__main__':
     s = sub.add_parser('fit'); s.add_argument('--in', dest='inp', required=True); s.add_argument('--out', required=True); s.add_argument('--width', type=int); s.add_argument('--height', type=int); s.add_argument('--cover')
     s = sub.add_parser('screen_glow'); s.add_argument('--base', required=True); s.add_argument('--out', required=True); s.add_argument('--colors', default='#FFF4DE,#F4E6CC')
     s = sub.add_parser('beside'); s.add_argument('--base', required=True); s.add_argument('--source', required=True); s.add_argument('--out', required=True); s.add_argument('--mirror', action='store_true')
+    s = sub.add_parser('region'); s.add_argument('--base', required=True); s.add_argument('--source', required=True); s.add_argument('--out', required=True); s.add_argument('--rect', required=True); s.add_argument('--feather', type=float, default=.03)
     s = sub.add_parser('mock'); s.add_argument('--out', required=True); s.add_argument('--prompt', required=True); s.add_argument('--size', required=True); s.add_argument('--seed', type=int, default=0); s.add_argument('--bad', action='store_true')
     s = sub.add_parser('compare'); s.add_argument('--in', dest='inp', nargs='+', required=True); s.add_argument('--labels'); s.add_argument('--out', required=True); s.add_argument('--cell', type=int, default=300)
-    a = ap.parse_args(); {'compare': compare, 'matte': matte, 'fit': fit, 'screen_glow': screen_glow, 'beside': beside, 'mock': mock}[a.cmd](a)
+    a = ap.parse_args(); {'compare': compare, 'matte': matte, 'fit': fit, 'screen_glow': screen_glow, 'beside': beside, 'region': region, 'mock': mock}[a.cmd](a)
