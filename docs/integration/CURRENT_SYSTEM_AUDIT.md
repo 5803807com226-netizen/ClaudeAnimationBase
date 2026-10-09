@@ -50,8 +50,8 @@
 | Character references and style lock | W\* | `character_refs.py`, `style_lock.py`, `reference_policy.py` |
 | TTS (OmniVoice), Thai pronunciation dictionary, captions, SRT | W\* | `voice_pipeline.py`, `pronunciation.py` |
 | Narration timing | P | `fit_wav_to_duration` time-stretches the voice to fit a shot (atempo). That is the reverse of "measured narration drives visuals" |
-| Motion Only v0.5 | P / U | `motion_only.py`. 16 keyword-chosen `scene_type` templates, emitted as **JS string templates** into `CAB/src/stories/acmotion_*`. Depends on `one_message/art.js`. **No rendered output in the snapshot** |
-| Hybrid bridge (per-scene render, cache, concat) | P / U | `hybrid_bridge.py`: `--plan`, `--run`, `--only`, `--force`, `--compose-only`. Hard-cut concat, no transitions, no failed-only mode |
+| Motion Only v0.5 | P / U | `motion_only.py`. 16 keyword-chosen `scene_type` templates, emitted as **JS string templates** into `CAB/src/stories/acmotion_*`. Depends on `one_message/art.js`. No Motion Only render in the snapshot |
+| Hybrid bridge (per-scene render, cache, concat) | P, ran once | `hybrid_bridge.py`: `--plan`, `--run`, `--only`, `--force`, `--compose-only`. Hard-cut concat, no transitions, no failed-only mode |
 | Hybrid UI dialog (per-shot mode, Test, Motion, View, Render) | P / U | `hybrid_ui.py`. The 19-shot `story_project` manifest is all `code_motion` (about 55 s) |
 | Still-image motion | W\* | `story_motion.py` (Python) |
 | Remotion compositor | P | `remotion_pipeline.py`, `remotion/src/video.jsx` |
@@ -72,3 +72,11 @@
 ## Security note
 
 The snapshot's `config.json` contains key- or token-like fields (values not read). It must never be committed. Rotate the keys if the RAR was shared.
+
+## Correction (checkpoint 0, second pass)
+
+- The snapshot does contain one local render, `output/smoke_12s_code_only/draft/`. It was made by `hybrid_bridge.py` from the older demo stories (`type_demo`, `look_infographic`, `collage_test`) on Windows: three 1080×1920 raw clips and a 12.0 s, 720×1280 assembled MP4.
+- `tools/motion_check.mjs` confirms real movement in every shot, with mean structural change of 5–8 % per sample step.
+- It is not a Motion Only (`acmotion_*`) render, and it has no narration.
+- `story_package.json` (552 KB) was extracted and inspected. Static import resolution of `app.py`, `hybrid_bridge.py` and `autocinematic/*.py` finds no missing internal modules, so the snapshot's Python source is complete for integration purposes.
+- It is still a snapshot, not the private repository.
