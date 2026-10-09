@@ -1,0 +1,389 @@
+diff --git a/autocinematic/hybrid_ui.py b/autocinematic/hybrid_ui.py
+index 13238d5..98e41af 100644
+--- a/autocinematic/hybrid_ui.py
++++ b/autocinematic/hybrid_ui.py
+@@ -490,6 +490,12 @@ def open_hybrid_dialog(app):
+         for var in choices.values():
+             var.set(CODE_ONLY)
+         messagebox.showinfo('Motion Only', 'ทุก Shot เลือก Code Motion แล้ว\nกด Plan Only หรือ ▶ Test ทีละ Shot ได้', parent=win)
++    def open_motion_plan():
++        # Shot manifest -> ClaudeAnimationBase Motion Engine (maps / JS motion; never LTX). Imported here so a missing
++        # or older engine adapter can never stop the Hybrid dialog itself from opening.
++        from autocinematic.motion_plan_ui import open_motion_plan_dialog
++        open_motion_plan_dialog(app, pathvar.get())
++    ttk.Button(foot, text="Motion Plan (JS Engine)…", command=open_motion_plan).pack(side="left", padx=(0, 5))
+     ttk.Button(foot, text="All → Motion Only", command=choose_all_motion).pack(side="left", padx=(0, 5))
+     ttk.Button(foot, text="Plan Only · 0 AI calls", command=plan_only).pack(side="left")
+     ttk.Button(foot, text="▶ Render Hybrid MP4", command=execute).pack(side="left", padx=8)
+diff --git a/autocinematic/motion_engine.py b/autocinematic/motion_engine.py
+new file mode 100644
+index 0000000..aa439f2
+--- /dev/null
++++ b/autocinematic/motion_engine.py
+@@ -0,0 +1,143 @@
++"""AutoCinematic -> ClaudeAnimationBase Motion Engine adapter (shot manifest contract v1).
++
++No UI, no AI calls, no LTX. Talks to the engine ONLY through its command-line tools and JSON files:
++  tools/capabilities.mjs  -> live capability catalog (what can actually be rendered)
++  tools/compile_plan.mjs  -> shot manifest -> validated executable plan (+ compile_report.json, job.json)
++  tools/pipeline.mjs      -> per-scene render, motion check, previews, retry, assembly (+ report.json, state.json)
++See ClaudeAnimationBase docs/integration/ for the contract. Engine outputs stay in the engine's out/ folder;
++the final MP4 is copied into the project's exports/motion_plan/.
++"""
++from __future__ import annotations
++
++import json
++import re
++import shutil
++import subprocess
++from pathlib import Path
++from typing import Callable, Optional
++
++ASPECTS = ("9:16", "16:9")
++ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,60}$")
++
++
++class MotionEngineError(RuntimeError):
++    pass
++
++
++def _read(p: Path, default=None):
++    try:
++        return json.loads(p.read_text(encoding="utf-8"))
++    except (OSError, ValueError):
++        return default
++
++
++class MotionEngine:
++    def __init__(self, engine_root: Path, node: str = "node", log: Optional[Callable[[str], None]] = None):
++        self.root = Path(engine_root).expanduser().resolve()
++        self.node = node
++        self.log = log or print
++
++    # ---- checks ----
++    def check(self) -> list[str]:
++        """Problems that would stop a render, as plain messages (empty list = ready)."""
++        need = ["render.mjs", "tools/compile_plan.mjs", "tools/pipeline.mjs", "tools/capabilities.mjs",
++                "tools/motion_check.mjs", "src/plan/play.js", "src/presets/map.js", "node_modules/d3-geo"]
++        missing = [n for n in need if not (self.root / n).exists()]
++        out = [f"ClaudeAnimationBase is missing {n} (wrong folder, old branch, or run npm install)" for n in missing]
++        for exe in (self.node, "ffmpeg", "ffprobe"):
++            if not shutil.which(exe):
++                out.append(f"{exe} not found on PATH")
++        return out
++
++    def _run(self, args: list[str], tag: str, extra: Optional[list[str]] = None) -> int:
++        cmd = [self.node, *args, *(extra or [])]
++        self.log(f"[{tag}] $ {subprocess.list2cmdline(cmd)}")
++        p = subprocess.Popen(cmd, cwd=str(self.root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
++                             text=True, encoding="utf-8", errors="replace", bufsize=1)
++        assert p.stdout is not None
++        for line in p.stdout:
++            self.log(f"[{tag}] {line.rstrip()}")
++        return p.wait()
++
++    # ---- 1. capabilities ----
++    def catalog(self, extra: Optional[list[str]] = None) -> dict:
++        out = self.root / "out" / "capabilities.json"
++        if self._run(["tools/capabilities.mjs", f"--out={out}"], "Capabilities", extra):
++            raise MotionEngineError("could not load the capability catalog (see log)")
++        return _read(out, {})
++
++    # ---- 2. Generate Motion = compile the shot manifest ----
++    def compile(self, manifest: Path, aspect: Optional[str] = None, extra: Optional[list[str]] = None) -> dict:
++        m = _read(Path(manifest))
++        if not isinstance(m, dict) or not ID_RE.fullmatch(str(m.get("project_id", ""))):
++            raise MotionEngineError(f"not a shot manifest with a valid project_id: {manifest}")
++        if aspect and aspect not in ASPECTS:
++            raise MotionEngineError(f"aspect must be one of {ASPECTS}")
++        pid = self.plan_id(m, aspect)
++        args = ["tools/compile_plan.mjs", f"--manifest={Path(manifest).resolve()}"]
++        if (self.root / "out" / "capabilities.json").is_file():
++            args.append(f"--catalog={self.root / 'out' / 'capabilities.json'}")
++        if aspect and aspect != m.get("aspect"):
++            args.append(f"--aspect={aspect}")
++        rc = self._run(args, "Compile", extra)
++        report = _read(self.root / "out" / "plans" / pid / "compile_report.json", {})
++        if rc == 2 or not report:
++            raise MotionEngineError("the manifest was rejected before compiling (see log)")
++        return report   # report['status'] is 'compiled' or 'blocked'; blocked shots list their errors
++
++    @staticmethod
++    def plan_id(manifest: dict, aspect: Optional[str] = None) -> str:
++        pid = manifest["project_id"]
++        return pid + "_" + aspect.replace(":", "x") if aspect and aspect != manifest.get("aspect") else pid
++
++    # ---- 3. Render Selected / All / Failed ----
++    def render(self, plan_id: str, only: Optional[list[str]] = None, failed_only: bool = False,
++               force: bool = False, extra: Optional[list[str]] = None) -> dict:
++        job = self.root / "out" / "plans" / plan_id / "job.json"
++        if not job.is_file():
++            raise MotionEngineError(f"no compiled job for {plan_id}: compile the plan first")
++        args = ["tools/pipeline.mjs", f"--job={job}"]
++        if only:
++            args.append("--only=" + ",".join(only))
++        if failed_only:
++            args.append("--failed-only")
++        if force:
++            args.append("--force=" + (",".join(f"segment:{s}" for s in only) if only else "all"))
++        rc = self._run(args, "Render", extra)
++        report = self.status(plan_id)
++        report["exit_code"] = rc
++        return report
++
++    # ---- status for the UI (works after an app restart: everything is read from disk) ----
++    def status(self, plan_id: str) -> dict:
++        comp = _read(self.root / "out" / "plans" / plan_id / "compile_report.json", {}) or {}
++        pdir = self.root / "out" / "pipeline" / plan_id
++        state = _read(pdir / "state.json", {}) or {}
++        rep = _read(pdir / "report.json", {}) or {}
++        scenes = []
++        for s in comp.get("shots", []):
++            st = state.get(f"segment:{s['id']}", {})
++            clip, jpg = pdir / f"seg_{s['id']}.mp4", pdir / f"seg_{s['id']}.jpg"
++            motion = st.get("motion") or {}
++            scenes.append({
++                "id": s["id"], "start": s["start"], "end": s["end"], "treatment": s.get("treatment"),
++                "compile": s["status"], "compile_errors": s.get("errors", []),
++                "render": "passed" if st.get("ok") else ("failed" if st else "not rendered"),
++                "error": st.get("error"), "motion_pct": round(100 * motion.get("mean_changed", 0), 2) if motion else None,
++                "clip": str(clip) if clip.is_file() else None, "preview": str(jpg) if jpg.is_file() else None,
++                "provenance": s.get("provenance", []),
++            })
++        final = pdir / f"{plan_id}.mp4"
++        return {"plan_id": plan_id, "compile_status": comp.get("status"), "timing": comp.get("timing"),
++                "duration": comp.get("duration"), "warnings": comp.get("warnings", []), "scenes": scenes,
++                "final": str(final) if final.is_file() and rep.get("ok") else None, "pipeline_ok": rep.get("ok"),
++                "pipeline_error": rep.get("error"), "log": str(pdir / "pipeline.log")}
++
++    def export_final(self, plan_id: str, project: Path) -> Optional[Path]:
++        st = self.status(plan_id)
++        if not st["final"]:
++            return None
++        dst = Path(project) / "exports" / "motion_plan" / f"{plan_id}.mp4"
++        dst.parent.mkdir(parents=True, exist_ok=True)
++        shutil.copy2(st["final"], dst)
++        return dst
+diff --git a/autocinematic/motion_plan_ui.py b/autocinematic/motion_plan_ui.py
+new file mode 100644
+index 0000000..b161480
+--- /dev/null
++++ b/autocinematic/motion_plan_ui.py
+@@ -0,0 +1,217 @@
++"""Motion Plan dialog: shot manifest -> ClaudeAnimationBase Motion Engine (JavaScript motion, maps; never LTX).
++
++Opened from the Hybrid Export dialog. Uses the app's own log and job queue (app.log, app._start_voice_or_queue,
++app.after) and reads all state from disk, so it survives an application restart. No AI calls.
++  Check Engine · Generate Motion (compile) · Preview Scene · Render Selected Scene · Render All Scenes ·
++  Re-render Failed · Open Final · Open Log
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++from tkinter import ttk, filedialog, messagebox
++import tkinter as tk
++
++from autocinematic.motion_engine import MotionEngine, MotionEngineError, ASPECTS
++
++
++def _open(path: str | Path, parent) -> None:
++    try:
++        if sys.platform == "win32":
++            os.startfile(str(path))
++        elif sys.platform == "darwin":
++            subprocess.Popen(["open", str(path)])
++        else:
++            subprocess.Popen(["xdg-open", str(path)])
++    except OSError as ex:
++        messagebox.showerror("Motion Plan", f"Cannot open {path}: {ex}", parent=parent)
++
++
++def _read(p: Path, default=None):
++    try:
++        return json.loads(p.read_text(encoding="utf-8"))
++    except (OSError, ValueError):
++        return default
++
++
++def open_motion_plan_dialog(app, animation_root: str | None = None):
++    root = Path(__file__).resolve().parent.parent
++    project = app._project_dir()
++    settings_path = root / "hybrid_settings.local.json"
++    settings = _read(settings_path, {}) or {}
++    win = tk.Toplevel(app)
++    win.title(f"Motion Plan — {project.name}")
++    win.geometry("1180x620")
++    win.minsize(900, 420)
++    win.transient(app)
++    frame = ttk.Frame(win, padding=12)
++    frame.pack(fill="both", expand=True)
++    ttk.Label(frame, text="MOTION PLAN · JavaScript Motion Engine (maps, motion, typography) · ไม่ใช้ LTX / ไม่เรียก AI",
++              font=("Segoe UI", 12, "bold")).pack(anchor="w")
++
++    opts = ttk.Frame(frame)
++    opts.pack(fill="x", pady=(6, 6))
++    enginevar = tk.StringVar(value=animation_root or settings.get("animation_root") or str(Path.home() / "ClaudeAnimationBase"))
++    default_manifest = project / "production" / "shot_manifest.json"
++    manifestvar = tk.StringVar(value=settings.get("motion_manifest") or str(default_manifest))
++    aspectvar = tk.StringVar(value=settings.get("motion_aspect") or "9:16")
++    ttk.Label(opts, text="ClaudeAnimationBase:").pack(side="left")
++    ttk.Entry(opts, textvariable=enginevar, width=30).pack(side="left", padx=4)
++    ttk.Label(opts, text="Shot manifest:").pack(side="left", padx=(10, 0))
++    ttk.Entry(opts, textvariable=manifestvar, width=40).pack(side="left", padx=4, fill="x", expand=True)
++
++    def browse():
++        p = filedialog.askopenfilename(title="Shot manifest (shot_manifest/1 JSON)", parent=win,
++                                       filetypes=[("JSON", "*.json")], initialdir=str(project))
++        if p:
++            manifestvar.set(p)
++    ttk.Button(opts, text="Browse", command=browse).pack(side="left")
++    for a in ASPECTS:
++        ttk.Radiobutton(opts, text=a, variable=aspectvar, value=a).pack(side="left", padx=4)
++
++    cols = ("time", "treatment", "compile", "render", "motion", "note")
++    tree = ttk.Treeview(frame, columns=cols, show="tree headings", height=14, selectmode="extended")
++    tree.heading("#0", text="Shot")
++    tree.column("#0", width=80, stretch=False)
++    for c, w in zip(cols, (110, 130, 90, 100, 80, 520)):
++        tree.heading(c, text=c.capitalize())
++        tree.column(c, width=w, stretch=(c == "note"))
++    tree.pack(fill="both", expand=True, pady=(4, 6))
++    status = tk.StringVar(value="1) Check Engine  2) Generate Motion  3) Render a scene or all scenes")
++    ttk.Label(frame, textvariable=status).pack(anchor="w")
++
++    def engine() -> MotionEngine:
++        return MotionEngine(Path(enginevar.get()), log=app.log)
++
++    def plan_id() -> str | None:
++        m = _read(Path(manifestvar.get()))
++        if not isinstance(m, dict) or "project_id" not in m:
++            return None
++        return MotionEngine.plan_id(m, aspectvar.get())
++
++    def remember():
++        s = _read(settings_path, {}) or {}
++        s.update({"animation_root": enginevar.get(), "motion_manifest": manifestvar.get(), "motion_aspect": aspectvar.get()})
++        settings_path.write_text(json.dumps(s, indent=2, ensure_ascii=False), encoding="utf-8")
++
++    def refresh(*_):
++        tree.delete(*tree.get_children())
++        pid = plan_id()
++        if not pid:
++            status.set(f"No shot manifest at {manifestvar.get()}")
++            return
++        st = engine().status(pid)
++        for s in st["scenes"]:
++            note = "; ".join(s["compile_errors"]) or (s["error"] or "") or \
++                   ("sources: " + ", ".join(sorted({p["data"] for p in s["provenance"]})) if s["provenance"] else "")
++            tree.insert("", "end", iid=s["id"], text=s["id"], values=(
++                f"{s['start']:.1f}–{s['end']:.1f} s", s["treatment"] or "", s["compile"], s["render"],
++                "" if s["motion_pct"] is None else f"{s['motion_pct']:.1f} %", note))
++        d = st.get("duration") or {}
++        status.set(f"{pid}: compile {st['compile_status'] or 'not compiled'} · timing {st.get('timing') or '-'} · "
++                   f"{d.get('total', 0):.1f} s (target {d.get('target')}) · final: {'ready' if st['final'] else 'not yet'}"
++                   + (f" · {len(st['warnings'])} warning(s) in log" if st["warnings"] else ""))
++
++    def in_background(label: str, fn):
++        """Run fn() on the app's job queue; refresh the table when it ends (also on failure)."""
++        remember()
++
++        def work():
++            try:
++                fn()
++            finally:
++                app.after(0, lambda: win.winfo_exists() and refresh())
++        app._start_voice_or_queue(work, f"Motion Plan: {label}", f"Motion Plan: {label}")
++
++    def check_engine():
++        problems = engine().check()
++        if problems:
++            messagebox.showerror("Motion Plan", "\n".join(problems), parent=win)
++            return
++        in_background("capabilities", lambda: app.log(f"[Motion Plan] catalog {engine().catalog().get('hash')}"))
++
++    def generate():
++        if not Path(manifestvar.get()).is_file():
++            messagebox.showerror("Motion Plan", f"No shot manifest:\n{manifestvar.get()}", parent=win)
++            return
++
++        def fn():
++            try:
++                rep = engine().compile(Path(manifestvar.get()), aspect=aspectvar.get())
++            except MotionEngineError as ex:
++                app.log(f"[Motion Plan] {ex}")
++                return
++            blocked = [s["id"] for s in rep.get("shots", []) if s["status"] == "blocked"]
++            app.log(f"[Motion Plan] compile {rep.get('status')}" + (f"; blocked: {', '.join(blocked)}" if blocked else ""))
++        in_background("generate motion", fn)
++
++    def selected() -> list[str]:
++        return list(tree.selection())
++
++    def render(only=None, failed_only=False, force=False):
++        pid = plan_id()
++        if not pid:
++            messagebox.showerror("Motion Plan", "Generate Motion first.", parent=win)
++            return
++        what = ", ".join(only) if only else ("failed scenes" if failed_only else "all scenes")
++        if not messagebox.askyesno("Motion Plan", f"Render {what} for {pid} ({aspectvar.get()})?\n"
++                                   "JavaScript engine only: no LTX, no AI calls.\n"
++                                   "Finished scenes are reused unless their shot changed.", parent=win):
++            return
++
++        def fn():
++            st = engine().render(pid, only=only, failed_only=failed_only, force=force)
++            bad = [s["id"] for s in st["scenes"] if s["render"] == "failed"]
++            if st.get("final") and not only:
++                dst = engine().export_final(pid, project)
++                app.log(f"[Motion Plan] FINAL {dst}")
++            app.log(f"[Motion Plan] render {what}: " + ("all passed" if not bad else "FAILED " + ", ".join(bad)))
++        in_background(f"render {what}", fn)
++
++    def render_selected():
++        ids = selected()
++        if not ids:
++            messagebox.showinfo("Motion Plan", "Select one or more shots in the table first.", parent=win)
++            return
++        render(only=ids, force=True)
++
++    def preview_selected():
++        pid = plan_id()
++        for sid in selected()[:3]:
++            s = next((x for x in engine().status(pid)["scenes"] if x["id"] == sid), None) if pid else None
++            if s and (s["preview"] or s["clip"]):
++                _open(s["preview"] or s["clip"], win)
++            else:
++                messagebox.showinfo("Motion Plan", f"{sid}: not rendered yet.", parent=win)
++
++    def play_selected():
++        pid = plan_id()
++        for sid in selected()[:1]:
++            s = next((x for x in engine().status(pid)["scenes"] if x["id"] == sid), None) if pid else None
++            _open(s["clip"], win) if s and s["clip"] else messagebox.showinfo("Motion Plan", f"{sid}: no clip yet.", parent=win)
++
++    def open_final():
++        pid = plan_id()
++        st = engine().status(pid) if pid else {}
++        _open(st["final"], win) if st.get("final") else messagebox.showinfo("Motion Plan", "No final MP4 yet.", parent=win)
++
++    def open_log():
++        pid = plan_id()
++        log = engine().status(pid)["log"] if pid else None
++        _open(log, win) if log and Path(log).is_file() else messagebox.showinfo("Motion Plan", "No log yet.", parent=win)
++
++    bar = ttk.Frame(frame)
++    bar.pack(fill="x", pady=(6, 0))
++    for text, cmd in (("Check Engine", check_engine), ("Generate Motion", generate), ("Preview Scene", preview_selected),
++                      ("Play Scene", play_selected), ("Render Selected Scene", render_selected),
++                      ("Render All Scenes", lambda: render()), ("Re-render Failed", lambda: render(failed_only=True)),
++                      ("Open Final", open_final), ("Open Log", open_log), ("Refresh", refresh)):
++        ttk.Button(bar, text=text, command=cmd).pack(side="left", padx=(0, 5))
++    ttk.Button(bar, text="Close", command=win.destroy).pack(side="right")
++    for v in (manifestvar, aspectvar):
++        v.trace_add("write", lambda *_: refresh())
++    refresh()
++    return win
