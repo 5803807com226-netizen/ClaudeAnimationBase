@@ -1,6 +1,6 @@
 # Working on this repo
 
-Read ANIMATION_GUIDE.md first. Multi-aspect rules: docs/ASPECT_RATIOS.md.
+Read ANIMATION_GUIDE.md first. Multi-aspect rules: docs/ASPECT_RATIOS.md. Visual styles: docs/VISUAL_QUALITY.md.
 
 ## Every preset, system and story supports 9:16, 16:9 and 4:5
 
@@ -18,6 +18,14 @@ Read ANIMATION_GUIDE.md first. Multi-aspect rules: docs/ASPECT_RATIOS.md.
 
   A new preset starts with `[]`.
 - New projects: `aspect: '9:16'` in their config. Existing projects keep their format unless `--aspect` is given.
+
+## Visual quality: a look per story, never per-story finishing code
+
+- The finish (grade, light, texture, vignette, depth haze, glow and shadow strength, letterbox, camera polish) comes from `src/look.js`.
+- A story picks a style in its config: `look: 'cinematic'` or `{ style, off: [...], set: {...} }`. See docs/VISUAL_QUALITY.md.
+- Don't hand-tune those effects inside a story. If a style needs to change, change `LOOK_STYLES` and re-run `node tools/look_test.mjs`.
+- Story-specific: palette, characters, world theme, camera keys, acting. A look never changes these.
+- A new or changed style must PASS `tools/look_test.mjs` (before/after against `classic`) and `tools/aspect_test.mjs --look=<style>`.
 
 ## Rendering
 

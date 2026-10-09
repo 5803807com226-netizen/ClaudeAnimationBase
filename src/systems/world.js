@@ -28,6 +28,7 @@ function drawLayers(world, t, pick = () => true) {
         L.draw({ i, x0, x1: x0 + L.tile, r: k => hash(i * 71.31 + k * 13.7 + L.seed * 3.1), t, front, grow, world, layer: L });
       }
     });
+    lookHaze(L.depth, world.haze);   // look.js: atmospheric depth on far layers (off unless the style has haze)
   }
 }
 

@@ -88,7 +88,7 @@ function stroll(t, t0, t1, x0, x1, u) {
 // active are placed through it automatically (pass {screen:true} to opt out). One level only: always pair with camEnd().
 // LAST_CAM stays set after camEnd(), until the next frame: renderSheet's crops that follow a world point use it.
 let CAM = null, LAST_CAM = null;
-function camBegin(cx = W / 2, cy = H / 2, zoom = 1, rot = 0) { push(); translate(W / 2, H / 2); rotate(rot); scale(zoom); translate(-cx, -cy); CAM = LAST_CAM = { cx, cy, zoom, rot }; }
+function camBegin(cx = W / 2, cy = H / 2, zoom = 1, rot = 0) { const [lx, ly, lz] = lookCamera(T); cx += lx; cy += ly; zoom *= lz; push(); translate(W / 2, H / 2); rotate(rot); scale(zoom); translate(-cx, -cy); CAM = LAST_CAM = { cx, cy, zoom, rot }; }
 function camEnd() { pop(); CAM = null; }
 function toScreen(x, y, cam = CAM) {
   if (!cam) return [x, y];
@@ -103,7 +103,7 @@ function flash(k, col = '#FFFDF6') { if (k > .01) paint(rectPts(-60, -60, W + 12
 // is the one non-paint mark in the kit. It lands on what's painted so far, under anything painted after it, follows
 // the camera, and boils a little. Keep a = 1 on dark grounds; on light grounds it barely shows (as light would).
 function glow(x, y, r, col = '#FFC766', a = 1) {
-  if (a <= 0 || r < 1) return;
+  a *= LOOK.glow; if (a <= 0 || r < 1) return;
   flushBrush();
   const c = color(col), rr = r * (1 + jit(.03));
   push(); blendMode(ADD); tint(red(c), green(c), blue(c), 150 * clamp(a)); image(glowTex, x - rr, y - rr, 2 * rr, 2 * rr); noTint(); blendMode(BLEND); pop();
@@ -253,12 +253,14 @@ function makePaper() {
   for (let i = 0; i < 1400; i++) { const x = rnd() * W, y = rnd() * H, l = 6 + rnd() * 26, a = rnd() * TAU; c.strokeStyle = `rgba(110,88,60,${.035 + rnd() * .06})`; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a + .6) * l * .5, y + Math.sin(a + .6) * l * .5, x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
   return g;
 }
-// Static grain + vignette, multiplied over the painted frame so pigment sits "in" the paper.
-function makeGrain() {
+// Static grain + vignette, multiplied over the painted frame so pigment sits "in" the paper (look.js: classic; other
+// styles use the grain alone and their own vignette).
+function makeGrain(vignette = true) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d'), rnd = lcg(5);
   const id = c.createImageData(W, H), d = id.data;
   for (let i = 0; i < d.length; i += 4) { const v = 255 - (rnd() < .55 ? rnd() * rnd() * 34 : 0); d[i] = v; d[i + 1] = v - 1; d[i + 2] = v - 3; d[i + 3] = 255; }
   c.putImageData(id, 0, 0);
+  if (!vignette) return cv;
   const g = c.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * 1.05); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(120,95,70,.35)');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   return cv;
@@ -288,16 +290,18 @@ function draw() {
   push(); translate(-W / 2, -H / 2);
   BOILN = Math.floor(T * BOIL); CLAWD_N = 0; boilSeed('frame'); noiseSeed(77);
   image(paperG, 0, 0);
+  // p5.brush drops washed shapes queued before the frame's first ink stroke (seen as missing blobs and a blank first
+  // bar in a scene that starts with washes); an invisible inked speck in the corner primes it every frame.
+  paintAt([[0, 0], [3, 0], [0, 3]], { wash: '#FFFFFF', washOp: 1, ink: '#FFFFFF', sw: .05 });
   drawWorld(T);
   pop();
 }
 function composite(t) {
   const c = outX;
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
-  c.drawImage(drawingContext.canvas, 0, 0, W, H);
+  lookDrawFrame(c, drawingContext.canvas);   // look.js: the style's grade (none for classic)
   drawLetters(c);
-  c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0);
-  c.globalCompositeOperation = 'source-over';
+  lookFinish(c, t);                           // light, texture, vignette, letterbox
 }
 window.renderAt = async (t, type = 'image/png', q = .92) => { T = t; await redraw(); composite(t); return outC.toDataURL(type, q); };
 // Contact sheet of several times, for visual checks: returns { url, ms[] }. crop = [x, y, w, h] fills each cell with just

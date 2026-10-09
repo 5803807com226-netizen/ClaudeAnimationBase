@@ -20,7 +20,7 @@
   // A path starting with src/ is from the project root (shared characters, another story's art); others are the story's own.
   const storyFile = f => document.write(`<script src="${f.startsWith('src/') ? f : `src/stories/${STORY_ID}/${f}`}"><\/script>`);
   storyFile('config.js');
-  document.write('<script src="src/responsive.js"><\/script>');   // ?aspect=9:16 | 16:9 | 4:5 resizes the canvas
+  document.write('<script src="src/responsive.js"><\/script><script src="src/look.js"><\/script>');   // ?aspect=9:16 | 16:9 | 4:5 resizes the canvas
 </script>
 </head>
 <body>

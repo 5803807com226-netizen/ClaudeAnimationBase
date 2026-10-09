@@ -48,13 +48,14 @@ function playStage(spec) {
     const c = camAt(t), x = hero.state(t).x + (W0.ahead ?? 360), full = c.right + 160;
     return W0.intro ? Math.max(x, lerp(c.left - 300, full, easeOut(seg(t, 0, W0.intro)))) : Math.max(x, full);
   };
-  const world = makeWorld({ ground: W0.ground, reveal: W0.reveal === false ? null : reveal, layers: theme.layers });
+  const P = theme.palette || {}, world = makeWorld({ ground: W0.ground, reveal: W0.reveal === false ? null : reveal, layers: theme.layers,
+    haze: W0.haze || P.haze || P.skyLow || P.sky || spec.background });   // the haze colour comes from the theme's own sky
   const fade = { in: .4, out: .4, color: spec.background || '#F4ECDF', ...spec.fade }, dur = spec.duration || DUR;
 
   shots([[0, (t) => {
     const cam = camAt(t), ctx = { t, cam, camAt, actors, world, ground: W0.ground };
     let sx = 0, sy = 0;
-    if (C.shakeOnLand) for (const a of actors) for (const l of a.events.landings) { const d = t - l; if (d > 0 && d < .5) { const [x, y] = shakeXY(t, C.shakeOnLand * Math.exp(-9 * d)); sx += x; sy += y; } }
+    if (C.shakeOnLand) for (const a of actors) for (const l of a.events.landings) { const d = t - l; if (d > 0 && d < .5) { const [x, y] = shakeXY(t, C.shakeOnLand * LOOK.camera.shake * Math.exp(-9 * d)); sx += x; sy += y; } }
     background(spec.background || '#F4ECDF');
     if (theme.sky) theme.sky(t, ctx);
     (spec.screen || []).forEach(f => f(t, ctx));

@@ -43,7 +43,8 @@ const SAFE = {
   '4:5': { action: [.04, .05, .96, .93], title: [.06, .07, .94, .83], subtitle: [.08, .84, .92, .93] },
 };
 function safeArea(kind = 'action') {
-  const f = (SAFE[ASPECT()] || SAFE[W > H ? '16:9' : '9:16'])[kind], [x0, y0, x1, y1] = [f[0] * W, f[1] * H, f[2] * W, f[3] * H];
+  const f = (SAFE[ASPECT()] || SAFE[W > H ? '16:9' : '9:16'])[kind], bar = typeof lookBars === 'function' ? lookBars() : 0;   // keep clear of letterbox bars
+  const [x0, y0, x1, y1] = [f[0] * W, Math.max(f[1] * H, bar + .03 * H * !!bar), f[2] * W, Math.min(f[3] * H, H - bar - .03 * H * !!bar)];
   return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 }
 function fitZoom(w, h, mode = 'contain') {

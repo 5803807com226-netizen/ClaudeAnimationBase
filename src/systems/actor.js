@@ -56,7 +56,7 @@ function makeActor(spec) {
   function draw(t) {
     const s = state(t), ch = channels(t), lift = s.gy - s.y;
     if (fx.light) glow(s.x, s.gy - 4, U * (fx.light.r ?? 2.2) * (.8 + .2 * (ch.glow ?? 1)), fx.light.color, (fx.light.a ?? .45) * (ch.glow ?? 1) * (1 - .4 * clamp(lift / 200)));   // light on the ground
-    if (fx.shadow) { boilSeed((spec.id || 'actor') + '|shadow'); paint(ellPts(s.x, s.gy + 4, U * (.95 - .45 * clamp(lift / 220)), U * .16, 16), { wash: fx.shadow.color, washOp: fx.shadow.op * (1 - .5 * clamp(lift / 220)), ink: null }); }
+    if (fx.shadow) { boilSeed((spec.id || 'actor') + '|shadow'); paint(ellPts(s.x, s.gy + 4, U * (.95 - .45 * clamp(lift / 220)), U * .16, 16), { wash: fx.shadow.color, washOp: Math.min(255, fx.shadow.op * LOOK.shadow) * (1 - .5 * clamp(lift / 220)), ink: null }); }
     if (fx.dust) {
       const ev = steps.map(ft => ({ t: ft, x: state(ft).x - 14 * Math.sign(state(ft).v || 1), y: state(ft).gy, n: 2, size: U * .17, dir: Math.sign(state(ft).v) || 1 }));
       jumps.forEach(j => { ev.push({ t: j.t0, x: state(j.t0).x, y: state(j.t0).gy, n: 3, size: U * .2 }); ev.push({ t: j.t1, x: state(j.t1).x, y: state(j.t1).gy, n: j.h > 120 ? 8 : 4, size: U * (j.h > 120 ? .32 : .2), spread: 1.6 }); });
