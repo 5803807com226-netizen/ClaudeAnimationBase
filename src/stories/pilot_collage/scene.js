@@ -28,7 +28,7 @@ SCENES.s1_hook = {
     { id: 'sky', file: 's1_sky_strip.png', size: { '9:16': [1400], '16:9': [2100], '4:5': [1400] }, at: { '9:16': [540, 330], '16:9': [560, 560], '4:5': [540, 480] }, depth: .7,
       paper: { shadow: { dx: 6, dy: 10, blur: 12, opacity: .28 }, grain: .25 },
       gen: { engine: 'zimage', size: [1792, 768], matte: 'chroma',
-        prompt: 'a long horizontal strip of pale sky-blue sugar paper, torn along the bottom edge showing white fibres, slightly uneven straight top edge, subtle paper tooth, very soft lighter area near the top' } },
+        prompt: 'A single narrow horizontal strip of pale sky-blue handmade paper. The complete paper strip is fully visible, floating in the center of the image with generous empty space on all four sides. Approximately 70 percent of the image width and 20 percent of its height. Subtle natural paper fibres, slightly irregular torn edges with delicate white paper fibres. Fully opaque paper, photographed directly from above. Perfectly uniform vivid saturated chroma green background, RGB 0 177 64, without any texture, gradient, shadow or lighting variation. No other objects.' } },
     { id: 'sun', file: 's1_sun.png', size: [360], at: { '9:16': [770, 300], '16:9': [1170, 540], '4:5': [770, 450] }, depth: .62, step: 2,
       paper: { shadow: { dx: 6, dy: 9, blur: 10, opacity: .3 } },
       keys: { '9:16': [[0, { rot: 0 }], [1.6, { rot: -8, y: 300 }], [2.6, { rot: -10, y: 330 }, 'ease']],
