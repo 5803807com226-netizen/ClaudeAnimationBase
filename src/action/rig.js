@@ -247,7 +247,23 @@ function refineRegions(lab, nearLab, px, W, H, bones, opt = {}, segD) {
 // ---------- the skeleton ----------
 // root: { x, y (frame px of the hips), rot, s (frame px per image px), sx, sy (squash), flip (−1 faces left) }
 // pose: { bone: delta } · ik: { boneName (the upper bone): { target: [x, y], mid, end, w, bend: ±1, endAngle } }
+// FRONT VIEW (rig view: 'front'): the presets are side-view motions (forward = +x). Drawn facing the camera, the two
+// sides must move as mirror images: the screen-left side (f) turns the other way, so knees and elbows open outward on
+// both sides, both arms spread, legs sway like a waddle; trunk and head lean / turn only a little (a flat front view
+// cannot turn, it can only tilt).
+const FRONT_DAMP = { spine: .35, neck: .35, head: .35, thigh: .45, shin: .45, foot: .5, upperarm: .75 };
+function frontView(pose, ik, root) {
+  const P = {};
+  for (const [k, v] of Object.entries(pose)) { const side = /_f$/.test(k) ? 'f' : null; P[k] = (side ? -v : v) * (FRONT_DAMP[actKind(k)] ?? 1); }
+  const I = {};
+  for (const [up, k] of Object.entries(ik)) {
+    if (!k) { I[up] = k; continue; }
+    I[up] = /_f$/.test(up) ? { ...k, bend: -(k.bend ?? 1), ...(k.endAngle != null ? { endAngle: Math.PI - k.endAngle } : {}) } : k;
+  }
+  return [P, I, { ...root, rot: (root.rot || 0) * .35 }];
+}
 function solveSkeleton(C, root, pose = {}, ik = {}) {
+  if (C.spec.view === 'front') [pose, ik, root] = frontView(pose, ik, root);
   const S = { world: {}, ang: {}, root, s: root.s };
   const toWorld = (x, y) => [root.x + root.flip * x * root.s * (root.sx ?? 1), root.y + y * root.s * (root.sy ?? 1)];   // a hips-relative canonical point → frame px
   const R = (v, a) => [v[0] * Math.cos(a) - v[1] * Math.sin(a), v[0] * Math.sin(a) + v[1] * Math.cos(a)];
