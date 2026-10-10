@@ -6,9 +6,11 @@
   "description": "Clawd, painted in p5.brush: a character kit and guide for making hand-painted Clawd animations",
   "scripts": {
     "sheet": "node render.mjs --sheet=0,1,2,3,4,5 --out=out/sheet.jpg",
-    "video": "node render.mjs --clip --out=out/video.mp4"
+    "video": "node render.mjs --clip --out=out/video.mp4",
+    "studio": "node studio/server.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "d3-geo": "^3.1.1",
     "p5": "^2.3.3",
     "p5.brush": "^2.2.3",

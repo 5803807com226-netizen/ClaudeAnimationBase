@@ -4,3 +4,7 @@ out/
 tools/comfy/engines.local.json
 __pycache__/
 src/stories/_plan_*/
+# Motion Studio: your projects, local settings (API key) and footage plates
+projects/
+studio/config.local.json
+assets/stories/*/footage/

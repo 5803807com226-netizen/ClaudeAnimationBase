@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion Studio</title>
+<style>
+  :root { --bg: #F4F1EA; --panel: #FFFFFF; --ink: #22202A; --muted: #6B6676; --line: #E3DED3; --accent: #E8541E; --accent2: #2E7D6B; --bad: #C2362B; --warn: #B7791F; --ok: #2E7D32; --code: #1E1D24; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 "Leelawadee UI", "Noto Sans Thai", "Sarabun", system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--code); color: #fff; position: sticky; top: 0; z-index: 5; }
+  header h1 { margin: 0; font-size: 19px; letter-spacing: .3px; } header h1 b { color: var(--accent); }
+  .badge { font-size: 12.5px; padding: 3px 10px; border-radius: 99px; background: #3A3845; color: #EEE; }
+  .badge.ok { background: #1F5A3A; } .badge.no { background: #6B2A24; }
+  .wrap { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 54px); }
+  aside { border-right: 1px solid var(--line); padding: 14px; background: #EFEBE2; }
+  aside h3 { margin: 4px 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .proj { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px; border: 1px solid transparent; border-radius: 8px; background: none; cursor: pointer; font: inherit; color: var(--ink); }
+  .proj:hover { background: #E6E1D6; } .proj.sel { background: #fff; border-color: var(--line); font-weight: 600; }
+  main { padding: 18px 22px 60px; max-width: 1250px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  section h2 { margin: 0 0 10px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  section h2 .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 3px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #FDFCF9; color: var(--ink); }
+  textarea { min-height: 150px; resize: vertical; }
+  .row { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  button.b { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font: inherit; cursor: pointer; color: var(--ink); }
+  button.b:hover { border-color: #BDB6A6; } button.b:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  button.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .auto { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 10px; background: #FFF4EC; border: 1px solid #F3D3BF; }
+  .auto button.primary { font-size: 17px; padding: 11px 22px; }
+  .chk { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--ink); margin: 0; } .chk input { width: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; } th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  td textarea { min-height: 54px; font-size: 14px; }
+  .st-ok { color: var(--ok); font-weight: 600; } .st-bad { color: var(--bad); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13.5px; }
+  .log { background: var(--code); color: #E7E3DA; font: 12.5px/1.45 ui-monospace, Consolas, monospace; padding: 10px 12px; border-radius: 8px; height: 280px; overflow: auto; white-space: pre-wrap; }
+  .jobline { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #999; } .dot.running { background: var(--warn); animation: p 1s infinite; } .dot.done { background: var(--ok); } .dot.failed { background: var(--bad); }
+  @keyframes p { 50% { opacity: .3; } }
+  .preview img { max-width: 100%; border-radius: 8px; border: 1px solid var(--line); } video { max-width: 100%; max-height: 640px; border-radius: 8px; background: #000; }
+  .clip { display: grid; grid-template-columns: 2fr 1fr 2fr 70px 70px 34px; gap: 6px; margin-bottom: 6px; }
+  .note { background: #F7F3EA; border-left: 3px solid var(--accent2); padding: 8px 12px; border-radius: 6px; font-size: 14px; margin: 6px 0; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid var(--line); } .clip { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Motion <b>Studio</b></h1>
+  <span id="b-claude" class="badge">Claude…</span>
+  <span id="b-comfy" class="badge">ComfyUI…</span>
+  <span style="flex:1"></span>
+  <span class="muted" style="color:#AAA">เรื่อง → Opus กำกับ → ภาพ → วิดีโอ</span>
+</header>
+<div class="wrap">
+  <aside>
+    <h3>โปรเจกต์</h3>
+    <div id="projects"></div>
+    <button class="b" style="width:100%;margin-top:8px" onclick="newProject()">+ โปรเจกต์ใหม่</button>
+  </aside>
+  <main id="main"><div class="empty">เลือกโปรเจกต์ทางซ้าย หรือสร้างโปรเจกต์ใหม่</div></main>
+</div>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let STATE = null, CUR = null, VIEW = null, LOGN = 0, POLL = null, LOGTEXT = '';
+const api = async (path, method = 'GET', data) => { const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: data ? JSON.stringify(data) : undefined }); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j; };
+
+async function refreshState() {
+  STATE = await api('/api/state');
+  const bc = $('#b-claude'); bc.textContent = STATE.credentials ? `Claude: ${STATE.model}` : (STATE.provider === 'api' ? 'Claude API: ไม่มีคีย์' : 'Claude Code: ยังไม่พบ'); bc.className = 'badge ' + (STATE.credentials ? 'ok' : 'no');
+  const bf = $('#b-comfy'); bf.textContent = STATE.comfy ? 'ComfyUI: ตั้งค่าแล้ว' : 'ComfyUI: ยังไม่ตั้งค่า'; bf.className = 'badge ' + (STATE.comfy ? 'ok' : 'no');
+  $('#projects').innerHTML = STATE.projects.map(p => `<button class="proj ${p.id === CUR ? 'sel' : ''}" onclick="openProject('${p.id}')">${esc(p.title)}<br><span class="muted">${p.id}</span></button>`).join('') || '<div class="muted">ยังไม่มี</div>';
+}
+function newProject() {
+  CUR = null; VIEW = { project: { id: '', title: '', story: '', aspect: '9:16', seconds: 30, style: 'auto', notes: '', footage: [], narration: {} } }; render();
+}
+async function openProject(id) { CUR = id; VIEW = await api('/api/project/' + id); render(); refreshState(); }
+
+function render() {
+  const P = VIEW.project, d = VIEW.director, M = VIEW.manifest, R = VIEW.report;
+  $('#main').innerHTML = `
+  <section><h2><span class="n">1</span>เรื่องและการตั้งค่า</h2>
+    <div class="row">
+      <div><label>รหัสโปรเจกต์ (อังกฤษตัวเล็ก ตัวเลข _)</label><input id="f-id" value="${esc(P.id)}" ${CUR ? 'disabled' : ''} placeholder="เช่น chiangmai_trip"></div>
+      <div><label>ชื่อเรื่อง</label><input id="f-title" value="${esc(P.title)}"></div>
+      <div><label>ความยาว (วินาที)</label><select id="f-sec">${[15, 30, 45, 60, 90, 120].map(s => `<option ${+P.seconds === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+      <div><label>สัดส่วนภาพ</label><select id="f-asp">${['9:16', '16:9'].map(a => `<option ${P.aspect === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
+      <div><label>สไตล์</label><select id="f-style">${[['auto', 'ให้ Opus เลือก'], ['collage', 'Collage กระดาษตัดแปะ'], ['collage on footage', 'การ์ตูนบนฟุตเทจจริง'], ['animated_map', 'แผนที่สารคดี'], ['kinetic_typography', 'ตัวอักษรเคลื่อนไหว']].map(([v, t]) => `<option value="${v}" ${P.style === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <label>เรื่องราว / ไอเดีย / ข้อมูล (ภาษาไทย)</label><textarea id="f-story" placeholder="เล่าเรื่องที่อยากทำเป็นคลิป ใส่ข้อเท็จจริงที่ต้องการให้ถูกต้อง">${esc(P.story)}</textarea>
+    <label>คำสั่งเพิ่มเติมถึงผู้กำกับ (ไม่บังคับ)</label><input id="f-notes" value="${esc(P.notes)}" placeholder="เช่น โทนอบอุ่น สีส้ม-มิ้นต์ มีส้มเป็นตัวเดินเรื่อง">
+    <label>ไฟล์เสียงพากย์ (ไม่บังคับ: path ของไฟล์ .wav)</label><input id="f-narr" value="${esc(P.narration?.file)}" placeholder="D:\\voice\\narration.wav">
+    <label>ฟุตเทจวิดีโอจริง (ไม่บังคับ: สำหรับการ์ตูนบนฟุตเทจ) · path · ชื่อ · คำอธิบาย · เริ่ม · จบ (วินาที)</label>
+    <div id="clips">${(P.footage || []).map(clipRow).join('')}</div>
+    <div class="bar"><button class="b" onclick="addClip()">+ เพิ่มคลิป</button><span style="flex:1"></span><button class="b dark" onclick="save()">บันทึก</button></div>
+  </section>
+
+  ${CUR ? `<section><h2><span class="n">2</span>สร้างอัตโนมัติ</h2>
+    <div class="auto">
+      <button class="b primary" onclick="auto()">▶ AUTO</button>
+      <label class="chk"><input type="checkbox" id="o-test"> ทดสอบไม่ใช้ AI</label>
+      <label class="chk"><input type="checkbox" id="o-mock" ${STATE?.comfy ? '' : 'checked'}> ภาพ MOCK (ไม่ใช้ ComfyUI)</label>
+      <label class="chk"><input type="checkbox" id="o-review" checked> ให้ Opus ตรวจงานแล้วแก้ 1 รอบ</label>
+      <label class="chk"><input type="checkbox" id="o-render"> เรนเดอร์วิดีโอตอนจบ</label>
+    </div>
+    <div class="muted" style="margin-top:6px">AUTO = ${P.footage?.length ? 'เตรียมฟุตเทจ → ' : ''}Opus กำกับ → ตรวจ/แก้ → สร้างภาพ → พรีวิว → (Opus ตรวจงาน) → (เรนเดอร์) หยุดทันทีถ้าขั้นไหนมีปัญหา</div>
+    <div class="bar">
+      <span class="muted">ทีละขั้น:</span>
+      <button class="b" onclick="act('direct',{mode:'opus'})">Opus กำกับ</button>
+      <button class="b" onclick="act('direct',{mode:'test'})">เลย์เอาต์ทดสอบ (ไม่ใช้ AI)</button>
+      <button class="b" onclick="act('compile')">ตรวจ/คอมไพล์</button>
+      ${P.footage?.length ? `<button class="b" onclick="act('footage')">เตรียมฟุตเทจ</button>` : ''}
+      <button class="b" onclick="act('art',{mode:'preflight'})">เช็ค ComfyUI</button>
+      <button class="b" onclick="act('art',{mode:'dry'})">ดู prompt ภาพ</button>
+      <button class="b" onclick="act('art',{mode:'gen'})">สร้างภาพ (ComfyUI)</button>
+      <button class="b" onclick="act('art',{mode:'mock'})">ภาพ MOCK</button>
+      <button class="b" onclick="act('art',{mode:'validate'})">ตรวจภาพ</button>
+      <button class="b" onclick="act('preview')">พรีวิว</button>
+      <button class="b" onclick="act('review')">Opus ตรวจงาน</button>
+      <button class="b dark" onclick="act('render')">เรนเดอร์วิดีโอ</button>
+    </div>
+  </section>
+
+  <section><h2><span class="n">3</span>ผลงานของผู้กำกับ</h2>
+    ${d ? `<div><b style="font-size:17px">${esc(d.title)}</b> <span class="muted">· ${esc(d.style?.treatment || '')} · look ${esc(typeof d.style?.look === 'string' ? d.style.look : d.style?.look?.style || '')}</span></div>
+      <div>${esc(d.logline)}</div><div class="muted">${esc(d.style?.rationale)}</div>
+      ${(d.notes || []).map(n => `<div class="note">${esc(n)}</div>`).join('')}
+      <div class="muted" style="margin-top:6px">${(d.history || []).map(h => `${h.kind}${h.usage ? (h.usage.plan ? ' (แพลน Claude)' : ` ≈$${h.usage.cost}`) : ''}`).join(' → ')}</div>` : '<div class="muted">ยังไม่ได้กำกับ กด AUTO หรือ "Opus กำกับ"</div>'}
+    ${M ? `<table style="margin-top:10px"><tr><th>ช็อต</th><th>เวลา</th><th>คำบรรยาย (แก้ได้)</th><th>ภาพ</th><th>สถานะ</th></tr>
+      ${M.shots.map((s, i) => { const r = R?.shots?.find(x => x.id === s.id); return `<tr><td><b>${esc(s.id)}</b></td><td>${s.start}–${s.end}s</td>
+        <td><textarea data-i="${i}" class="narr">${esc(s.narration)}</textarea></td><td>${esc(s.treatment)}<div class="muted">${esc(s.purpose)}</div><div class="muted">${(s.layers || []).length} เลเยอร์${s.transition_in && s.transition_in !== 'cut' ? ' · ' + esc(s.transition_in.cap || s.transition_in) : ''}</div></td>
+        <td>${r ? (r.status === 'compiled' ? '<span class="st-ok">ผ่าน</span>' : `<span class="st-bad">ติด</span><div class="muted">${esc(r.errors.join(' | '))}</div>`) : '<span class="muted">ยังไม่ตรวจ</span>'}</td></tr>`; }).join('')}</table>
+      <div class="bar"><button class="b" onclick="saveNarr()">บันทึกคำบรรยายที่แก้</button><span class="muted">ความยาวรวม ${M.shots.at(-1)?.end ?? 0} วินาที</span></div>` : ''}
+  </section>
+
+  <section class="preview"><h2><span class="n">4</span>พรีวิวและวิดีโอ</h2>
+    ${VIEW.preview ? `<img src="${VIEW.preview}" alt="preview">` : '<div class="muted">ยังไม่มีพรีวิว</div>'}
+    ${VIEW.video ? `<div style="margin-top:12px"><video src="${VIEW.video}" controls></video><div class="muted">ไฟล์: ${esc(VIEW.videoPath)}</div></div>` : ''}
+  </section>` : ''}
+
+  <section><h2><span class="n">${CUR ? 5 : 2}</span>บันทึกการทำงาน</h2>
+    <div class="jobline"><span id="jdot" class="dot"></span><span id="jname" class="muted">ว่าง</span><span style="flex:1"></span><button class="b" onclick="stopJob()">หยุด</button></div>
+    <div id="log" class="log"></div>
+  </section>`;
+  const L = $('#log'); L.textContent = LOGTEXT; L.scrollTop = L.scrollHeight; pollJob(true);
+}
+const clipRow = (c = {}) => `<div class="clip"><input class="c-path" value="${esc(c.path)}" placeholder="D:\\clips\\boat.mp4"><input class="c-name" value="${esc(c.name)}" placeholder="boat"><input class="c-desc" value="${esc(c.description)}" placeholder="หัวเรือหางยาว ทะเล ภูเขา"><input class="c-start" value="${esc(c.start ?? '')}" placeholder="0"><input class="c-end" value="${esc(c.end ?? '')}" placeholder="4"><button class="b" onclick="this.parentNode.remove()">✕</button></div>`;
+function addClip() { $('#clips').insertAdjacentHTML('beforeend', clipRow()); }
+function form() {
+  return { id: CUR || $('#f-id').value.trim(), title: $('#f-title').value, story: $('#f-story').value, aspect: $('#f-asp').value, seconds: +$('#f-sec').value, style: $('#f-style').value,
+    notes: $('#f-notes').value, narration: { file: $('#f-narr').value.trim() || undefined },
+    footage: [...document.querySelectorAll('.clip')].map(r => ({ path: r.querySelector('.c-path').value.trim(), name: r.querySelector('.c-name').value.trim(), description: r.querySelector('.c-desc').value,
+      start: +r.querySelector('.c-start').value || 0, end: +r.querySelector('.c-end').value || undefined })).filter(c => c.path && c.name) };
+}
+async function save() { try { VIEW = await api('/api/project', 'POST', form()); CUR = VIEW.project.id; await refreshState(); render(); } catch (e) { alert(e.message); } }
+async function act(a, data = {}) { try { await api('/api/project', 'POST', form()); await api(`/api/project/${CUR}/${a}`, 'POST', data); LOGN = 0; LOGTEXT = ''; $('#log').textContent = ''; pollJob(); } catch (e) { alert(e.message); } }
+function auto() { act('auto', { mode: $('#o-test').checked ? 'test' : 'opus', art: $('#o-mock').checked ? 'mock' : 'gen', review: $('#o-review').checked && !$('#o-test').checked, render: $('#o-render').checked }); }
+async function saveNarr() { const M = VIEW.manifest; document.querySelectorAll('.narr').forEach(t => M.shots[+t.dataset.i].narration = t.value); VIEW = await api(`/api/project/${CUR}/manifest`, 'PUT', M); render(); }
+async function stopJob() { await api('/api/job/stop', 'POST'); }
+async function pollJob(once) {
+  clearTimeout(POLL);
+  try {
+    const j = await api('/api/job?from=' + LOGN); const L = $('#log'); if (!L) return;
+    if (j.total < LOGN) { LOGN = 0; LOGTEXT = ''; }
+    if (j.log.length) { LOGTEXT += j.log.join('\n') + '\n'; L.textContent = LOGTEXT; L.scrollTop = L.scrollHeight; } LOGN = j.total;
+    $('#jdot').className = 'dot ' + j.status; $('#jname').textContent = j.status === 'idle' ? 'ว่าง' : `${j.name} · ${j.step || ''} · ${({ running: 'กำลังทำงาน', done: 'เสร็จ', failed: 'มีปัญหา' })[j.status] || j.status}`;
+    if (j.status === 'running') POLL = setTimeout(pollJob, 800);
+    else if (!once && CUR) { VIEW = await api('/api/project/' + CUR); render(); }
+  } catch (e) { POLL = setTimeout(pollJob, 2000); }
+}
+refreshState().then(() => { const id = new URLSearchParams(location.search).get('p'); if (id) openProject(id); });
+</script>
+</body>
+</html>

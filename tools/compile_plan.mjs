@@ -113,7 +113,9 @@ for (const [i, s] of M.shots.entries()) {
     const c = checkLayer({ ...L, id: `${s.id}.${L.id}` }, len, prov, errors, subs); if (!c || !c.cap) return null;
     if (collage ? !(c.cap === 'collage.layer' || c.space === 'text') : c.cap === 'collage.layer') { errors.push(`${s.id}.${L.id}: ${c.cap} ${collage ? 'is not a collage layer or text (a collage shot takes collage.layer and type.* layers)' : 'needs treatment "collage"'}`); return null; }
     if (c.cap === 'collage.layer') {   // its moves: collage.* motions, each checked like any capability
-      if (!/^[a-z0-9]+(_[a-z0-9]+)*\.png$/.test(c.params.file || '')) errors.push(`${s.id}.${L.id}.file: a lower_snake_case .png name is required`);
+      if (c.params.doodle) { const k = c.params.doodle.kind; if (!CAPS['doodle.' + k]) errors.push(`${s.id}.${L.id}.doodle: unknown kind "${k}" (have: ${Object.keys(CAPS).filter(x => x.startsWith('doodle.')).map(x => x.slice(7)).join(', ')})`); }
+      else if (!/^[a-z0-9]+(_[a-z0-9]+)*\.png$/.test(c.params.file || '')) errors.push(`${s.id}.${L.id}.file: a lower_snake_case .png name is required (or a doodle)`);
+      if (c.params.space === 'footage' && !s.collage?.footage) errors.push(`${s.id}.${L.id}: space "footage" needs collage.footage (a prepared plate)`);
       if (!Array.isArray(c.params.size) || !Array.isArray(c.params.at)) errors.push(`${s.id}.${L.id}: size [w] | [null, h] and at [x, y] are required`);
       c.motion = (L.motion || []).map((m, j) => {
         const r = checkLayer({ id: `${s.id}.${L.id}.motion[${j}]`, ...m }, len, prov, errors, subs); if (!r || !r.cap) return null;
@@ -126,13 +128,14 @@ for (const [i, s] of M.shots.entries()) {
   let scene = null;
   if (collage) {   // → a collage scene (src/collage/collage.js), played with its neighbours as one reel
     const C = s.collage || {}, tr = s.transition_in;
+    if (C.footage && !(typeof C.footage.dir === 'string' && existsSync(C.footage.dir.replace(/\/?$/, '/') + 'meta.json'))) errors.push(`${s.id}.collage.footage.dir: no prepared plate at ${C.footage.dir} (python tools/footage.py prepare)`);
     if (!C.assets || typeof C.assets !== 'string') errors.push(`${s.id}.collage.assets: the artwork folder is required (e.g. "assets/stories/<id>/")`);
     if (C.camera && !(Array.isArray(C.camera) && C.camera.every(k => Array.isArray(k) && k.length >= 4 && k.slice(0, 4).every(v => typeof v === 'number')))) errors.push(`${s.id}.collage.camera: keys [[t, x, y, zoom, ease?], ...]`);
     let transition;
     if (tr && typeof tr === 'object') { const r = checkLayer({ id: `${s.id}.transition_in`, ...tr }, len, prov, errors, subs); if (r && r.cap) { if (CAPS[r.cap].category !== 'transition') errors.push(`${s.id}.transition_in: ${r.cap} is not a transition`); else transition = { kind: r.cap.slice(11), ...r.params }; } }
     else if (tr && tr !== 'cut') errors.push(`${s.id}.transition_in: a collage shot takes { "cap": "transition.<kind>", "params": {...} } or "cut"`);
     scene = { assets: C.assets, background: C.background || s.background || M.strategy?.background || '#F3F1EC', duration: +len.toFixed(3), aspects: [M.aspect],
-      camera: C.camera, boil: C.boil, gen: C.gen, transition,
+      camera: C.camera, boil: C.boil, gen: C.gen, transition, footage: C.footage,
       layers: layers.filter(L => L.cap === 'collage.layer').map(L => ({ id: L.id.slice(s.id.length + 1), ...L.params, motion: L.motion })),
       type: layers.filter(L => L.space === 'text').map(L => ({ id: L.id, preset: L.cap.slice(5), ...L.params })), narration: s.narration ? [{ at: 0, end: len, text: s.narration }] : [] };
   }
