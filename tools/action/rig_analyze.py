@@ -120,8 +120,19 @@ def analyze_human(M, warnings):
             sx = ta - .02 * W if side == 'L' else tb + .02 * W
             out['arm' + side] = {'shoulder': J(sx, sh_y, 'uncertain'), 'elbow': J(sx, sh_y + .12 * h, 'uncertain'), 'wrist': J(sx, sh_y + .23 * h, 'uncertain'), 'tip': J(sx, sh_y + .27 * h, 'uncertain')}
             continue
-        root, tip, d = limb_joints(comp, sh_y, 'arm'); P = lambda f: root + (tip - root) * f
-        out['arm' + side] = {'shoulder': J(*root, 'estimated', 'arm axis extended to shoulder height'), 'elbow': J(*P(.47), 'estimated', 'proportion along the arm'),
+        root, tip, d = limb_joints(comp, sh_y, 'arm')
+        # the shoulder pivot lies on the UPPER arm's own axis (the forearm's angle would pull it off the shoulder cap)
+        cy, cxs = comp; tt = (cy - cy.mean()) * d[1] + (cxs - cxs.mean()) * d[0]; up = tt < np.percentile(tt, 40)
+        if up.sum() > 30:
+            c2, d2 = axis(cy[up], cxs[up])
+            if d2[1] < 0: d2 = -d2
+            if abs(d2[1]) > .3: root = c2 + d2 * ((sh_y - c2[1]) / d2[1])
+        # anatomy: the shoulder joint sits inside the trunk's edge by about the arm's radius (the arm's cap covers it)
+        widths = [(cxs[cy == y].max() - cxs[cy == y].min() + 1) for y in range(int(np.percentile(cy, 50)), int(np.percentile(cy, 80)))]
+        ra = float(np.median(widths)) / 2 if widths else .03 * W
+        root = np.array([max(root[0], ta + .8 * ra) if side == 'L' else min(root[0], tb - .8 * ra), root[1]])
+        P = lambda f: root + (tip - root) * f
+        out['arm' + side] = {'shoulder': J(*root, 'estimated', 'arm axis at shoulder height, inside the trunk edge by the arm radius'), 'elbow': J(*P(.47), 'estimated', 'proportion along the arm'),
                              'wrist': J(*P(.84), 'estimated', 'proportion along the arm'), 'tip': J(*tip, 'detected', 'far end of the arm')}
     legs = sorted(legs, key=lambda c: c[1].mean())[:2] if len(legs) >= 2 else legs
     facing_votes = 0

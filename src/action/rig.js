@@ -132,13 +132,16 @@ function solveSkeleton(C, root, pose = {}, ik = {}) {
     const U = C.byName[up], M = C.byName[k.mid], s0 = P[up];
     let T = [(k.target[0] - root.x) / (root.flip * root.s * (root.sx ?? 1)), (k.target[1] - root.y) / (root.s * (root.sy ?? 1))];   // frame → canonical
     if (k.endOffset) T = [T[0] - k.endOffset[0], T[1] - k.endOffset[1]];
+    // a partial weight blends the TARGET from where the limb's end is without IK, then solves fully: blending the
+    // angles instead can swing a limb the long way round when the two poses are nearly opposite
+    const wIK = k.w;
+    if (wIK < 1) { const me = [P[k.mid][0] + Math.cos(A[k.mid]) * M.len, P[k.mid][1] + Math.sin(A[k.mid]) * M.len]; T = [me[0] + (T[0] - me[0]) * wIK, me[1] + (T[1] - me[1]) * wIK]; }
     const l1 = U.len, l2 = M.len, dx = T[0] - s0[0], dy = T[1] - s0[1];
     const d = clamp(Math.hypot(dx, dy), Math.abs(l1 - l2) + 1e-3, l1 + l2 - 1e-3), base = Math.atan2(dy, dx);
-    const c1 = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), bend = k.bend ?? 1;
+    const c1 = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), bend = k.bend ?? 1;   // +1 bends to +x (knees), -1 to -x (elbows)
     const a1 = base - bend * Math.acos(c1), e = [s0[0] + Math.cos(a1) * l1, s0[1] + Math.sin(a1) * l1], a2 = Math.atan2(T[1] - e[1], T[0] - e[0]);
-    const old1 = A[up], old2 = A[k.mid];
-    A[up] = old1 + angNorm(a1 - old1) * k.w; A[k.mid] = old2 + angNorm(a2 - old2) * k.w;
-    if (k.endAngle != null && k.end && C.byName[k.end]) A[k.end] = A[k.end] + angNorm(k.endAngle - A[k.end]) * k.w;
+    A[up] = a1; A[k.mid] = a2;
+    if (k.endAngle != null && k.end && C.byName[k.end]) A[k.end] = A[k.end] + angNorm(k.endAngle - A[k.end]) * wIK;
     // re-place the subtree below the upper bone with the new angles
     const replace = (b) => {
       for (const c of b.kids) {

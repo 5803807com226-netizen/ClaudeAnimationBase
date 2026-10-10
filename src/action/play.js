@@ -137,10 +137,14 @@ function actLookAt(C, c, pose, S, K) {
   return solveSkeleton(C, c.root, pose, ikDict(C, c.st, K.s, f));
 }
 function pointAtSolve(C, c, pose, S, K) {
-  const { hand, target, k } = c.st.pointAt, f = c.root.flip, sh = S.world['upperarm_' + hand].a, d = Math.hypot(target[0] - sh[0], target[1] - sh[1]) || 1;
-  const L = (C.byName['upperarm_' + hand].len + C.byName['forearm_' + hand].len) * K.s * .97, tgt = [sh[0] + (target[0] - sh[0]) / d * L, sh[1] + (target[1] - sh[1]) / d * L];
-  const ang = Math.atan2(target[1] - sh[1], f * (target[0] - sh[0]));
-  return solveSkeleton(C, c.root, pose, { ...ikDict(C, c.st, K.s, f), ['upperarm_' + hand]: { mid: 'forearm_' + hand, end: 'hand_' + hand, target: tgt, w: k, bend: -1, endAngle: ang } });
+  // the arm sweeps (by direction, never through the shoulder) from where it hangs to the pointing line; pointing is
+  // limited to the forward half (a target behind the character is pointed at from above the shoulder, not behind it)
+  const { hand, target, k } = c.st.pointAt, f = c.root.flip, sh = S.world['upperarm_' + hand].a, wr = S.world['hand_' + hand].a;
+  const L = (C.byName["upperarm_" + hand].len + C.byName["forearm_" + hand].len) * K.s * .995;   // pointing: a straight arm
+  const aT = clamp(Math.atan2(target[1] - sh[1], f * (target[0] - sh[0])), -1.3, 1.4), aF = Math.atan2(wr[1] - sh[1], f * (wr[0] - sh[0]));
+  const ang = lerpA(aF, aT, k), dist = lerp(Math.hypot(wr[0] - sh[0], wr[1] - sh[1]), L, k);
+  const tgt = [sh[0] + f * Math.cos(ang) * dist, sh[1] + Math.sin(ang) * dist];
+  return solveSkeleton(C, c.root, pose, { ...ikDict(C, c.st, K.s, f), ['upperarm_' + hand]: { mid: 'forearm_' + hand, end: 'hand_' + hand, target: tgt, w: 1, bend: -1, endAngle: lerpA(S.A['hand_' + hand], ang, k) } });
 }
 
 // ---------- drawing ----------

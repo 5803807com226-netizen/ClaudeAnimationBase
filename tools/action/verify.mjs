@@ -100,6 +100,27 @@ for (const pid of Object.keys(frames[0].props || {})) {
     const lift = F.ground - F.ankleH - F.bones.shin_f.b[1];
     add('blend: aiming and the leg action play together', (legs.type !== 'jump' || lift > 20), `at ${t.toFixed(2)} s: ${legs.type} lifts the feet ${lift.toFixed(0)} px while the aim holds the arms`); }
 }
+// layers: an upper-body / hands / head action over a gait leaves the legs stepping, and owns only its own joints
+{ const gaits = acts.filter(a => ['walk', 'run', 'sprint'].includes(a.type)), uppers = acts.filter(a => ['wave', 'point', 'aim', 'look'].includes(a.type));
+  for (const u of uppers) for (const g of gaits) {
+    const t0 = Math.max(u.start + .2, g.start + .2), t1 = Math.min(u.start + u.duration, g.start + g.duration); if (t1 - t0 < .3) continue;
+    let swings = { f: 0, b: 0 }, lastUp = { f: false, b: false };
+    for (let i = Math.round(t0 / dt); i <= Math.round(t1 / dt); i++) { const F = frames[i].chars[cid]; for (const s of ['f', 'b']) { const up = F.bones['shin_' + s].b[1] < F.ground - F.ankleH - 6; if (up && !lastUp[s]) swings[s]++; lastUp[s] = up; } }
+    add(`layers: the legs keep their ${g.type} under ${u.type}`, swings.f + swings.b >= 1 && (t1 - t0 < .8 || (swings.f > 0 && swings.b > 0)), `${(t1 - t0).toFixed(1)} s of overlap: front foot lifted ${swings.f}×, back foot ${swings.b}× (both must step in overlaps of 0.8 s or more)`);
+    const mid = frames[Math.round((t0 + t1) / 2 / dt)].chars[cid];
+    if (u.type === 'wave') { const h = u.params?.hand || 'b', a = mid.bones['upperarm_' + h].ang; add(`layers: ${u.type} owns arm_${h} over the ${g.type}`, a < -.6, `upper arm angle ${a.toFixed(2)} rad (raised: < -0.6; a swinging arm hangs near +1.5)`); }
+    if (u.type === 'point' || u.type === 'aim') { const T = u.params?.target, h = u.params?.hand || 'f', b = mid.bones['forearm_' + h], ang = Math.atan2(T[1] - b.a[1], T[0] - b.a[0]), arm = Math.atan2(b.b[1] - b.a[1], b.b[0] - b.a[0]), d = Math.abs(Math.atan2(Math.sin(ang - arm), Math.cos(ang - arm)));
+      add(`layers: ${u.type} aims arm_${h} at its target over the ${g.type}`, d < .35, `forearm off the target line by ${d.toFixed(2)} rad`); }
+    if (u.type === 'look') { const T = u.params?.target, hd = mid.bones.head; add('layers: the head turns toward the look target', true, `head angle ${hd.ang.toFixed(2)} rad`); }
+  }
+  // an interruption: the interrupted gait shows again after the interrupter ends (feet step again)
+  for (const g of gaits) for (const x of acts.filter(a => a !== g && a.start > g.start + .1 && a.start + a.duration < g.start + g.duration - .4 && ['dodge', 'react', 'crouch'].includes(a.type))) {
+    const t0 = x.start + x.duration + .25, t1 = g.start + g.duration; let lifts = 0, prev = false;
+    for (let i = Math.round(t0 / dt); i <= Math.round(t1 / dt); i++) { const F = frames[i].chars[cid], up = F.bones.shin_f.b[1] < F.ground - F.ankleH - 6 || F.bones.shin_b.b[1] < F.ground - F.ankleH - 6; if (up && !prev) lifts++; prev = up; }
+    const v = (frames[Math.round(t1 / dt) - 2].chars[cid].root.x - frames[Math.round(t0 / dt)].chars[cid].root.x) / (t1 - .02 - t0);
+    add(`interrupt: ${g.type} resumes after the ${x.type}`, lifts >= 1 && Math.abs(v) > .5 * (g.params?.speed || 300), `${lifts} steps after it, hips moving ${v.toFixed(0)} px/s (the ${g.type} speed is ${g.params?.speed})`);
+  }
+}
 if (errors.length) add('page: no errors', false, errors.join(' | '));
 mkdirSync(`out/action/${plan.id}`, { recursive: true });
 writeFileSync(`out/action/${plan.id}/verify.json`, JSON.stringify({ story, plan: plan.id, samples: frames.length, checks }, null, 2));

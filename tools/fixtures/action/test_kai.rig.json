@@ -32,19 +32,19 @@
    "confidence": "estimated"
   },
   "shoulder_f": {
-   "x": 225.0,
+   "x": 253.6,
    "y": 326.2,
    "confidence": "estimated",
-   "note": "arm axis extended to shoulder height"
+   "note": "arm axis at shoulder height, inside the trunk edge by the arm radius"
   },
   "elbow_f": {
-   "x": 186.9,
+   "x": 202.1,
    "y": 468.0,
    "confidence": "estimated",
    "note": "proportion along the arm"
   },
   "wrist_f": {
-   "x": 157.0,
+   "x": 161.5,
    "y": 579.7,
    "confidence": "estimated",
    "note": "proportion along the arm"
@@ -80,19 +80,19 @@
    "note": "far end of the foot"
   },
   "shoulder_b": {
-   "x": 414.0,
+   "x": 385.2,
    "y": 326.2,
    "confidence": "estimated",
-   "note": "arm axis extended to shoulder height"
+   "note": "arm axis at shoulder height, inside the trunk edge by the arm radius"
   },
   "elbow_b": {
-   "x": 456.8,
+   "x": 441.5,
    "y": 466.6,
    "confidence": "estimated",
    "note": "proportion along the arm"
   },
   "wrist_b": {
-   "x": 490.4,
+   "x": 485.8,
    "y": 577.2,
    "confidence": "estimated",
    "note": "proportion along the arm"
@@ -169,7 +169,7 @@
    "to": "elbow_b",
    "chain": "arm_b",
    "z": 10,
-   "radius": 28.0
+   "radius": 22.0
   },
   {
    "name": "forearm_b",
@@ -178,7 +178,7 @@
    "to": "wrist_b",
    "chain": "arm_b",
    "z": 10,
-   "radius": 28.0
+   "radius": 19.0
   },
   {
    "name": "hand_b",
@@ -187,7 +187,7 @@
    "to": "hand_b_tip",
    "chain": "arm_b",
    "z": 10,
-   "radius": 20.0
+   "radius": 17.0
   },
   {
    "name": "thigh_b",
@@ -250,7 +250,7 @@
    "to": "elbow_f",
    "chain": "arm_f",
    "z": 80,
-   "radius": 25.0
+   "radius": 44.0
   },
   {
    "name": "forearm_f",
@@ -259,7 +259,7 @@
    "to": "wrist_f",
    "chain": "arm_f",
    "z": 80,
-   "radius": 30.0
+   "radius": 23.0
   },
   {
    "name": "hand_f",
@@ -268,7 +268,7 @@
    "to": "hand_f_tip",
    "chain": "arm_f",
    "z": 80,
-   "radius": 20.0
+   "radius": 17.0
   }
  ],
  "front_side": "screen-left",

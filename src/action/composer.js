@@ -52,9 +52,14 @@ function buildComposer(plan, chars, props) {
     for (const a of acts) {
       // the next action of this layer that shares joints takes over; until it does, this one holds its last pose
       // (a gap in a layer does not drop the body back to neutral)
-      const nx = acts.filter(b => b !== a && b.pri === a.pri && !b.additive && !a.additive && b.start >= a.start + .01 && [...b.mask].some(m => a.mask.has(m)));
+      // (an action that starts INSIDE this one interrupts it only while it plays, on top, by its own weight: when it
+      // ends, this one shows again: a dodge in the middle of a run, then running on)
+      const nx = acts.filter(b => b !== a && b.pri === a.pri && !b.additive && !a.additive && b.start >= a.end - Math.max(b.bi, .05) && [...b.mask].some(m => a.mask.has(m)));
       a.next = nx.sort((x, y) => x.start - y.start)[0] || null;
     }
+    // an action nested inside a longer one of its layer (a dodge inside a run) gives the joints back when it ends
+    for (const a of acts) a.nested = acts.some(b => b !== a && b.pri === a.pri && b.start < a.start && b.end > a.end + .1 && [...b.mask].some(m => a.mask.has(m)));
+    for (const a of acts) if (a.nested) a.next = null;
     const env = (a, t) => {
       if (t < a.start) return 0;
       let w = a.bi > 0 ? smooth((t - a.start) / a.bi) : 1;
@@ -83,9 +88,11 @@ function buildComposer(plan, chars, props) {
     }
     const rootX = t => { const f = clamp(t / DT, 0, N - 2), i = Math.floor(f); return X[i] + (X[i + 1] - X[i]) * (f - i); };
     const rootV = t => V[clamp(Math.round(t / DT), 0, N - 2)];
-    out[ch.id] = { ch, C, s, legLen, ankleH, standY, acts, env, flipAt, rootX, rootV, G };
+    out[ch.id] = { ch, C, s, legLen, ankleH, standY, acts, env, flipAt, rootX, rootV, G, plan };
   }
-  return { chars: out, props: buildProps(plan, out, props) };
+  const CP = { chars: out, props: buildProps(plan, out, props) };
+  for (const K of Object.values(out)) K.CP = CP;
+  return CP;
 }
 
 function implicitCarry(t0, t1, hand) {
@@ -107,6 +114,7 @@ function evalCharacter(K, plan, t, CP, opts = {}) {
   // the neutral stance: both feet planted under the hips (IK), arms relaxed
   standBase(K, st, t, flip);
   for (const a of acts) {
+    if (opts.exclude && (a === opts.exclude || a.start >= opts.exclude.start)) continue;   // the state an action starts from
     const w = env(a, t); if (w <= 0) continue;
     const pre = ACTION_EVAL[a.type]; if (!pre) continue;
     const o = pre(K, a, Math.min(t, a.next ? t : t), clamp((t - a.start) / a.dur), st, flip, CP, plan); if (!o) continue;
@@ -150,13 +158,17 @@ function mergeAction(st, o, a, w) {
   if (o.armHold) for (const [h, v] of Object.entries(o.armHold)) if (m.has('arm_' + h) || m.has('hand_' + h)) st.armHold[h] = lerp(st.armHold[h] || 0, v, w);
   if (o.aim && m.has('prop')) st.aim = st.aim ? { ...o.aim, w: lerp(st.aim.w, o.aim.w ?? 1, w) } : { ...o.aim, w: (o.aim.w ?? 1) * w };
   if (o.recoil) st.recoil = (st.recoil || 0) + o.recoil * w;
+  if (o.pointAt && (m.has('arm_' + o.pointAt.hand) || m.has('hand_' + o.pointAt.hand))) st.pointAt = { ...o.pointAt, k: o.pointAt.k * w };
 }
 
 // feet: canonical helpers. Feet are IK targets in frame px; x along the facing direction from a hips-relative offset.
 const footRest = (K, side) => K.C.byName['thigh_' + side].off[0] * K.s;                        // a foot's x offset under its hip
 const ankleTarget = (K, x) => [x, K.G - K.ankleH];
 function standBase(K, st, t, flip) {
-  Object.assign(st.ik, feetPlanted(K, st.root.x, flip));
+  // the neutral stance stands where the latest leg action began (not under the moving hips: blending into a walk
+  // from it must not drag the feet)
+  const last = K.acts.filter(a => a.start <= t && [...a.mask].some(m => m.startsWith('leg'))).sort((x, y) => y.start - x.start)[0];
+  Object.assign(st.ik, feetPlanted(K, K.rootX(last ? last.start : 0), flip));
   Object.assign(st.pose, { upperarm_f: -.08, forearm_f: -.18, upperarm_b: .1, forearm_b: -.22, hand_f: 0, hand_b: 0 });
 }
 
@@ -169,8 +181,9 @@ const ACTION_EVAL = {
       const e = smooth((t - a.start) / .3), S2 = a.stepIn, lift = Math.sin(Math.PI * e) * .07 * K.legLen * K.s;
       ik['leg_' + S2.side] = { ...ik['leg_' + S2.side], target: [lerp(S2.from[0], S2.to[0], e), lerp(S2.from[1], S2.to[1], e) - lift] };
     }
-    return { root: { dy: b * .006 * K.legLen * K.s }, pose: { spine: .03 + b * .015, neck: -.02, head: b * .01, upperarm_f: -.06 + b * .02, upperarm_b: .08 - b * .02, forearm_f: -.2, forearm_b: -.24 },
-      ik };
+    const pose = { spine: .03 + b * .015, neck: -.02, head: b * .01, upperarm_f: -.06 + b * .02, upperarm_b: .08 - b * .02, forearm_f: -.2, forearm_b: -.24 };
+    if (a.stepIn?.pose) { const e = smooth((t - a.start) / .35); for (const k of Object.keys(pose)) if (a.stepIn.pose[k] != null) pose[k] = lerpA(a.stepIn.pose[k], pose[k], e); }   // the arms and chest ease out of the gait
+    return { root: { dy: b * .006 * K.legLen * K.s }, pose, ik };
   },
   breathe(K, a, t) { const b = Math.sin(t * Math.PI * 2 * a.p.rate); return { pose: { spine: b * .02, neck: -b * .012 }, root: { dy: b * .004 * K.legLen * K.s } }; },
   walk(K, a, t, u, st, f) { return actGait(K, a, t, st, f, GAITS.walk(a)); },
@@ -269,7 +282,7 @@ function standAnchor(K, a) {
     const ground = side => G2.ik['leg_' + side].target[1] >= K.G - K.ankleH - .5;
     const side = ground('f') ? 'f' : ground('b') ? 'b' : 'f', fx = G2.ik['leg_' + side].target[0];
     const x0 = fx - f * (footRest(K, side) + (side === 'f' ? STANCE : -STANCE) * ll), other = side === 'f' ? 'b' : 'f';
-    a.stepIn ??= { side: other, from: G2.ik['leg_' + other].target, to: ankleTarget(K, standFootX(K, x0, f, other)) };
+    a.stepIn ??= { side: other, from: G2.ik['leg_' + other].target, to: ankleTarget(K, standFootX(K, x0, f, other)), pose: G2.pose };
     return x0;
   }
   return prev.type === 'land' ? landAnchor(K, prev) : standAnchor(K, prev);
@@ -282,21 +295,40 @@ function feetPlanted(K, x0, f, w = 1) {
 }
 // a gait cycle tied to the distance the hips really travelled since the action began: each foot is planted (pinned in
 // the world) for the stance part of its cycle and swings to its next plant point with a lift arc
+// where the feet are when an action begins: the composed state just before it, without it (cached on the action)
+function feetAtStart(K, a) {
+  if (a.feet0) return a.feet0;
+  const plan = K.plan, f = K.flipAt(a.start), S = evalCharacter(K, plan, Math.max(0, a.start - 1e-4), K.CP, { noSecondary: true, exclude: a }).st, ll = K.legLen * K.s, x0 = K.rootX(a.start);
+  const out = {};
+  for (const side of ['f', 'b']) {
+    const k = S.ik['leg_' + side], tx = k?.target ? k.target[0] : standFootX(K, x0, f, side), ty = k?.target ? k.target[1] : K.G - K.ankleH;
+    out[side] = { rel: (tx - x0 - f * footRest(K, side)) * f, lift: Math.max(0, K.G - K.ankleH - ty), grounded: !k || ty >= K.G - K.ankleH - .5 };
+  }
+  return (a.feet0 = out);
+}
 function actGait(K, a, t, st, f, g) {
   const ll = K.legLen * K.s, step = (a.p.stride > 0 ? a.p.stride : g.stride * ll), cyc = 2 * step, x0 = K.rootX(a.start);
   const D = Math.abs(K.rootX(t) - x0), dir = Math.sign(K.rootX(t + .05) - x0) || f;
-  const out = { ik: {}, pose: {}, root: {} };
-  // foot cycles in distance: the front foot starts mid-stance exactly where it stands (so it does not slide when the
-  // gait begins), the back foot half a cycle later (it lifts from where it stands for its first swing)
-  const o = { f: g.stance / 2 * cyc - STANCE * ll, b: g.stance / 2 * cyc - STANCE * ll + cyc / 2 };
+  const out = { ik: {}, pose: {}, root: {} }, F0 = feetAtStart(K, a);
+  // roles: the foot that is planted (the front one if both are) keeps its foothold for the first stance; the other
+  // takes the first swing, from wherever it is. Half a cycle apart, as a gait must be.
+  const grounded = ['f', 'b'].filter(s2 => F0[s2].grounded);
+  const keep = grounded.length === 1 ? grounded[0] : grounded.length === 2 ? (F0.f.rel >= F0.b.rel ? 'f' : 'b') : (F0.f.lift <= F0.b.lift ? 'f' : 'b');
+  const swing1 = keep === 'f' ? 'b' : 'f', o = { [swing1]: Math.max(g.stance, .5) * cyc }; o[keep] = o[swing1] - cyc / 2;
   for (const side of ['f', 'b']) {
     const p = (D + o[side]) / cyc, k = Math.floor(p), q = p - k, rest = footRest(K, side);
-    const plant = n => (n + g.stance / 2) * cyc - o[side] + (side === 'f' ? STANCE : -STANCE) * ll * 0;      // distance along the path (from x0) of the n-th foothold
-    const standRel = (side === 'f' ? STANCE : -STANCE) * ll;
-    const startRel = n => (n * cyc - o[side] < 0 ? standRel : plant(n));                                          // a foothold before the gait began = where it stood
+    const plant = n => (n + g.stance / 2) * cyc - o[side];                                             // the n-th foothold, along the path from x0
+    const first = k * cyc - o[side] <= 1e-6;                                                            // this cycle began before the gait did
     let rel, lift = 0, ang = 0;
-    if (q < g.stance) rel = k === 0 && o[side] - 0 > g.stance / 2 * cyc && side === 'b' ? standRel : (k * cyc - o[side] < 0 && side === 'f' ? standRel : plant(k));
-    else { const v = (q - g.stance) / (1 - g.stance), e = smooth(v); rel = lerp(startRel(k), plant(k + 1), e); lift = Math.sin(Math.PI * v) * g.lift * ll; ang = .55 * Math.sin(Math.PI * v) * (1 - 2 * v); }   // toe down as it leaves, toe up as it reaches: 0 at both ends
+    const swingTo = (from, lift0, v) => { const e = smooth(v); rel = lerp(from, plant(k + 1), e); lift = Math.sin(Math.PI * v) * g.lift * ll + lift0 * (1 - e); ang = .55 * Math.sin(Math.PI * v) * (1 - 2 * v); };
+    if (first && side === keep) {
+      // the kept foot stays where it stands until the hips are half a stance past it, then swings to its next foothold
+      const Dl = Math.max(0, Math.min(k * cyc + g.stance * cyc - o[side], F0[side].rel + g.stance / 2 * cyc)), Dss = (k + 1) * cyc - o[side];
+      if (D < Dl) rel = F0[side].rel; else swingTo(F0[side].rel, 0, clamp((D - Dl) / Math.max(1, Dss - Dl)));
+    } else if (first && side === swing1 && q >= g.stance) {
+      swingTo(F0[side].rel, F0[side].lift, (q - g.stance) / (1 - g.stance));                              // the first swing starts where the foot is
+    } else if (q < g.stance) rel = plant(k);                                                                // stance: pinned
+    else swingTo(plant(k), 0, (q - g.stance) / (1 - g.stance));
     out.ik['leg_' + side] = { w: 1, target: [x0 + dir * rel + f * rest, K.G - K.ankleH - lift], endAngle: ang * (dir === f ? 1 : -1), bend: 1 };
   }
   // the hips bob, lowest at mid-stance; the crouch keeps every stance foot within the leg's reach

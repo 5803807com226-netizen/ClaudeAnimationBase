@@ -1,0 +1,79 @@
+{
+ "schema": "motion_plan/1",
+ "id": "phase3_layers",
+ "duration": 5.2,
+ "fps": 24,
+ "aspect": "9:16",
+ "ground_y": 0.8,
+ "camera": {
+  "follow": "CHAR_001",
+  "frame_x": 0.42,
+  "amount": 0.9
+ },
+ "characters": [
+  {
+   "id": "CHAR_001",
+   "rig": "test_kai.rig.json",
+   "x": 0.2,
+   "height": 0.34,
+   "facing": "right"
+  }
+ ],
+ "actions": [
+  {
+   "type": "breathe",
+   "start": 0,
+   "duration": 5.2
+  },
+  {
+   "type": "walk",
+   "start": 0,
+   "duration": 1.6,
+   "speed": 190
+  },
+  {
+   "type": "wave",
+   "start": 0.3,
+   "duration": 1.2,
+   "count": 3
+  },
+  {
+   "type": "look",
+   "start": 0.9,
+   "duration": 1.2,
+   "target": [
+    900,
+    600
+   ]
+  },
+  {
+   "type": "run",
+   "start": 1.6,
+   "duration": 2.6,
+   "speed": 360
+  },
+  {
+   "type": "dodge",
+   "start": 2.5,
+   "duration": 0.5,
+   "distance": 120
+  },
+  {
+   "type": "point",
+   "start": 3.4,
+   "duration": 0.8,
+   "target": [
+    1600,
+    900
+   ],
+   "mask": [
+    "arm_f"
+   ]
+  },
+  {
+   "type": "idle",
+   "start": 4.2,
+   "duration": 1.0
+  }
+ ]
+}

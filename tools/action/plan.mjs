@@ -116,6 +116,12 @@ export function validatePlan(P0, { substitute = false, base = ROOT } = {}) {
     if (!inHand(a.start + .001) && a.type !== 'aim') errors.push(`actions[${i}]: ${a.type} at ${a.start} s needs a prop in hand (pick_up it first)`);
     if (a.type === 'aim' && !inHand(a.start + a.duration)) warnings.push(`actions[${i}]: aim without a prop in hand points the arm only`);
   }
+  // a target behind the character (at the action's start, from its rough position) is usually a planning slip
+  const roughX = (cid, t) => { const c = (P.characters || []).find(x => x.id === cid) || P.characters?.[0]; if (!c) return 0; let x = c.x * ({ '9:16': 1080, '16:9': 1920, '4:5': 1080 }[P.aspect] || 1080), f = c.facing === 'left' ? -1 : 1;
+    for (const a of P.actions || []) { if (a.start >= t) break; const v = ['walk', 'run', 'sprint'].includes(a.type) ? (a.params?.speed ?? ACTION_CATALOG[a.type].params.speed.default) : 0; x += f * v * Math.max(0, Math.min(t, a.start + a.duration) - a.start); if (a.type === 'turn' && a.start + a.duration / 2 < t) f = -f; } return [x, f]; };
+  for (const [i, a] of (P.actions || []).entries()) if (['point', 'aim', 'look'].includes(a.type) && Array.isArray(a.params?.target)) {
+    const [x, f] = roughX(a.character, a.start + a.duration * .5); if ((a.params.target[0] - x) * f < 0) warnings.push(`actions[${i}]: ${a.type}'s target is behind the character by then (about x ${Math.round(x)}): it will be pointed at over the shoulder`);
+  }
   // overlapping actions of one layer that share joints: allowed (the later interrupts), but worth knowing
   const acts = P.actions || [];
   for (let i = 0; i < acts.length; i++) for (let j = i + 1; j < acts.length; j++) {
