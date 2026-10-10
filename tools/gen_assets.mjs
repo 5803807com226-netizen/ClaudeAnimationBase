@@ -61,7 +61,7 @@ function rawKeyFor(g, S, L, attempt) {
   const seed = seedBase + attempt * 1009, [w, h] = g.size || [1024, 1024];
   const eng = args.mock ? { workflow: 'mock' } : ENGINES?.engines[g.engine];
   if (!eng) throw new Error(`no engine "${g.engine}" in the engine config`);
-  const wfHash = args.mock ? 'mock/4' : sha(readFileSync(eng.workflow)), bad = args.mock && mockBad.has(L.id) && attempt === 0;
+  const wfHash = args.mock ? 'mock/5' : sha(readFileSync(eng.workflow)), bad = args.mock && mockBad.has(L.id) && attempt === 0;
   const key = sha('raw', g.engine, wfHash, positive, negative, seed, w, h, g.ref || '', bad ? 'bad' : '');
   return { key, seed, w, h, eng, bad, positive, negative, out: `${CACHE}/${key}.raw.png` };
 }
@@ -107,7 +107,7 @@ const dirOf = (sid, S0) => (args.out || (args.mock ? `out/mock_assets/${args.sto
 // A file used by several layers (in any scene of the story, e.g. one tree planted five times) is made ONCE, by the first
 // layer that has a gen block, at the size its most demanding use needs; the other uses are only validated.
 const SHARED_NEED = {}, made = {};
-for (const [sid, S0] of Object.entries(scenes)) for (const L of S0.layers) {
+for (const [sid, S0] of Object.entries(scenes)) for (const L of S0.layers.filter(L => !L.doodle)) {
   const f = dirOf(sid, S0) + L.file, n = neededSize(L, { ...S0, assets: dirOf(sid, S0) }, P), cur = SHARED_NEED[f];
   if (!cur || (cur.dim === n.dim && n.px > cur.px)) SHARED_NEED[f] = cur && cur.dim !== n.dim ? cur : n;
 }
@@ -121,6 +121,7 @@ for (const [sid, S0] of list) {
   const rows = [];
   for (const L of order) {
     if (only && !only.includes(L.id)) continue;
+    if (L.doodle) continue;   // doodle FX are drawn, not generated
     const g = L.gen, f = dir + L.file, row = { id: L.id, file: L.file, status: '', how: '' }; rows.push(row);
     if (made[f] && args.dry) { row.how = `shared (made for ${made[f]})`; row.status = 'PLAN'; continue; }
     if (made[f]) { const c = checkLayer(L, S, P); row.how = `shared (made for ${made[f]})`; row.status = c.fails.length ? 'FAIL' : 'PASS'; row.msg = c.fails[0]; if (c.fails.length) failed++; continue; }

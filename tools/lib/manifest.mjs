@@ -109,17 +109,25 @@ export const camAt = (keys, t) => {
 const camOf = (S, a) => av(S.camera, a) || [[0, ASPECTS[a][0] / 2, ASPECTS[a][1] / 2, 1], [S.duration || 3, ASPECTS[a][0] / 2, ASPECTS[a][1] / 2, 1]];
 // The pixels a layer needs to stay sharp at the closest zoom, over every format the scene supports, in its driving
 // dimension: { dim: 'w' | 'h', px }. A layer is sized by width (size: [w]) or by height (size: [null, h]).
+// a footage-space layer's sizes are fractions of the plate: its world size in format a (the plate is cover-fitted)
+const plateWorld = (S, a) => {
+  const F = S.footage && av(S.footage, a); let fw = 16, fh = 9;
+  try { [fw, fh] = JSON.parse(readFileSync((F.dir || '').replace(/\/?$/, '/') + 'meta.json', 'utf8')).size; } catch (e) { /* no plate yet: assume 16:9 */ }
+  const [Wa, Ha] = ASPECTS[a], k = F?.fit === 'width' ? Wa / fw : F?.fit === 'height' ? Ha / fh : Math.max(Wa / fw, Ha / fh); return [fw * k, fh * k];
+};
 export function neededSize(L, S, P) {
   const byH = av(L.size, sceneAspects(S, P)[0])[0] == null;
   return { dim: byH ? 'h' : 'w', px: Math.ceil(Math.max(...sceneAspects(S, P).map(a => {
     const zmax = Math.max(...camOf(S, a).map(k => k[3])), scaleMax = Math.max(av(L.scale, a) ?? 1, ...(av(L.keys, a) || []).map(k => k[1].scale ?? 0));
-    return av(L.size, a)[byH ? 1 : 0] * zmax * scaleMax;
+    const unit = L.space === 'footage' ? plateWorld(S, a)[byH ? 1 : 0] : 1;
+    return av(L.size, a)[byH ? 1 : 0] * unit * zmax * scaleMax;
   }))) };
 }
 export const neededWidth = (L, S, P) => neededSize(L, S, P).px;   // (kept for callers that only show a number)
 
 // Check one layer. Returns { fails: [], warns: [], info, png }.
 export function checkLayer(L, S, P) {
+  if (L.doodle) return { fails: [], warns: [], info: `doodle ${L.doodle.kind} (drawn)` };   // doodle FX: no artwork file
   const fails = [], warns = [], f = (S.assets || '') + L.file;
   if (!/^[a-z0-9]+(_[a-z0-9]+)*\.png$/.test(L.file)) warns.push(`file name "${L.file}" is not lower_snake_case.png`);
   if (!existsSync(f)) return { fails: [`missing: ${f}`], warns, info: '' };

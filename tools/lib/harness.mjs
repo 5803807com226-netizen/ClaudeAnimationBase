@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { syncPresetFiles } from './capfiles.mjs';
 
-export const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
+export const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 export const LOAD_MS = 60000, FRAME_MS = 1000 * +(args['frame-timeout'] || 30), CELL = +(args.w || 180);
 export const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, bad) => setTimeout(() => bad(new Error(`timeout after ${ms / 1000} s: ${what}`)), ms))]);
 
@@ -49,7 +49,7 @@ export const cleanErrors = e => [...new Set(e)].filter(m => !/INVALID/.test(m));
 // followed character's box statistics (from STAGE_INFO), and the page's layout info.
 export function probe(page, t, cell = CELL) {
   return withTimeout(page.evaluate(async (t, cell) => {
-    T = t; await redraw(); composite(t);
+    T = t; if (window.prepFrame) await window.prepFrame(t); await redraw(); composite(t);
     const s = cell / Math.max(W, H), cw = Math.round(W * s), ch = Math.round(H * s), c = document.createElement('canvas');
     c.width = cw; c.height = ch; c.getContext('2d').drawImage(outC, 0, 0, cw, ch);
     // one GPU readback (toDataURL) serves both the cell and the pixel checks; under software GL (cloud, --soft-gl) each

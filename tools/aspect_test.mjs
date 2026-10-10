@@ -9,7 +9,7 @@
 // Every page load and frame has an explicit timeout; nothing waits without a limit.
 //
 //   node tools/aspect_test.mjs [--only=phase2_lumo,preset_popBounce] [--aspects=9:16,4:5] [--frames=2] [--w=180]
-//                              [--look=<style>] [--assets=<dir> (collage scenes: artwork from another folder)] [--frame-timeout=30 (s)] [--chrome=<path>] [--soft-gl] [--verbose]
+//                              [--look=<style>] [--assets=<dir> (collage scenes: artwork from another folder)] [--footage=<dir with {name}> (footage plates from another folder)] [--frame-timeout=30 (s)] [--chrome=<path>] [--soft-gl] [--verbose]
 // Output: out/aspect/<target>.jpg (columns: 9:16 · 16:9 · 4:5, rows: times) and out/aspect/report.json / report.md.
 // Exit code 1 if any target FAILs.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -32,6 +32,9 @@ const TARGETS = [
   // a compiled collage plan (collage.layer + motions, transition_in, type layers): compile first, for each format:
   // node tools/compile_plan.mjs --manifest=tools/fixtures/plans/collage_demo.json [--aspect=16:9]
   { name: 'plan_collage', story: '_plan_collage_demo', byAspect: { '16:9': '_plan_collage_demo_16x9' }, times: [1.6, 3.2, 4.6, 6.2, 8.6] },
+  // mixed media: cartoon stickers + doodle FX over live-action plates (footage space, tracking). Cloud: test plates via
+  // --footage=out/plates/{name}/ and mock art via --assets=out/mock_assets/doodle_footage/
+  { name: 'doodle_footage', story: 'doodle_footage', times: [.6, 1.5, 3.4, 4.5, 6.9, 8.5, 10.5] },
   { name: 'story_pilot_v4', story: 'story_pilot_v4', times: [0, 1.5, 2.8, 4.9, 8.6, 9.6, 12, 14.96] },
   // map capabilities (mapView, mapBase, routeDraw, mapMarker, mapLabel): the compiled Magellan prototype plan is their
   // fixture. Compile first: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_proto.json --allow-experimental
@@ -72,7 +75,7 @@ for (const T of TARGETS.filter(x => !only || only.includes(x.name))) {
     const res = { status: 'PASS', fails: [], review: [], errors: [] };
     let page = null;
     try {
-      page = await openTarget(browser, T, { aspect: A, look: args.look, assets: args.assets }, res.errors);
+      page = await openTarget(browser, T, { aspect: A, look: args.look, assets: args.assets, footage: args.footage }, res.errors);
       cells[A] = [];
       for (const t of T.times.slice(0, +(args.frames || 99))) {
         const t0 = Date.now(), r = await probe(page, t);

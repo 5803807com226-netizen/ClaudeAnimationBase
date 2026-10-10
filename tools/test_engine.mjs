@@ -43,7 +43,7 @@ const results = await page.evaluate(async () => {
   ok('transition: draws without errors', drawn && !err && Math.abs(drawn.x - pm.x) < 1e-6, err);
 
   // 6. collage motions (pure state functions)
-  const M = (kind, m, t, s0 = {}, L = { id: 'x' }, X = {}) => { const s = { x: 0, y: 0, rot: 0, scale: 1, opacity: 1, lift: 0, ...s0 }; COLLAGE_MOTIONS[kind].apply(s, t, { ...COLLAGE_MOTIONS[kind].defaults, ...m }, L, X); return s; };
+  const M = (kind, m, t, s0 = {}, L = { id: 'x' }, X = { pts: (L, P) => P }) => { const s = { x: 0, y: 0, rot: 0, scale: 1, opacity: 1, lift: 0, ...s0 }; COLLAGE_MOTIONS[kind].apply(s, t, { ...COLLAGE_MOTIONS[kind].defaults, ...m }, L, X); return s; };
   ok('collage: place starts off the page and lands exactly', M('place', { at: 0, dur: .6, from: 'bottom', dist: 900 }, 0).y === 900 && M('place', { at: 0, dur: .6 }, 2).y === 0);
   ok('collage: pop is hidden before, at full size after', M('pop', { at: 1 }, .5).opacity === 0 && Math.abs(M('pop', { at: 1, dur: .4 }, 2).scale - 1) < 1e-9);
   ok('collage: wipe crops while running, whole after', M('wipe', { at: 0, dur: 1 }, .5).crop?.k > 0 && !M('wipe', { at: 0, dur: 1 }, 1.5).crop);
@@ -51,7 +51,7 @@ const results = await page.evaluate(async () => {
   ok('collage: appear flickers on, off, on, off, then stays', M('appear', { at: 1 }, .9).opacity === 0 && fl.join('') === '101011', fl.join(''));
   const vn = [0, 1, 2, 3, 4].map(i => M('vanish', { at: 1, flutter: 2, rate: 12 }, 1 + i / 12 + .01).opacity);
   ok('collage: vanish is the reverse of appear', M('vanish', { at: 1 }, .9).opacity === 1 && vn.join('') === '01010', vn.join(''));
-  const X = { sizeOf: () => [100, 100] }, path = [[0, 0], [300, 0], [300, 400]];
+  const X = { sizeOf: () => [100, 100], pts: (L, P) => P }, path = [[0, 0], [300, 0], [300, 400]];
   const r0 = M('roll', { at: 0, dur: 2, path, ease: 'linear' }, 0, {}, { id: 'r' }, X), r1 = M('roll', { at: 0, dur: 2, path, ease: 'linear' }, 2, {}, { id: 'r' }, X), rh = M('roll', { at: 0, dur: 2, path, ease: 'linear' }, 1, {}, { id: 'r' }, X);
   ok('collage: roll runs the whole path, spinning by distance', r0.x === 0 && r1.x === 300 && r1.y === 400 && Math.abs(rh.rot - 350 / 50 * 180 / Math.PI) < 1e-6, `end ${r1.x},${r1.y} rot@1s ${rh.rot.toFixed(1)}`);
   const tgt = { x: 500, y: 600, rot: 0, opacity: 1, lift: 0 }, F = { stateById: () => tgt, layerById: () => ({ rot: 0 }) };

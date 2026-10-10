@@ -86,13 +86,15 @@ const COLLAGE_MOTIONS = {
     defaults: { at: 0, dur: 1.2, pieces: 6, stagger: .6, speed: 700, gravity: 3200, spin: 300, start: -90, back: '#F6EBD8', flight: 1.5, seed: 1 },
     apply(s, t, m) { s.peel = { m, t }; if (t < m.at) return; if (t >= m.at + m.dur + m.flight) s.opacity = 0; } },
   follow: { about: 'ride on another layer (a hand carrying the object it places), trailing it slightly; at until it lets go and eases back off the object (release)',
-    defaults: { target: '', grip: [0, 0], until: 1e9, turn: true, drag: .03, maxDrag: 18, release: [0, 40], releaseDur: .18 },
+    defaults: { target: '', grip: [0, 0], relative: false, until: 1e9, turn: true, drag: .03, maxDrag: 18, release: [0, 40], releaseDur: .18 },
     apply(s, t, m, L, X) {
       const tt = Math.min(t, m.until), o = X.stateById(m.target, tt); if (!o) return;
       // drag: the hand trails its object a little (by its velocity, capped), like a wrist following the fingers
       const p = X.stateById(m.target, tt - .04), vx = (o.x - p.x) / .04, vy = (o.y - p.y) / .04, vm = Math.hypot(vx, vy), dg = vm ? Math.min(m.maxDrag, vm * m.drag) / vm : 0;
-      const r = easeOut(seg(t, m.until, m.until + m.releaseDur));
-      s.x = o.x + m.grip[0] - vx * dg + m.release[0] * r; s.y = o.y + m.grip[1] - vy * dg + m.release[1] * r; if (m.turn) s.rot += o.rot - (X.layerById(m.target).rot || 0);
+      const r = easeOut(seg(t, m.until, m.until + m.releaseDur)), T = X.layerById(m.target), [tw, th] = m.relative ? X.sizeOf(T) : [1, 1];
+      const g = [m.grip[0] * tw * (m.relative ? o.scale : 1), m.grip[1] * th * (m.relative ? o.scale : 1)], q = m.relative ? o.rot * Math.PI / 180 : 0;   // relative: grip in fractions of the target's size, turning with it
+      const gx = g[0] * Math.cos(q) - g[1] * Math.sin(q), gy = g[0] * Math.sin(q) + g[1] * Math.cos(q);
+      s.x = o.x + gx - vx * dg + m.release[0] * r; s.y = o.y + gy - vy * dg + m.release[1] * r; if (m.turn) s.rot += o.rot - (X.layerById(m.target).rot || 0);
       s.opacity *= o.opacity > .01 ? 1 : 0; s.lift = Math.max(s.lift, o.lift);
     } },
   leave: { about: 'exit off the page with anticipation (a small wind-up the other way, then away: a hand withdrawing, an object thrown away)',
@@ -104,7 +106,7 @@ const COLLAGE_MOTIONS = {
   roll: { about: 'roll along a path (a fruit, a ball, a coin): spins by the distance travelled; hops lose height each bounce and the shadow stays on the ground (smaller and fainter in the air); optional dashed trail',
     defaults: { at: 0, dur: 2, path: [], ease: 'ease', hops: 0, hop: 120, decay: .6, spin: true, trail: null },
     apply(s, t, m, L, X) {
-      const P = pathInfo(m.path); if (!P) return;
+      const P = pathInfo(X.pts(L, m.path)); if (!P) return;
       const k = motionEase(m.ease)(seg(t, m.at, m.at + m.dur)), d = k * P.len, [x, y] = pathAt(P, d);
       s.x = x; s.y = y;
       if (m.hops && k < 1) { const u = k * m.hops, n = Math.floor(u); s.air = m.hop * Math.pow(m.decay, n) * Math.sin(Math.PI * (u - n)); s.y -= s.air; }
@@ -158,8 +160,8 @@ const COLLAGE_MOTIONS = {
     } },
   fly: { about: 'travels along a smooth path (planes, birds, cars on a road, a paper boat): optional facing along the path and banking into turns',
     defaults: { at: 0, dur: 2, path: [], ease: 'ease', orient: false, face: 0, bank: 0, smooth: true, hide: false, scaleTo: 1 },
-    apply(s, t, m) {
-      const P = pathInfo(m.smooth ? smoothPath(m.path) : m.path); if (!P) return;
+    apply(s, t, m, L, X) {
+      const P = pathInfo(X.pts(L, m.smooth ? smoothPath(m.path) : m.path)); if (!P) return;
       if (m.hide && (t < m.at || t > m.at + m.dur)) { s.opacity = 0; return; }
       if (t < m.at && !m.hide) return;   // until it sets off, the layer keeps its own place and pose (start the path there)
       const k = motionEase(m.ease)(seg(t, m.at, m.at + m.dur)), d = k * P.len, [x, y] = pathAt(P, d), w = easeOut(seg(t, m.at, m.at + Math.min(.3, m.dur * .25)));
@@ -195,7 +197,7 @@ const COLLAGE_MOTIONS = {
     apply(s, t, m) { if (t >= m.at) s.scale *= 1 + m.amp * Math.sin(TAU * m.hz * (t - m.at)); } },
   orbit: { about: 'circles around a point (a plane around a globe, a moon, satellites); depth makes the near half bigger',
     defaults: { center: [540, 960], rx: 300, ry: 90, hz: .3, phase: 0, depth: .15, at: 0 },
-    apply(s, t, m) { const q = TAU * (m.hz * Math.max(0, t - m.at) + m.phase); s.x = m.center[0] + m.rx * Math.cos(q); s.y = m.center[1] + m.ry * Math.sin(q); s.scale *= 1 + m.depth * Math.sin(q); } },
+    apply(s, t, m, L, X) { const q = TAU * (m.hz * Math.max(0, t - m.at) + m.phase), c = X.pts(L, [m.center])[0]; s.x = c[0] + m.rx * Math.cos(q); s.y = c[1] + m.ry * Math.sin(q); s.scale *= 1 + m.depth * Math.sin(q); } },
   boil: { about: 'stop-motion jitter on held frames (a hand-animated feel)', defaults: { amp: 1.5, rot: .4, rate: 12 },
     apply(s, t, m, L) { const n = Math.floor(t * m.rate), h = hash(n * 3.1 + (L.id || '').length * 17.3);
       s.x += (h - .5) * 2 * m.amp; s.y += (hash(n * 7.7 + 1.3) - .5) * 2 * m.amp; s.rot += (hash(n * 5.3 + 9.1) - .5) * 2 * m.rot; } },
@@ -204,8 +206,99 @@ const COLLAGE_MOTIONS = {
 // Fixtures: collage_reel and collage_kit (aspect_test targets of the same names).
 const COLLAGE_MOTION_ASPECTS = Object.fromEntries(['place', 'pop', 'wipe', 'peel', 'follow', 'leave', 'roll', 'walk', 'sway', 'float', 'appear', 'vanish', 'boil',
   'layer', 'cycle', 'drop', 'swing', 'fly', 'flutter', 'slam', 'shake', 'pulse', 'orbit', 'spin',
-  'transition.push', 'transition.slide', 'transition.tear', 'transition.iris', 'transition.whip', 'transition.fade', 'transition.cut'].map(n => [n, ['9:16', '16:9']]));
+  'transition.push', 'transition.slide', 'transition.tear', 'transition.iris', 'transition.whip', 'transition.fade', 'transition.cut',
+  // doodle FX (fixture doodle_footage; swirl is not in it yet)
+  'doodle.wind', 'doodle.sparkle', 'doodle.birds', 'doodle.splash', 'doodle.lines', 'doodle.hearts', 'doodle.rays'].map(n => [n, ['9:16', '16:9']]));
 const COLLAGE_TRANSITIONS = { tear: 'the scene is torn in two along a ragged paper edge and the halves pulled apart, the next one underneath (at: where, 0..1 of the width)', iris: 'the next scene opens out of a ragged paper hole growing from focus (screen fractions)', whip: 'a fast whip pan: out one side, in from the other, with smear echoes (from: side the next comes from)', cut: 'hard cut', fade: 'cross-dissolve', push: 'one continuous zoom: into the outgoing scene\'s focus while the next grows out of it (match cut); paper: true dips through paper', slide: 'the next scene slides over the last like a sheet of paper, with a shadowed edge' };
+
+// ---------- DOODLE FX: hand-drawn white line effects over artwork or footage (motion marks, never scene artwork) ----------
+// A layer { id, doodle: { kind, color, width (world px), count, speed, seed, ... }, size: [w] or [w, h], at, step: 2 } draws
+// one of these in its box (unit coordinates -0.5..0.5), boiling on held frames like the rest of a collage. Pure functions of t.
+const DOODLE_KINDS = {
+  wind: { about: 'breeze lines that draw on and off, with a curl at the end (wind, speed, a breath of air)', defaults: { count: 3, speed: .7, curve: .12, curl: true },
+    draw(c, t, d, R) {
+      for (let i = 0; i < d.count; i++) {
+        const y0 = d.count > 1 ? -.32 + .64 * i / (d.count - 1) : 0, x0 = -.48 + .12 * R(i, 1), len = .72 + .2 * R(i, 2), pts = [];
+        for (let j = 0; j <= 40; j++) { const u = j / 40; let x = x0 + len * u, y = y0 - d.curve * Math.sin(Math.PI * u);
+          if (d.curl && u > .8) { const a = (u - .8) / .2 * Math.PI * 1.6; x = x0 + len * .8 + .06 * Math.sin(a); y = y0 - d.curve * Math.sin(Math.PI * .8) - .06 * (1 - Math.cos(a)); }
+          pts.push([x, y]); }
+        const p = frac(t * d.speed + i * .37), a = Math.max(0, p * 1.6 - .6), b = Math.min(1, p * 1.6);
+        if (b > a) { c.beginPath(); pts.slice(Math.floor(a * 40), Math.ceil(b * 40) + 1).forEach(([x, y], j) => j ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
+      }
+    } },
+  sparkle: { about: 'twinkling four-point stars (shine, magic, something new or delicious)', defaults: { count: 4, rate: 1.2, size: .16 },
+    draw(c, t, d, R) {
+      for (let i = 0; i < d.count; i++) {
+        const k = Math.pow(Math.max(0, Math.sin(Math.PI * frac(t * d.rate + R(i, 3)))), .7), r = d.size * (.6 + .6 * R(i, 4)) * k, x = (R(i, 1) - .5) * .8, y = (R(i, 2) - .5) * .8;
+        if (r < .005) continue; c.beginPath();
+        for (let j = 0; j < 8; j++) { const q = j / 8 * TAU - Math.PI / 2, rr = j % 2 ? r * .22 : r; c.lineTo(x + Math.cos(q) * rr, y + Math.sin(q) * rr); }
+        c.closePath(); c.fill();
+      }
+    } },
+  birds: { about: 'little flapping birds drifting across (sky, freedom, distance)', defaults: { count: 3, speed: .06, flap: 3, size: .07 },
+    draw(c, t, d, R) {
+      for (let i = 0; i < d.count; i++) {
+        const x = frac(R(i, 1) + t * d.speed * (.7 + .6 * R(i, 2))) - .5, y = (R(i, 3) - .5) * .6 + .02 * Math.sin(t * 2 + i), s = d.size * (.7 + .6 * R(i, 4)), a = .45 + .35 * Math.sin(TAU * d.flap * t + i * 2);
+        c.beginPath(); c.moveTo(x - s, y - a * s); c.quadraticCurveTo(x - s * .4, y - a * s * .9, x, y); c.quadraticCurveTo(x + s * .4, y - a * s * .9, x + s, y - a * s); c.stroke();
+      }
+    } },
+  splash: { about: 'water splash: droplets thrown up and falling, ripples spreading (swimming, a dive, a drop)', defaults: { count: 6, period: .9, ripples: 2 },
+    draw(c, t, d, R) {
+      const bx = 0, by = .3;
+      for (let i = 0; i < d.count; i++) {
+        const ph = frac(t / d.period + i * .13), tau = ph * d.period, ang = -Math.PI / 2 + (R(i, 1) - .5) * 1.8, v = .9 + .5 * R(i, 2);
+        const x = bx + Math.cos(ang) * v * tau, y = by + Math.sin(ang) * v * tau + 2.4 * tau * tau, r = .028 * (1 - ph * .5);
+        if (y > by + .05) continue; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+      }
+      for (let j = 0; j < d.ripples; j++) { const k = frac(t / d.period + j / d.ripples), rx = .12 + .36 * k; c.globalAlpha *= 1; c.save(); c.globalAlpha = c.globalAlpha * (1 - k);
+        c.beginPath(); c.ellipse(bx, by + .04, rx, rx * .22, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); c.beginPath(); c.ellipse(bx, by + .04, rx, rx * .22, 0, Math.PI * .1, Math.PI * .9); c.stroke(); c.restore(); }
+    } },
+  lines: { about: 'emphasis lines radiating from a centre, pulsing (surprise, impact, look here)', defaults: { count: 8, rate: 1.6 },
+    draw(c, t, d, R) {
+      const k = frac(t * d.rate);
+      for (let i = 0; i < d.count; i++) { const q = i / d.count * TAU + R(i, 1) * .3, r0 = .3 + .08 * k, r1 = r0 + .14 * (1 - k) + .02;
+        c.beginPath(); c.moveTo(Math.cos(q) * r0, Math.sin(q) * r0); c.lineTo(Math.cos(q) * r1, Math.sin(q) * r1); c.stroke(); }
+    } },
+  hearts: { about: 'little outline hearts floating up and fading (love, liking, delicious)', defaults: { count: 3, speed: .45, size: .09 },
+    draw(c, t, d, R) {
+      for (let i = 0; i < d.count; i++) {
+        const p = frac(t * d.speed + i / d.count), x = (R(i, 1) - .5) * .5 + .06 * Math.sin(TAU * (p * 1.5 + R(i, 2))), y = .4 - p * .85, s = d.size * (.7 + .5 * R(i, 3));
+        c.save(); c.globalAlpha *= Math.min(1, (1 - p) * 3) * Math.min(1, p * 6); c.beginPath();
+        c.moveTo(x, y + s * .9); c.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s * 1.1, x, y - s * .35); c.bezierCurveTo(x + s * .6, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); c.stroke(); c.restore();
+      }
+    } },
+  swirl: { about: 'a loopy whoosh curl that draws itself (a gust, a twirl, a magic touch)', defaults: { speed: .6, turns: 1.6 },
+    draw(c, t, d) {
+      const p = frac(t * d.speed), a = Math.max(0, p * 1.5 - .5), b = Math.min(1, p * 1.5), N = 80; c.beginPath();
+      for (let j = Math.floor(a * N); j <= Math.ceil(b * N); j++) { const u = j / N, q = u * d.turns * TAU, r = .08 + .3 * u; const x = -.45 + .9 * u + Math.cos(q) * r * .35, y = Math.sin(q) * r * .5;
+        j === Math.floor(a * N) ? c.moveTo(x, y) : c.lineTo(x, y); }
+      c.stroke();
+    } },
+  rays: { about: 'short rays around a centre, turning slowly and pulsing (a sun, a light bulb idea, glow)', defaults: { count: 10, speed: .08, rate: 1 },
+    draw(c, t, d) {
+      for (let i = 0; i < d.count; i++) { const q = i / d.count * TAU + t * d.speed * TAU, k = .5 + .5 * Math.sin(TAU * d.rate * t + i), r0 = .34, r1 = r0 + .07 + .07 * k;
+        c.beginPath(); c.moveTo(Math.cos(q) * r0, Math.sin(q) * r0); c.lineTo(Math.cos(q) * r1, Math.sin(q) * r1); c.stroke(); }
+    } },
+};
+const DOODLE_CANVAS = new Map();   // layer → { key, g } (the doodle drawn for its current held frame)
+function drawDoodle(L, s, t, [w, h], alpha = 1) {
+  const d0 = L.doodle, K = DOODLE_KINDS[d0.kind]; if (!K) throw new Error(`collage: unknown doodle "${d0.kind}" (have: ${Object.keys(DOODLE_KINDS).join(', ')})`);
+  const d = { color: '#FFFFFF', width: 6, seed: 1, boil: 1, ...K.defaults, ...d0 }, key = t.toFixed(4), hit = DOODLE_CANVAS.get(L);
+  let g = hit && hit.key === key ? hit.g : null;
+  if (!g) {
+    if (hit) hit.g.remove();
+    const S = Math.min(1024, Math.max(64, Math.ceil(Math.max(w, h) * .75))), cv = canvasOf(S * w / Math.max(w, h), S * h / Math.max(w, h)), c = cv.getContext('2d');
+    const n = Math.floor(t * 12), R = (i, q) => hash(i * 17.3 + q * 5.1 + d.seed * 31.7);
+    c.translate(cv.width / 2, cv.height / 2); c.scale(Math.max(cv.width, cv.height), Math.max(cv.width, cv.height));   // unit box: -0.5..0.5 of the longer side (lines stay round)
+    c.translate((hash(n * 3.7 + d.seed) - .5) * .006 * d.boil, (hash(n * 5.3 + d.seed) - .5) * .006 * d.boil);   // held-frame boil
+    c.strokeStyle = c.fillStyle = d.color; c.lineWidth = d.width / Math.max(w, h); c.lineCap = c.lineJoin = 'round';
+    if (d.shadow) { c.shadowColor = 'rgba(20,20,30,.25)'; c.shadowBlur = 6; }
+    K.draw(c, t, d, R);
+    g = toP5(cv); DOODLE_CANVAS.set(L, { key, g });
+  }
+  push(); translate(s.x, s.y); rotate(s.rot * Math.PI / 180); scale(s.scale); tint(255, 255 * s.opacity * alpha);
+  image(g, -L.anchor[0] * w, -L.anchor[1] * h, w, h); noTint(); pop();
+}
 
 // a path through the given points, smoothed (centripetal-free Catmull-Rom, sampled): flights never kink at a point
 function smoothPath(pts, per = 12) {
@@ -296,22 +389,53 @@ function buildCollage(scene, sid = '', exitAt = null) {
     const src = dir + L.file;   // key: the same PNG with other paper settings or another size is prepared separately
     return { anchor: [.5, .5], rot: 0, scale: 1, opacity: 1, depth: 1, step: 1, ...L, motions, src, key: src + '|' + JSON.stringify(L.paper || {}) + '|' + JSON.stringify(L.size) }; });
   const byId = Object.fromEntries(layers.map(L => [L.id, L]));
+  // ---- live-action footage plate (tools/footage.py): frames at the story fps, its measured camera motion, point tracks ----
+  // scene.footage = { dir, name, start (s into the plate), rate, loop, fit: 'cover' (full bleed) | 'width' | 'height', at: [x, y] }
+  // ?footage=<dir with {name}> (render.mjs --query=footage=…) swaps the plate folder, e.g. for a cloud test plate.
+  const F = scene.footage ? { start: 0, rate: 1, loop: false, fit: 'cover', at: [540, 960], ...av(scene.footage) } : null;
+  if (F) { const q = new URLSearchParams(location.search).get('footage'); if (q) F.dir = q.replace(/\{name\}/g, F.name || sid); F.dir = F.dir.replace(/\/?$/, '/'); }
+  const FOOT = { meta: null, track: null, frames: new Map() };
+  const plateRect = () => {   // the plate's world rect: fitted to this format's frame at zoom 1, centred on F.at
+    const [fw, fh] = FOOT.meta ? FOOT.meta.size : [16, 9], k = F.fit === 'width' ? W / fw : F.fit === 'height' ? H / fh : Math.max(W / fw, H / fh);
+    return { x: F.at[0] - fw * k / 2, y: F.at[1] - fh * k / 2, w: fw * k, h: fh * k };
+  };
+  const frameIdx = t => { if (!FOOT.meta) return 0; const n = FOOT.meta.frames, i = Math.floor((F.start + Math.max(0, t) * F.rate) * FOOT.meta.fps + 1e-6); return F.loop ? ((i % n) + n) % n : Math.min(n - 1, Math.max(0, i)); };
+  const frameUrl = i => `${F.dir}f${String(i + 1).padStart(5, '0')}.jpg`;
+  const toWorld = ([u, v]) => { const r = plateRect(); return [r.x + u * r.w, r.y + v * r.h]; };
+  const trackOffset = (name, t) => {   // world px the plate content has moved since t = 0 (global camera motion, or a tracked point)
+    const T = FOOT.track; if (!T) return [0, 0]; const r = plateRect(), i = frameIdx(t), i0 = frameIdx(0);
+    const P = name === 'global' ? T.global : T.points?.[name]; if (!P) return [0, 0];
+    const a = P[Math.min(P.length - 1, i)], b = P[Math.min(P.length - 1, i0)]; return [(a[0] - b[0]) * r.w, (a[1] - b[1]) * r.h];
+  };
   (window.PRELOAD = window.PRELOAD || []).push(async () => {
+    if (F) {
+      const data = await new Promise(res => { const el = document.createElement('script'); el.src = F.dir + 'footage.js';   // meta + track (a script: pages from disk cannot fetch JSON)
+        el.onload = () => { const d = window.FOOTAGE_DATA; window.FOOTAGE_DATA = null; res(d); }; el.onerror = () => res(null); document.head.appendChild(el); });
+      if (data?.meta) { FOOT.meta = data.meta; FOOT.track = data.track; } else console.error(`collage: no footage at ${F.dir} (run tools/footage.py prepare)`);
+    }
     for (const L of layers) {
+      if (L.doodle) continue;   // drawn, not loaded
       if (!COLLAGE_IMG[L.key]) {
         try {
           const im = await loadImage(L.src);
-          COLLAGE_IMG[L.key] = prepareLayerImage(im.canvas || im.elt || im, L.paper, L.size[0] == null ? im.height / L.size[1] : im.width / L.size[0]);
+          const ws = L.space === 'footage' ? [L.size[0] == null ? null : L.size[0] * plateRect().w, L.size[1] == null ? null : L.size[1] * plateRect().h] : L.size;   // world px
+          COLLAGE_IMG[L.key] = prepareLayerImage(im.canvas || im.elt || im, L.paper, ws[0] == null ? im.height / ws[1] : im.width / ws[0]);
         } catch (e) { console.error(`collage: could not load ${L.src} (run tools/validate_assets.mjs)`); continue; }
       }
       for (const m of L.motions) if (m.kind === 'peel') { const key = `${L.key}|${m.pieces}|${m.start}|${m.back}`; if (!COLLAGE_PIECES[key]) COLLAGE_PIECES[key] = preparePieces(COLLAGE_IMG[L.key], m.pieces, m.start, m.back); }
     }
   });
+  const ensureFrame = async t => {   // load the plate frame for scene time t (called before each frame is drawn)
+    if (!F || !FOOT.meta) return; const i = frameIdx(t); if (FOOT.frames.has(i)) return;
+    try { FOOT.frames.set(i, await loadImage(frameUrl(i))); } catch (e) { console.error('collage: missing footage frame ' + frameUrl(i)); FOOT.frames.set(i, null); }
+    if (FOOT.frames.size > 12) FOOT.frames.delete(FOOT.frames.keys().next().value);
+  };
   const quant = (t, step) => step > 1 ? Math.floor(t * 24 / step + 1e-6) / (24 / step) : t;
   // the layer's world-space size (never stretched)
-  const sizeOf = L => { const P = COLLAGE_IMG[L.key], r = P ? P.h / P.w : 1;   // [w] or [null, h]: the other side follows the image
-    return L.size[0] == null ? [L.size[1] / r, L.size[1]] : [L.size[0], L.size[1] ?? L.size[0] * r]; };
-  const X = { stateById: (id, t) => byId[id] && stateOf(byId[id], t), layerById: id => byId[id], sizeOf };
+  const sizeOf = L => { const P = COLLAGE_IMG[L.key], r = L.doodle ? 1 : P ? P.h / P.w : 1;   // [w] or [null, h]: the other side follows the image
+    const fs = L.space === 'footage' ? plateRect() : null, sz = fs ? [L.size[0] == null ? null : L.size[0] * fs.w, L.size[1] == null ? null : L.size[1] * fs.h] : L.size;   // footage space: fractions of the plate
+    return sz[0] == null ? [sz[1] / r, sz[1]] : [sz[0], sz[1] ?? sz[0] * r]; };
+  const X = { stateById: (id, t) => byId[id] && stateOf(byId[id], t), layerById: id => byId[id], sizeOf, toWorld, pts: (L, P) => L.space === 'footage' ? P.map(toWorld) : P };
   // a layer's state at time t: keys (absolute values), then its motions in order
   const stateOf = (L, t) => {
     const tq = quant(t, L.step), s = { x: L.at[0], y: L.at[1], rot: L.rot, scale: L.scale, opacity: L.opacity, lift: 0 };
@@ -321,7 +445,9 @@ function buildCollage(scene, sid = '', exitAt = null) {
       for (const [kt, kv, e] of ks) { if (tq >= kt) { v = kv[p]; prevT = kt; prevV = kv[p]; } else { if (prevT > -Infinity) v = lerp(prevV, kv[p], motionEase(e || 'ease')(seg(tq, prevT, kt))); break; } }
       s[p] = v;
     }
+    if (L.space === 'footage') [s.x, s.y] = toWorld([s.x, s.y]);   // at / keys x, y are plate fractions; motions then work in world px
     for (const m of L.motions) COLLAGE_MOTIONS[m.kind].apply(s, tq, m, L, X);
+    if (L.space === 'footage' && L.track !== false) { const [dx, dy] = trackOffset(L.track || 'global', t); s.x += dx; s.y += dy; }   // stuck to the plate
     return s;
   };
   // the layer's screen box under the camera (for text avoidance and tests)
@@ -363,6 +489,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
     pop();
   };
   const drawLayer = (L, t, alpha = 1) => {
+    if (L.doodle) { const s = stateOf(L, t); if (s.opacity * alpha > .003) parallax(L.depth, () => drawDoodle(L, s, quant(t, L.step || 2), sizeOf(L), alpha)); return; }
     const P = COLLAGE_IMG[L.key]; if (!P) return;
     const s = stateOf(L, t); if (s.trail) parallax(L.depth, () => drawTrail(L, s));
     if (s.opacity * alpha <= .003) return;
@@ -415,7 +542,7 @@ function buildCollage(scene, sid = '', exitAt = null) {
     rest.forEach(p => draw(p, 'shadow')); rest.forEach(p => draw(p, 'art'));
     moving.forEach(p => { draw(p, 'shadow'); draw(p, 'art'); });
   };
-  const subjects = t => layers.filter(L => L.subject && COLLAGE_IMG[L.key] && stateOf(L, t).opacity > .05).map(L => screenBox(L, t));
+  const subjects = t => layers.filter(L => L.subject && (COLLAGE_IMG[L.key] || L.doodle) && stateOf(L, t).opacity > .05).map(L => screenBox(L, t));
   // text that has no exit of its own leaves before the transition out of this scene (never frozen over a zoom or slide)
   const items = (scene.type || []).map(it => it.out || exitAt == null ? it : { ...it, out: { at: Math.max(it.at + .3, exitAt - .25), dur: .25, kind: 'up' } });
   const text = items.length ? typeOverlay({ narration: scene.narration || [], items, subjects, duration: scene.duration || DUR }) : null;
@@ -428,10 +555,11 @@ function buildCollage(scene, sid = '', exitAt = null) {
     let [cx, cy, z] = cam(t);
     if (v.zoom && v.zoom !== 1) { const f = v.focus || [cx, cy], k = 1 - 1 / v.zoom; cx = lerp(cx, f[0], k); cy = lerp(cy, f[1], k); z *= v.zoom; }
     camBegin(cx, cy, z);
+    if (F) { const im = FOOT.frames.get(frameIdx(t)); if (im) { const r = plateRect(); tint(255, 255 * a); image(im, r.x, r.y, r.w, r.h); noTint(); } }
     for (const L of layers) drawLayer(L, t, a);
     camEnd();
   };
-  return { scene, layers, cam, stateOf, screenBox, subjects, drawScene, text, typeInfo, duration: scene.duration || DUR };
+  return { scene, layers, cam, stateOf, screenBox, subjects, drawScene, text, typeInfo, duration: scene.duration || DUR, ensureFrame, footage: F && { F, FOOT, plateRect, frameIdx, trackOffset } };
 }
 
 // ---------- playing: one scene, or a reel of scenes joined by transitions ----------
@@ -442,6 +570,9 @@ function playCollage(sceneOrList, opts = {}) {
   list.forEach((S, j) => { const nt = list[j + 1] && av(list[j + 1].transition), d = nt && nt.kind !== 'cut' ? (nt.dur ?? .6) : 0;
     const B = buildCollage(S, Object.keys(SCENES).find(k => SCENES[k] === S) || '', d ? (S.duration || DUR) - d / 2 : null); parts.push({ ...B, start: T0, tr: { kind: 'cut', dur: 0, ...(av(S.transition) || {}) } }); T0 += B.duration; });
   const at = t => { let i = 0; while (i < parts.length - 1 && t >= parts[i + 1].start) i++; return i; };
+  if (parts.some(p => p.footage)) (window.BEFORE_FRAME = window.BEFORE_FRAME || []).push(async tg => {   // the plate frames this frame shows
+    const t = tg - T00; for (const P of parts) if (P.footage && t >= P.start - 1 && t <= P.start + P.duration + 1) await P.ensureFrame(Math.min(P.duration, t - P.start));
+  });
   const veil = (k, col) => { if (k <= .003) return; push(); noStroke(); const c = color(col); c.setAlpha(255 * clamp(k)); fill(c); rect(-60, -60, W + 120, H + 120); pop(); };
   shots([[T00, (tg) => {
     const t = tg - T00, i = at(t), P = parts[i], lt = t - P.start, nx = parts[i + 1];

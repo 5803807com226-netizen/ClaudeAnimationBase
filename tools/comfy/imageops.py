@@ -273,6 +273,39 @@ def mock(a):
     p0, p = p, p.split(',')[0]   # the subject: the first clause (style words such as 'tangerine orange accents' come later)
     def tri(pts, col): d.polygon([(cx + x * w, cy + y * h) for x, y in pts], fill=col)
     def box(x0, y0, x1, y1, col, r=0): d.rounded_rectangle([cx + x0 * w, cy + y0 * h, cx + x1 * w, cy + y1 * h], int(r * min(w, h)), fill=col)
+    def face(fx, fy, r):   # a sticker face: two eyes and a smile
+        e = r * .12; d.ellipse([fx - r * .35 - e, fy - e, fx - r * .35 + e, fy + e], fill=(40, 30, 40)); d.ellipse([fx + r * .35 - e, fy - e, fx + r * .35 + e, fy + e], fill=(40, 30, 40))
+        d.arc([fx - r * .3, fy - r * .1, fx + r * .3, fy + r * .4], 20, 160, fill=(40, 30, 40), width=max(2, int(r * .08)))
+    def outlined(draw_fn):   # white sticker outline: the shape a little bigger in white, then the shape
+        draw_fn(1.08, (255, 255, 255)); draw_fn(1.0, None)
+    sticker = 'cartoon' in p or 'sticker' in p or 'iced tea' in p
+    if sticker and ('sun' in p or 'blob' in p or 'cloud' in p or 'flower' in p):
+        col = (240, 130, 60) if 'sun' in p else (150, 120, 220) if 'blob' in p else (245, 245, 250) if 'cloud' in p else (90, 140, 230)
+        ry = .26 if 'cloud' in p else .34
+        outlined(lambda k, c: blob(w * .36 * k, h * ry * k, c or col, j=.06 if 'cloud' in p else .02)); face(cx, cy, w * .3)
+    elif sticker and 'iced tea' in p:
+        outlined(lambda k, c: d.polygon([(cx - w * .26 * k, cy - h * .3 * k), (cx + w * .26 * k, cy - h * .3 * k), (cx + w * .19 * k, cy + h * .42 * k), (cx - w * .19 * k, cy + h * .42 * k)], fill=c or (232, 120, 40)))
+        d.line([(cx + w * .05, cy - h * .3), (cx + w * .15, cy - h * .48)], fill=(110, 70, 40), width=max(4, w // 40)); face(cx, cy + h * .05, w * .25)
+    elif sticker and ('cat' in p or 'boy' in p or 'girl' in p or 'couple' in p or 'arm' in p):
+        col = (250, 236, 220) if 'cat' in p else (110, 160, 230)
+        if 'arm' in p:
+            outlined(lambda k, c: d.rounded_rectangle([cx - w * .08 * k, cy - h * .4 * k, cx + w * .08 * k, cy + h * .3 * k], int(w * .06), fill=c or col)); d.rectangle([cx - w * .12, cy - h * .48, cx + w * .12, cy - h * .3], fill=(232, 120, 40))
+        else:
+            n = 2 if 'couple' in p else 1
+            for i in range(n):
+                hx = cx + (i - (n - 1) / 2) * w * .36; sw = 1.4 / n
+                hair = (240, 150, 190) if ('girl' in p or 'couple' in p) and i == 0 else (40, 40, 50)
+                outlined(lambda k, c, hx=hx: d.rounded_rectangle([hx - w * .16 * k * sw, cy - h * .05 * k, hx + w * .16 * k * sw, cy + h * .45 * k], int(w * .08 * sw), fill=c or col))
+                outlined(lambda k, c, hx=hx: d.ellipse([hx - w * .13 * k * sw, cy - h * .38 * k, hx + w * .13 * k * sw, cy - h * .02 * k], fill=c or ((250, 220, 200) if 'cat' not in p else col)))
+                if 'cat' in p:
+                    d.polygon([(hx - w * .12, cy - h * .3), (hx - w * .06, cy - h * .44), (hx - w * .01, cy - h * .32)], fill=col); d.polygon([(hx + w * .12, cy - h * .3), (hx + w * .06, cy - h * .44), (hx + w * .01, cy - h * .32)], fill=col)
+                if 'behind' in p or 'back' in p: d.ellipse([hx - w * .13 * sw, cy - h * .38, hx + w * .13 * sw, cy - h * .05], fill=hair)
+                else: face(hx, cy - h * .2, w * .12)
+    if sticker and any(k in p for k in ('sun', 'blob', 'cloud', 'flower', 'iced tea', 'cat', 'boy', 'girl', 'couple', 'arm')):
+        from PIL import ImageFont
+        lab = f'MOCK {a.label}' if a.label else 'MOCK'; f = ImageFont.load_default(size=max(14, min(w, h) // 14)); tb = d.textbbox((0, 0), lab, font=f)
+        d.rectangle([cx - (tb[2] - tb[0]) / 2 - 8, h * .86 - 4, cx + (tb[2] - tb[0]) / 2 + 8, h * .86 + tb[3] - tb[1] + 12], fill=(30, 30, 30)); d.text((cx - (tb[2] - tb[0]) / 2, h * .86), lab, font=f, fill=(255, 255, 255))
+        img.save(a.out); return
     if 'smartphone' in p:
         d.rounded_rectangle([cx - w * .22, h * .18, cx + w * .26, h * .99], 60, fill=(222, 178, 150))           # the hand
         d.rounded_rectangle([cx - w * .2, h * .08, cx + w * .2, h * .74], 46, fill=(28, 28, 32))               # the phone
