@@ -7,6 +7,7 @@
 //      with (Pro / Max): no API key, no per-call charge; it counts against the plan's usage limits. It may only Read
 //      the image files we point it at (no commands, no edits). "claudeCommand" overrides the program name.
 //   "api": the Claude API with an API key ("anthropicApiKey" or ANTHROPIC_API_KEY), billed per token.
+import { resolveIcon } from '../tools/lib/icons.mjs';
 import Anthropic from '@anthropic-ai/sdk';
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -131,6 +132,19 @@ export function normalise(out, project) {
 }
 
 // no AI: a plain kinetic-typography film from the story's sentences, for testing the pipeline without any cost
+// the accent of a no-AI shot: a watercolor actor of the thing the sentence names (Thai keywords, tools/lib/icons.mjs),
+// acting in one of three ways; a painted shape when the sentence names nothing the library knows
+function accent(txt, i, d, fw, fh) {
+  let icon = null; try { icon = resolveIcon(txt); } catch (e) { /* library not installed: shapes */ }
+  if (!icon) return { id: 'accent', cap: 'popBounce', params: { at: .5, x: fw / 2, y: fh * .7, size: 110, shape: ['star', 'heart', 'circle'][i % 3], hops: 1 } };
+  const g = fh * .8, size = Math.round(Math.min(fw, fh) * .26), r2 = x => Math.round(x);
+  const moves = [
+    [{ do: 'enter', at: .1, style: 'slide', from: 'left' }, { do: 'walk', at: 1, dur: Math.max(1, d - 1.6), to: [r2(fw * .62), r2(g)] }],
+    [{ do: 'enter', at: .1, style: 'drop', dur: .5 }, { do: 'hop', at: 1.2, dur: Math.max(.8, d - 1.8), count: 2, to: [r2(fw * .64), r2(g)] }],
+    [{ do: 'enter', at: .1, style: 'pop' }, { do: 'jump', at: 1.1 }, { do: 'turn', at: Math.max(2.1, d - .6) }],
+  ][i % 3];
+  return { id: 'accent', cap: 'iconActor', params: { icon, x: r2(fw * [.3, .36, .5][i % 3]), y: r2(g), size, color: ['#B07A4E', '#C9603A', '#3A9C98'][i % 3], moves } };
+}
 export function testDirect(project) {
   const sents = project.story.split(/(?<=[.!?。])\s+|\n+|(?<=\S)\s{2,}/).map(s => s.trim()).filter(Boolean).slice(0, 8);
   const pieces = sents.length ? sents : [project.story.slice(0, 60)];
@@ -141,7 +155,7 @@ export function testDirect(project) {
     return { id: `S${String(i + 1).padStart(2, '0')}`, start: 0, end: d, narration: txt, treatment: 'kinetic_typography', purpose: 'no-AI test layout',
       camera: { cap: 'cameraMove', params: { from, to, dur: d, drift: 6 } },
       layers: [{ id: 'title', cap: ['type.pop', 'type.slide', 'type.impact'][i % 3], params: { text: txt.slice(0, 40), at: .2, y: .42, maxLines: 3, style: { font: 'display', weight: 800, size: 84, color: '#2B2233' } } },
-        { id: 'accent', cap: 'popBounce', params: { at: .5, x: cx, y: fh * .7, size: 110, shape: ['star', 'heart', 'circle'][i % 3], hops: 1 } }],
+        accent(txt, i, d, fw, fh)],
       transition_in: 'cut', expected_motion: { min_changed_frac: .01 } };
   });
   return normalise({ title: project.title || 'test', logline: 'no-AI test layout', style: { treatment: 'kinetic_typography', look: 'classic', rationale: 'pipeline test (no AI)' },

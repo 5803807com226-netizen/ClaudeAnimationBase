@@ -329,6 +329,21 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 | `objectReveal` | arrives on an arc from off-screen (or grows), lands with a wobble and a glow | `from` (`below` `above` `left` `right` `center`), `dist`, `arc`, `glow`, `glowR`, `wobble` |
 | `particleBurst` | hash-seeded confetti on arcs with gravity and a flash | `count`, `pSize`, `shape` (or `mix`), `colors`, `angle`, `arc`, `gravity`, `glow`, `spin`, `seed` |
 
+**Watercolor icon actors** ([src/presets/actor.js](src/presets/actor.js)): `iconActor` paints any of the 4,134 [game-icons.net](https://game-icons.net) silhouettes as watercolor. You get a wash, blooms, pigment pooling at the edges, paper grain and an ink line, boiling at 8 fps. The actor plays a list of moves:
+
+- `enter` (`pop`, `drop`, `slide`, `grow`);
+- `walk`, `run`, `hop`, `jump`, `fly`, `swim`, each with `to: [x, y]`;
+- `shake`, `spin`, `turn`, `wait`;
+- `exit`.
+
+Each move starts where the last ended. The actor stands on its feet at `(x, y)`, faces the way it travels, keeps squash and stretch and a ground shadow, and breathes between moves. `popBounce` and `objectReveal` take `icon` instead of `shape`.
+
+Names come from [tools/lib/icons.mjs](tools/lib/icons.mjs), which accepts English or Thai nouns: `node tools/lib/icons.mjs search mammoth`. The plan compiler ships only the icons a story uses (`icons.js` in its folder); [src/icons/core.js](src/icons/core.js) is a small committed set for demos.
+
+The icons are CC BY 3.0. The compiler writes `out/plans/<id>/credits.txt`; put its line in the video's description.
+
+These are vector silhouettes drawn by code, used by kinetic and preset shots. Collage scenes still use imported artwork (docs/COLLAGE_PIPELINE.md).
+
 The **infographic kit** ([src/presets/infographic.js](src/presets/infographic.js)) draws data in screen space with live Thai labels. Every chart builds in like an explainer (bars grow with overshoot, values count up, lines draw themselves), then holds. `x, y, w, h` are frame fractions, and the defaults are per format. All charts share `title`, `card`, `colors`, `unit`, `decimals`, `highlight` (the item the narration is about) and `out: { at, dur }`.
 
 | preset | shows | its own options |

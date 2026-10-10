@@ -4,7 +4,7 @@
 definePreset('objectReveal', {
   label: 'Object Reveal', about: 'arcPt entrance with backOut landing, spring wobble and a glow() halo',
   meta: { version: '1.0.0', category: 'object', tags: ['reveal', 'entrance', 'arrive', 'arc', 'glow'], params: { from: { enum: ['below', 'above', 'left', 'right', 'center'] } } },
-  defaults: { x: W / 2, y: ny(640 / 1080), size: 120 * US(), color: PAL.rose, shape: 'heart', from: 'below', dist: 600 * US(), arc: 120 * US(), glow: PAL.ochre, glowR: 3, wobble: .25, ease: 'backOut', dur: .9 },
+  defaults: { x: W / 2, y: ny(640 / 1080), size: 120 * US(), color: PAL.rose, shape: 'heart', icon: null, from: 'below', dist: 600 * US(), arc: 120 * US(), glow: PAL.ochre, glowR: 3, wobble: .25, ease: 'backOut', dur: .9 },
   run(t, o) {
     if (t < o.at) return;
     const k = presetK(t, o), d = { below: [0, 1], above: [0, -1], left: [-1, 0], right: [1, 0], center: [0, 0] }[o.from];

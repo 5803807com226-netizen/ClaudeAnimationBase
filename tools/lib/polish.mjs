@@ -74,6 +74,7 @@ export function polishManifest(M, { CAPS, allowExp, aspect }) {
 const SFX_OF_MOTION = { place: 'paper', pop: 'pop', drop: 'impact', slam: 'impact', wipe: 'paper', peel: 'paper', appear: 'pop', vanish: 'pop', swing: 'whoosh', fly: 'whoosh', leave: 'whoosh', flutter: 'paper', shake: 'impact' };
 const SFX_OF_TRANS = { push: 'whoosh', slide: 'paper', whip: 'whoosh', tear: 'paper', iris: 'whoosh', fade: null, cut: null };
 const SFX_OF_PRESET = { popBounce: 'pop', particleBurst: 'ding', objectReveal: 'whoosh', brushWipe: 'whoosh', barChart: 'tick', lineChart: 'riser', donutChart: 'tick', timeline: 'tick', iconGrid: 'pop', callout: 'pop', captionBar: 'paper' };
+const SFX_OF_ACTOR = { jump: 'whoosh', hop: 'pop', fly: 'whoosh', shake: 'impact', spin: 'whoosh', exit: 'whoosh', turn: 'paper' };
 const SFX_OF_TYPE = { impact: 'impact', stamp: 'impact', counter: 'tick', pop: 'pop', slide: 'whoosh', cutout: 'paper', reveal: 'whoosh' };
 const GAIN = { whoosh: .5, pop: .45, paper: .55, tick: .35, impact: .55, riser: .4, ding: .35, type: .3 };
 
@@ -93,6 +94,10 @@ export function sfxCues(compiled, { dir = 'assets/sfx', minGap = .22, perShot = 
       for (const L of s.layers || []) {
         const name = L.cap.startsWith('type.') ? null : L.cap, at = typeof L.params?.at === 'number' ? L.params.at : 0;
         if (name && SFX_OF_PRESET[name]) want.push([at, SFX_OF_PRESET[name], name]);
+        if (name === 'iconActor') for (const m of L.params?.moves || []) {   // an actor's moves: each lands on its own sound
+          const cat = m.do === 'enter' ? { drop: 'impact', slide: 'whoosh' }[m.style] || 'pop' : SFX_OF_ACTOR[m.do];
+          if (cat) want.push([(m.at ?? 0) + (m.style === 'drop' && m.do === 'enter' ? (m.dur ?? .6) : m.do === 'jump' || m.do === 'hop' ? .05 : 0), cat, `${L.id} ${m.do}`]);   // a drop sounds when it lands
+        }
         if (L.cap.startsWith('type.') && SFX_OF_TYPE[L.cap.slice(5)]) want.push([at, SFX_OF_TYPE[L.cap.slice(5)], L.cap]);
       }
     }

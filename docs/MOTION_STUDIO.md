@@ -88,6 +88,17 @@ ComfyUI uses the same `tools/comfy/engines.local.json` as the other guides. The 
 - Artwork: `assets/stories/<id>/`.
 - Final video: `out/pipeline/<id>/<id>.mp4`.
 
+## Watercolor characters without generated images
+
+The style **ตัวละครสีน้ำ (ไม่ต้องสร้างภาพ)** needs no ComfyUI:
+- Opus names the characters and objects in English nouns, and the compiler matches each to one of 4,134 game-icons.net silhouettes (mammoth, caveman, battle tank, sailboat …);
+- the engine paints them as watercolor;
+- Opus directs their acting: enter, walk, run, hop, jump, fly, swim, shake, spin, turn, exit.
+
+The no-AI test also uses them when a sentence names something the library knows in Thai (เรือ, รถถัง, แมมมอธ, มนุษย์ถ้ำ …).
+
+The icons are CC BY 3.0: credit them with the line in `out/plans/<id>/credits.txt`, for example in the video description.
+
 ## Automatic finishing and sound
 
 The project form has three switches, all on by default:
