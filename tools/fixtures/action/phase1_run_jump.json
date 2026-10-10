@@ -1,0 +1,55 @@
+{
+ "schema": "motion_plan/1",
+ "id": "phase1_run_jump",
+ "duration": 4.5,
+ "fps": 24,
+ "aspect": "9:16",
+ "ground_y": 0.8,
+ "backdrop": {
+  "sky": "#EAF1F4",
+  "ground": "#D9CBB0"
+ },
+ "characters": [
+  {
+   "id": "CHAR_001",
+   "rig": "test_kai.rig.json",
+   "x": 0.16,
+   "height": 0.34,
+   "facing": "right"
+  }
+ ],
+ "actions": [
+  {
+   "type": "idle",
+   "start": 0,
+   "duration": 0.4
+  },
+  {
+   "type": "run",
+   "start": 0.4,
+   "duration": 1.6,
+   "speed": 300
+  },
+  {
+   "type": "jump",
+   "start": 2.0,
+   "duration": 1.0,
+   "height": 240
+  },
+  {
+   "type": "land",
+   "start": 3.0,
+   "duration": 0.4
+  },
+  {
+   "type": "idle",
+   "start": 3.4,
+   "duration": 1.1
+  }
+ ],
+ "camera": {
+  "follow": "CHAR_001",
+  "frame_x": 0.4,
+  "amount": 0.85
+ }
+}

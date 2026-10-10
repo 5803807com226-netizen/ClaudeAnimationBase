@@ -1,0 +1,297 @@
+{
+ "schema": "char_rig/1",
+ "id": "kai",
+ "image": "test_kai.png",
+ "size": [
+  640,
+  1024
+ ],
+ "template": "human",
+ "facing": "right",
+ "bbox": [
+  123,
+  60,
+  526,
+  997
+ ],
+ "joints": {
+  "head_top": {
+   "x": 325.0,
+   "y": 60.0,
+   "confidence": "detected"
+  },
+  "neck": {
+   "x": 322.5,
+   "y": 284.0,
+   "confidence": "detected",
+   "note": "narrowest row under the head"
+  },
+  "chest": {
+   "x": 322.5,
+   "y": 330.9,
+   "confidence": "estimated"
+  },
+  "shoulder_f": {
+   "x": 225.0,
+   "y": 326.2,
+   "confidence": "estimated",
+   "note": "arm axis extended to shoulder height"
+  },
+  "elbow_f": {
+   "x": 186.9,
+   "y": 468.0,
+   "confidence": "estimated",
+   "note": "proportion along the arm"
+  },
+  "wrist_f": {
+   "x": 157.0,
+   "y": 579.7,
+   "confidence": "estimated",
+   "note": "proportion along the arm"
+  },
+  "hand_f_tip": {
+   "x": 144.0,
+   "y": 628.0,
+   "confidence": "detected",
+   "note": "far end of the arm"
+  },
+  "hip_f": {
+   "x": 277.9,
+   "y": 604.6,
+   "confidence": "estimated",
+   "note": "leg axis at the crotch"
+  },
+  "knee_f": {
+   "x": 252.3,
+   "y": 786.7,
+   "confidence": "estimated",
+   "note": "proportion along the leg"
+  },
+  "ankle_f": {
+   "x": 228.6,
+   "y": 954.8,
+   "confidence": "estimated",
+   "note": "just above the sole"
+  },
+  "toe_f": {
+   "x": 331.0,
+   "y": 958.6,
+   "confidence": "detected",
+   "note": "far end of the foot"
+  },
+  "shoulder_b": {
+   "x": 414.0,
+   "y": 326.2,
+   "confidence": "estimated",
+   "note": "arm axis extended to shoulder height"
+  },
+  "elbow_b": {
+   "x": 456.8,
+   "y": 466.6,
+   "confidence": "estimated",
+   "note": "proportion along the arm"
+  },
+  "wrist_b": {
+   "x": 490.4,
+   "y": 577.2,
+   "confidence": "estimated",
+   "note": "proportion along the arm"
+  },
+  "hand_b_tip": {
+   "x": 505.0,
+   "y": 625.0,
+   "confidence": "detected",
+   "note": "far end of the arm"
+  },
+  "hip_b": {
+   "x": 360.1,
+   "y": 604.6,
+   "confidence": "estimated",
+   "note": "leg axis at the crotch"
+  },
+  "knee_b": {
+   "x": 387.7,
+   "y": 786.7,
+   "confidence": "estimated",
+   "note": "proportion along the leg"
+  },
+  "ankle_b": {
+   "x": 413.1,
+   "y": 954.8,
+   "confidence": "estimated",
+   "note": "just above the sole"
+  },
+  "toe_b": {
+   "x": 485.0,
+   "y": 956.2,
+   "confidence": "detected",
+   "note": "far end of the foot"
+  },
+  "hips": {
+   "x": 319.0,
+   "y": 571.8,
+   "confidence": "estimated",
+   "note": "between the hip joints"
+  }
+ },
+ "bones": [
+  {
+   "name": "spine",
+   "parent": null,
+   "from": "hips",
+   "to": "chest",
+   "chain": "body",
+   "z": 50,
+   "radius": 80.0
+  },
+  {
+   "name": "neck",
+   "parent": "spine",
+   "from": "chest",
+   "to": "neck",
+   "chain": "body",
+   "z": 50,
+   "radius": 97.5
+  },
+  {
+   "name": "head",
+   "parent": "neck",
+   "from": "neck",
+   "to": "head_top",
+   "chain": "body",
+   "z": 51,
+   "radius": 98.5
+  },
+  {
+   "name": "upperarm_b",
+   "parent": "spine",
+   "from": "shoulder_b",
+   "to": "elbow_b",
+   "chain": "arm_b",
+   "z": 10,
+   "radius": 28.0
+  },
+  {
+   "name": "forearm_b",
+   "parent": "upperarm_b",
+   "from": "elbow_b",
+   "to": "wrist_b",
+   "chain": "arm_b",
+   "z": 10,
+   "radius": 28.0
+  },
+  {
+   "name": "hand_b",
+   "parent": "forearm_b",
+   "from": "wrist_b",
+   "to": "hand_b_tip",
+   "chain": "arm_b",
+   "z": 10,
+   "radius": 20.0
+  },
+  {
+   "name": "thigh_b",
+   "parent": null,
+   "from": "hip_b",
+   "to": "knee_b",
+   "chain": "leg_b",
+   "z": 20,
+   "radius": 42.0
+  },
+  {
+   "name": "shin_b",
+   "parent": "thigh_b",
+   "from": "knee_b",
+   "to": "ankle_b",
+   "chain": "leg_b",
+   "z": 20,
+   "radius": 34.0
+  },
+  {
+   "name": "foot_b",
+   "parent": "shin_b",
+   "from": "ankle_b",
+   "to": "toe_b",
+   "chain": "leg_b",
+   "z": 20,
+   "radius": 23.0
+  },
+  {
+   "name": "thigh_f",
+   "parent": null,
+   "from": "hip_f",
+   "to": "knee_f",
+   "chain": "leg_f",
+   "z": 60,
+   "radius": 43.0
+  },
+  {
+   "name": "shin_f",
+   "parent": "thigh_f",
+   "from": "knee_f",
+   "to": "ankle_f",
+   "chain": "leg_f",
+   "z": 60,
+   "radius": 31.0
+  },
+  {
+   "name": "foot_f",
+   "parent": "shin_f",
+   "from": "ankle_f",
+   "to": "toe_f",
+   "chain": "leg_f",
+   "z": 60,
+   "radius": 25.0
+  },
+  {
+   "name": "upperarm_f",
+   "parent": "spine",
+   "from": "shoulder_f",
+   "to": "elbow_f",
+   "chain": "arm_f",
+   "z": 80,
+   "radius": 25.0
+  },
+  {
+   "name": "forearm_f",
+   "parent": "upperarm_f",
+   "from": "elbow_f",
+   "to": "wrist_f",
+   "chain": "arm_f",
+   "z": 80,
+   "radius": 30.0
+  },
+  {
+   "name": "hand_f",
+   "parent": "forearm_f",
+   "from": "wrist_f",
+   "to": "hand_f_tip",
+   "chain": "arm_f",
+   "z": 80,
+   "radius": 20.0
+  }
+ ],
+ "front_side": "screen-left",
+ "front_confidence": "uncertain",
+ "uncertain": [],
+ "estimated": [
+  "ankle_b",
+  "ankle_f",
+  "chest",
+  "elbow_b",
+  "elbow_f",
+  "hip_b",
+  "hip_f",
+  "hips",
+  "knee_b",
+  "knee_f",
+  "shoulder_b",
+  "shoulder_f",
+  "wrist_b",
+  "wrist_f"
+ ],
+ "warnings": [],
+ "limits": [
+  "one flat image: hidden sides, the far limbs behind the body and turning around are not in the artwork; turning is a mirror (labelled fallback)"
+ ]
+}
