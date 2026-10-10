@@ -47,7 +47,7 @@ async function loadCharacter(spec, url, opt = {}) {
   const order = []; const visit = b => { order.push(b); b.kids.forEach(visit); }; bones.filter(b => !b.parent).forEach(visit);
   // ---- regions: each opaque pixel → the bone whose capsule claims it (front chains win overlaps) ----
   const zOf = Object.fromEntries(bones.map(b => [b.name, b.z ?? 50]));
-  const lab = new Int16Array(W * H).fill(-1), segT = (x, y, b) => ((x - b.a[0]) * (b.b[0] - b.a[0]) + (y - b.a[1]) * (b.b[1] - b.a[1])) / (b.len * b.len), segD = (x, y, b) => {
+  const lab = new Int16Array(W * H).fill(-1), nearLab = new Int16Array(W * H).fill(-1), segT = (x, y, b) => ((x - b.a[0]) * (b.b[0] - b.a[0]) + (y - b.a[1]) * (b.b[1] - b.a[1])) / (b.len * b.len), segD = (x, y, b) => {
     const vx = b.b[0] - b.a[0], vy = b.b[1] - b.a[1], t = clamp(segT(x, y, b));
     return Math.hypot(x - b.a[0] - vx * t, y - b.a[1] - vy * t);
   };
@@ -62,8 +62,9 @@ async function loadCharacter(spec, url, opt = {}) {
       if (dn < nd) { nd = dn; near = i; }
       if (dn <= marginOf(b) && (zOf[b.name] > bz || (zOf[b.name] === bz && dn < bn))) { best = i; bz = zOf[b.name]; bn = dn; }
     });
-    lab[y * W + x] = best >= 0 ? best : near;
+    lab[y * W + x] = best >= 0 ? best : near; nearLab[y * W + x] = near;
   }
+  refineRegions(lab, nearLab, px, W, H, bones, opt, segD);
   const chains = [...new Set(bones.map(b => b.chain))].map(name => ({ name, bones: bones.filter(b => b.chain === name), z: Math.max(...bones.filter(b => b.chain === name).map(b => b.z ?? 50)) }))
     .sort((a, b) => a.z - b.z);
   const chainOf = bones.map(b => chains.findIndex(c => c.name === b.chain));
@@ -108,6 +109,50 @@ async function loadCharacter(spec, url, opt = {}) {
   const bbox = spec.bbox || [0, 0, W, H];
   return { spec, url, W, H, J, root, bones, byName, order, chains, lab, g, makePoints, points: {}, mirror, height: bbox[3] - bbox[1],
     groundY: Math.max(...['toe_f', 'toe_b', 'ankle_f', 'ankle_b'].filter(k => J[k]).map(k => J[k][1]), bbox[3]) };
+}
+
+// Cartoon art is made of fills bounded by ink lines; a fill belongs wholly to one body part. Each ink-bounded region
+// takes the bone that claims most of its pixels (a shoulder cap peeking past the trunk goes with its arm, not the
+// trunk); ink pixels then follow the region around them. Regions without a clear majority, very large regions and
+// art without outlines keep the per-pixel capsule split. (Colour is never read as anatomy: the bones still decide.)
+// Each region votes with the bone NEAREST its pixels (normalised by the bone's radius), not the one drawn in front: a
+// back sleeve that pokes out past the trunk is nearest its arm; the trunk's fill is nearest the spine. Draw order
+// (lab) is kept only for pixels that no clear region owns (art without outlines, very large fills).
+function refineRegions(lab, nearLab, px, W, H, bones, opt = {}, segD) {
+  // a fill naturally spans several bones of ONE limb (sleeve, forearm, hand): regions vote for a chain, and inside the
+  // winning chain each pixel goes to its nearest bone
+  const N = W * H, isInk = new Uint8Array(N), solid = i => px[i * 4 + 3] > 8;
+  for (let i = 0; i < N; i++) if (px[i * 4 + 3] > 40 && .3 * px[i * 4] + .59 * px[i * 4 + 1] + .11 * px[i * 4 + 2] < (opt.ink ?? 80)) isInk[i] = 1;
+  // seal the lines: anti-aliased edges are lighter than the ink and would let neighbouring fills leak into each other
+  const dil = isInk.slice(); for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x; if (isInk[i]) { dil[i - 1] = dil[i + 1] = dil[i - W] = dil[i + W] = 1; } }
+  isInk.set(dil);
+  const parent = new Int32Array(N).map((_, i) => i), find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const join = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; if (!solid(i) || isInk[i] || lab[i] < 0) continue;
+    if (x > 0 && solid(i - 1) && !isInk[i - 1] && lab[i - 1] >= 0) join(i, i - 1);
+    if (y > 0 && solid(i - W) && !isInk[i - W] && lab[i - W] >= 0) join(i, i - W);
+  }
+  const votes = new Map(); let total = 0;
+  const chainOf = b => bones[b].chain, chainBones = {}; bones.forEach((b, i) => (chainBones[b.chain] ??= []).push(i));
+  for (let i = 0; i < N; i++) { if (lab[i] < 0 || isInk[i]) continue; total++; const r = find(i); let v = votes.get(r); if (!v) votes.set(r, v = new Map()); const c = chainOf(nearLab[i]); v.set(c, (v.get(c) || 0) + 1); }
+  const owner = new Map();
+  for (const [r, v] of votes) {
+    let n = 0, best = null, bn = 0; for (const [l, c] of v) { n += c; if (c > bn) { bn = c; best = l; } }
+    if (n < total * .6 && bn / n >= .55) owner.set(r, best);   // a fill over 60 % of the figure means the art has no outlines to trust
+  }
+  const nearestIn = (x, y, chain) => { let best = -1, bd = 1e9; for (const bi of chainBones[chain]) { const d = segD(x, y, bones[bi]) / Math.max(4, bones[bi].radius || 20); if (d < bd) { bd = d; best = bi; } } return best; };
+  for (let i = 0; i < N; i++) if (lab[i] >= 0 && !isInk[i]) { const o = owner.get(find(i)); if (o != null && chainOf(lab[i]) !== o) lab[i] = nearestIn(i % W, (i / W) | 0, o); }
+  // ink pixels: an outline belongs to the NEAREST fill (a shared, doubled line splits down the middle, so each shape
+  // keeps its own edge); with no fill within 6 px the capsule's choice stays
+  const out = lab.slice();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; if (!isInk[i] || lab[i] < 0) continue;
+    let best = -1, bd = 1e9;
+    for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const d = dx * dx + dy * dy; if (d >= bd) continue; const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const j = Y * W + X; if (isInk[j] || lab[j] < 0 || !solid(j)) continue; bd = d; best = lab[j]; }
+    if (best >= 0) out[i] = best;
+  }
+  lab.set(out);
 }
 
 // ---------- the skeleton ----------
@@ -190,6 +235,7 @@ function drawActor(C, S, o = {}) {
   for (const ch of C.chains) {
     flushSlots(ch.z - .5);
     const P = ch.verts.map(v => skinPoint(C, S, v.x, v.y, v.w));
+    if (o.regions) { const hue = { body: [255, 90, 90], arm_f: [70, 160, 255], arm_b: [40, 200, 120], leg_f: [250, 200, 40], leg_b: [190, 90, 230] }[ch.name] || [200, 200, 200]; tint(...hue, 255); }   // ?regions=1: which region owns which pixels
     texture(ch.tex); beginShape(TRIANGLES);
     for (const i of ch.tris) { const v = ch.verts[i], p = P[i]; vertex(p[0], p[1], 0, v.u, v.v); }
     endShape();

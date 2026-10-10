@@ -34,7 +34,7 @@ export function systemPrompt(catalog) {
 }
 
 // one Opus call: streamed (long outputs), adaptive thinking, server-side refusal fallback, cached system prompt
-async function ask(C, system, content, opts = {}) { return C.provider === 'api' ? askApi(C.api, system, content, opts) : askClaudeCode(C.cfg, system, content, opts); }
+export async function ask(C, system, content, opts = {}) { return C.provider === 'api' ? askApi(C.api, system, content, opts) : askClaudeCode(C.cfg, system, content, opts); }
 
 // Claude Code, headless, on the logged-in plan. Everything goes in on stdin (no command-line length limits); images
 // are written to files that it may Read. The answer comes back as Claude Code's JSON result.

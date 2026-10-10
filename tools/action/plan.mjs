@@ -30,7 +30,7 @@ export const MOTION_PLAN_SCHEMA = {
     characters: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'rig'], properties: { id: { type: 'string' }, rig: { type: 'string' }, image: { type: 'string' },
       x: { type: 'number', minimum: -.5, maximum: 1.5 }, height: { type: 'number', minimum: .05, maximum: .95 }, facing: { enum: ['left', 'right'] } } } },
     props: { type: 'array', items: { type: 'object', required: ['id', 'spec'], properties: { id: { type: 'string' }, spec: { type: 'string' }, image: { type: 'string' },
-      x: { type: 'number' }, y: { type: 'number' }, angle: { type: 'number' }, scale: { type: 'number', minimum: .05, maximum: 5 } } } },
+      x: { type: 'number' }, y: { type: 'number' }, rest_on: { type: 'number', minimum: 0, maximum: 1 }, angle: { type: 'number' }, scale: { type: 'number', minimum: .05, maximum: 5 } } } },
     actions: { type: 'array', items: { type: 'object', required: ['type', 'start', 'duration'], properties: { type: { type: 'string' }, start: { type: 'number', minimum: 0 },
       duration: { type: 'number', exclusiveMinimum: 0 }, character: { type: 'string' }, layer: { enum: null }, mask: { type: 'array' }, target: {}, effects: { type: 'array' }, params: { type: 'object' } } } },
   },
@@ -42,6 +42,22 @@ const lev = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) =>
 export const alternatives = (type, n = 3) => Object.keys(ACTION_CATALOG).map(k => [k, lev(String(type).toLowerCase(), k)]).sort((a, b) => a[1] - b[1]).slice(0, n).map(x => x[0]);
 
 // returns { ok, errors, warnings, plan (normalised) }
+// where a character roughly is at time t (frame px) and which way it faces: gaits move it at their speed and a jump keeps
+// the momentum it took off with (or covers its distance), as the composer's root integration does
+export function roughX(P, cid, t) {
+  const c = (P.characters || []).find(x => x.id === cid) || P.characters?.[0]; if (!c) return [0, 1];
+  let x = c.x * ({ '9:16': 1080, '16:9': 1920, '4:5': 1080 }[P.aspect] || 1080), f = c.facing === 'left' ? -1 : 1, v = 0;
+  for (const a of [...(P.actions || [])].sort((p, q) => p.start - q.start)) {
+    if (a.start >= t) break; const prm = a.params || a, cat = ACTION_CATALOG[a.type]; if (!cat) continue;
+    const span = Math.max(0, Math.min(t, a.start + a.duration) - a.start);
+    if (['walk', 'run', 'sprint'].includes(a.type)) { v = prm.speed ?? cat.params.speed.default; x += f * v * span; }
+    else if (a.type === 'jump') { const d = prm.distance ?? cat.params.distance.default; x += f * (d >= 0 ? d / Math.max(.1, a.duration * .85) : v) * span; }
+    else if (cat.mask.includes('root') && a.type !== 'land') v = 0;
+    if (a.type === 'turn' && a.start + a.duration / 2 < t) f = -f;
+  }
+  return [x, f];
+}
+
 export function validatePlan(P0, { substitute = false, base = ROOT } = {}) {
   const errors = [], warnings = [], P = structuredClone(P0);
   const S = MOTION_PLAN_SCHEMA.properties, num = (v, s, path) => { if (typeof v !== 'number' || !isFinite(v)) return errors.push(`${path}: a number is required`);
@@ -116,11 +132,15 @@ export function validatePlan(P0, { substitute = false, base = ROOT } = {}) {
     if (!inHand(a.start + .001) && a.type !== 'aim') errors.push(`actions[${i}]: ${a.type} at ${a.start} s needs a prop in hand (pick_up it first)`);
     if (a.type === 'aim' && !inHand(a.start + a.duration)) warnings.push(`actions[${i}]: aim without a prop in hand points the arm only`);
   }
-  // a target behind the character (at the action's start, from its rough position) is usually a planning slip
-  const roughX = (cid, t) => { const c = (P.characters || []).find(x => x.id === cid) || P.characters?.[0]; if (!c) return 0; let x = c.x * ({ '9:16': 1080, '16:9': 1920, '4:5': 1080 }[P.aspect] || 1080), f = c.facing === 'left' ? -1 : 1;
-    for (const a of P.actions || []) { if (a.start >= t) break; const v = ['walk', 'run', 'sprint'].includes(a.type) ? (a.params?.speed ?? ACTION_CATALOG[a.type].params.speed.default) : 0; x += f * v * Math.max(0, Math.min(t, a.start + a.duration) - a.start); if (a.type === 'turn' && a.start + a.duration / 2 < t) f = -f; } return [x, f]; };
+  // a target behind the character (mid-way or at the end of the action, from its rough position) is usually a planning slip
   for (const [i, a] of (P.actions || []).entries()) if (['point', 'aim', 'look'].includes(a.type) && Array.isArray(a.params?.target)) {
-    const [x, f] = roughX(a.character, a.start + a.duration * .5); if ((a.params.target[0] - x) * f < 0) warnings.push(`actions[${i}]: ${a.type}'s target is behind the character by then (about x ${Math.round(x)}): it will be pointed at over the shoulder`);
+    for (const t of [a.start + a.duration * .5, a.start + a.duration]) { const [x, f] = roughX(P, a.character, t);
+      if ((a.params.target[0] - x) * f < 0) { warnings.push(`actions[${i}]: ${a.type}'s target is behind the character by ${+t.toFixed(2)} s (about x ${Math.round(x)}): it will be pointed at over the shoulder`); break; } }
+  }
+  // a fall starts in the air: from a standing pose it would teleport the character up first
+  for (const [i, a] of (P.actions || []).entries()) if (a.type === 'fall' && a.start > .01) {
+    const before = (P.actions || []).filter(b => b !== a && (ACTION_CATALOG[b.type]?.layer === 'lower_body') && b.start < a.start && b.start + b.duration > a.start - .05);
+    if (!before.some(b => ['jump', 'fall'].includes(b.type))) warnings.push(`actions[${i}]: a fall that does not follow a jump starts ${a.params?.from_height ?? 300} px up in the air (start the scene with it, or use jump)`);
   }
   // overlapping actions of one layer that share joints: allowed (the later interrupts), but worth knowing
   const acts = P.actions || [];

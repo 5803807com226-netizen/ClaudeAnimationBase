@@ -14,7 +14,7 @@ function playAction(SC) {
     for (const [id, p] of Object.entries(SC.props || {})) PR[id] = await loadProp(p.spec, p.image);
     CP = buildComposer(plan, CH, PR);
   });
-  const opt = { mode: ACT_Q.get('mode') || plan.render?.mode || 'texture', overlay: ACT_Q.has('overlay') || !!plan.render?.overlay,
+  const opt = { mode: ACT_Q.get('mode') || plan.render?.mode || 'texture', overlay: ACT_Q.has('overlay') || !!plan.render?.overlay, regions: ACT_Q.has('regions'),
     density: +(ACT_Q.get('density') || plan.render?.points?.density || 6), size: +(ACT_Q.get('psize') || plan.render?.points?.size || 1) };
   const memo = new Map();
   const frameAt = t => { const k = Math.round(t * 2400); if (!memo.has(k)) { if (memo.size > 4000) memo.clear(); memo.set(k, solveFrame(CP, plan, t)); } return memo.get(k); };
@@ -106,9 +106,9 @@ function propAimed(P, C, S, K, f, aim, recoil) {
   const sh = S.world.upperarm_f.a, T = aim.target, dx = T[0] - sh[0], dy = T[1] - sh[1], d = Math.hypot(dx, dy) || 1;
   const reach = (C.byName.upperarm_f.len + C.byName.forearm_f.len) * K.s * .72;
   let ang = Math.atan2(dy, f * dx); ang = clamp(ang, -1.2, 1.0);
-  const dir = [f * Math.cos(ang), Math.sin(ang)], kick = recoil * reach * .12;
+  const dir = [f * Math.cos(ang), Math.sin(ang)], kick = recoil * reach * .2;
   const grip = [sh[0] + dir[0] * (reach - kick), sh[1] + dir[1] * (reach - kick) + .08 * reach];
-  ang -= recoil * .22;
+  ang -= recoil * .3;   // the muzzle climbs
   const [gx, gy] = P.anchor('grip'), c = Math.cos(ang), s = Math.sin(ang);
   return { x: grip[0] - f * (gx * c - gy * s), y: grip[1] - (gx * s + gy * c), ang, flip: f };
 }
@@ -171,7 +171,8 @@ function drawFrame(F, opt) {
   for (const [id, c] of Object.entries(F.chars)) {
     const slots = Object.values(F.props).filter(p => p.char === id && p.pose.held).map(p => ({ z: p.pose.z, draw: () => drawProp(p, opt) }));
     push();
-    drawActor(c.C, c.S, { mode: opt.mode, alpha: opt.alpha, density: opt.density, size: opt.size, between: slots, camX: opt.camX });
+    if (c.c.root.vsx != null && c.c.root.vsx !== 1) { translate(c.c.root.x, 0); scale(c.c.root.vsx, 1); translate(-c.c.root.x, 0); }   // a turn's squash
+    drawActor(c.C, c.S, { mode: opt.mode, alpha: opt.alpha, density: opt.density, size: opt.size, between: slots, camX: opt.camX, regions: opt.regions });
     pop();
   }
   for (const p of Object.values(F.props)) if (!p.pose.held) { push(); drawProp(p, opt); pop(); }
@@ -215,8 +216,9 @@ function drawFx(list, t, frameAt, plan) {
     const a = t - e.t; if (a < 0) continue;
     if (e.kind === 'flash' && a < .09) {                       // follows the muzzle anchor every frame it is visible
       const F = frameAt(t), pr = F.props[e.prop]; if (!pr) continue;
-      const m = propPoint(pr.P, pr.pose, 'muzzle'), f = pr.pose.flip ?? 1, ang = pr.pose.ang, k = 1 - a / .09, R = 70 * k + 30;
+      const m = propPoint(pr.P, pr.pose, 'muzzle'), f = pr.pose.flip ?? 1, ang = pr.pose.ang, k = 1 - a / .09, R = (110 * k + 40) * pr.P.scale / .72;
       push(); translate(m[0], m[1]); scale(f, 1); rotate(ang);
+      fill(150, 235, 255, 90 * k); ellipse(R * .3, 0, R * 2.4, R * 1.5);   // the glow around the flash
       fill(255, 240, 160, 230 * k); for (let i = 0; i < 8; i++) { const q = i / 8 * TAU, r = i % 2 ? R * .45 : R; triangle(0, -R * .12, 0, R * .12, Math.cos(q) * r + R * .3, Math.sin(q) * r * .55); }
       fill(255, 255, 255, 240 * k); ellipse(R * .2, 0, R * .7, R * .45); fill(120, 230, 255, 160 * k); ellipse(R * .55, 0, R * 1.3, R * .3); pop();
     }

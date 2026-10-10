@@ -1,0 +1,236 @@
+{
+ "schema": "motion_plan/1",
+ "id": "preset_tour",
+ "title": "Every preset once",
+ "duration": 16,
+ "fps": 24,
+ "aspect": "9:16",
+ "ground_y": 0.8,
+ "camera": {
+  "follow": "CHAR_001",
+  "frame_x": 0.45,
+  "amount": 0.9
+ },
+ "characters": [
+  {
+   "id": "CHAR_001",
+   "rig": "test_kai.rig.json",
+   "x": 0.3,
+   "height": 0.34,
+   "facing": "right"
+  }
+ ],
+ "props": [
+  {
+   "id": "PROP_BLASTER",
+   "spec": "blaster.prop.json",
+   "x": 0.41,
+   "scale": 0.72
+  }
+ ],
+ "actions": [
+  {
+   "type": "breathe",
+   "start": 0,
+   "duration": 16
+  },
+  {
+   "type": "inertia",
+   "start": 0,
+   "duration": 16
+  },
+  {
+   "type": "head_follow",
+   "start": 0,
+   "duration": 16
+  },
+  {
+   "type": "squash_stretch",
+   "start": 0,
+   "duration": 16
+  },
+  {
+   "type": "idle",
+   "start": 0,
+   "duration": 0.5
+  },
+  {
+   "type": "look",
+   "start": 0.2,
+   "duration": 0.8,
+   "target": [
+    700,
+    900
+   ]
+  },
+  {
+   "type": "reach",
+   "start": 0.5,
+   "duration": 0.6,
+   "target": [
+    560,
+    1250
+   ]
+  },
+  {
+   "type": "pick_up",
+   "start": 1.1,
+   "duration": 0.9,
+   "target": "PROP_BLASTER"
+  },
+  {
+   "type": "hold",
+   "start": 2.0,
+   "duration": 0.6,
+   "target": "PROP_BLASTER"
+  },
+  {
+   "type": "walk",
+   "start": 2.0,
+   "duration": 1.4,
+   "speed": 200
+  },
+  {
+   "type": "carry",
+   "start": 2.6,
+   "duration": 0.8,
+   "target": "PROP_BLASTER"
+  },
+  {
+   "type": "transfer",
+   "start": 3.4,
+   "duration": 0.8,
+   "target": "PROP_BLASTER",
+   "to": "b"
+  },
+  {
+   "type": "idle",
+   "start": 3.4,
+   "duration": 0.8
+  },
+  {
+   "type": "recoil",
+   "start": 4.0,
+   "duration": 0.3
+  },
+  {
+   "type": "drop",
+   "start": 4.2,
+   "duration": 0.6,
+   "target": "PROP_BLASTER"
+  },
+  {
+   "type": "crouch",
+   "start": 4.8,
+   "duration": 0.7
+  },
+  {
+   "type": "react",
+   "start": 5.5,
+   "duration": 0.6
+  },
+  {
+   "type": "turn",
+   "start": 6.1,
+   "duration": 0.4
+  },
+  {
+   "type": "walk",
+   "start": 6.5,
+   "duration": 0.9,
+   "speed": 180
+  },
+  {
+   "type": "turn",
+   "start": 7.4,
+   "duration": 0.4
+  },
+  {
+   "type": "sprint",
+   "start": 7.8,
+   "duration": 1.2,
+   "speed": 700
+  },
+  {
+   "type": "motion_trail",
+   "start": 7.9,
+   "duration": 1.0
+  },
+  {
+   "type": "dodge",
+   "start": 8.4,
+   "duration": 0.4
+  },
+  {
+   "type": "jump",
+   "start": 9.0,
+   "duration": 0.9,
+   "height": 200
+  },
+  {
+   "type": "land",
+   "start": 9.9,
+   "duration": 0.4
+  },
+  {
+   "type": "wave",
+   "start": 10.3,
+   "duration": 1.0
+  },
+  {
+   "type": "idle",
+   "start": 10.3,
+   "duration": 1.0
+  },
+  {
+   "type": "point",
+   "start": 11.3,
+   "duration": 0.8,
+   "target": [
+    2600,
+    1000
+   ]
+  },
+  {
+   "type": "arm_swing",
+   "start": 12.1,
+   "duration": 0.6
+  },
+  {
+   "type": "bounce",
+   "start": 12.1,
+   "duration": 0.6,
+   "count": 2,
+   "height": 40
+  },
+  {
+   "type": "overshoot",
+   "start": 12.7,
+   "duration": 0.5
+  },
+  {
+   "type": "impact",
+   "start": 12.7,
+   "duration": 0.4,
+   "target": [
+    2500,
+    1300
+   ]
+  },
+  {
+   "type": "idle",
+   "start": 13.8,
+   "duration": 2.2
+  },
+  {
+   "type": "crouch",
+   "start": 13.2,
+   "duration": 0.6
+  },
+  {
+   "type": "dust",
+   "start": 13.4,
+   "duration": 0.3
+  }
+ ]
+}

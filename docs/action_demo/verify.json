@@ -1,0 +1,67 @@
+{
+  "story": "_act_demo_blaster",
+  "plan": "demo_blaster",
+  "samples": 601,
+  "checks": [
+    {
+      "name": "rig: parents exist, chained joints connect",
+      "ok": true,
+      "detail": "15 bones, missing parents: 0, max joint gap 0.000 px"
+    },
+    {
+      "name": "ground: planted feet are on the ground line",
+      "ok": true,
+      "detail": "max distance of a planted ankle from its ground height 0.26 px"
+    },
+    {
+      "name": "ground: planted feet do not slide",
+      "ok": true,
+      "detail": "max slide of a planted foot between samples 0.70 px at 0.85 s (721 planted foot-samples)"
+    },
+    {
+      "name": "ground: feet back on the ground at the end",
+      "ok": true,
+      "detail": "f: -0.00 px, b: 0.00 px"
+    },
+    {
+      "name": "snapping: no joint pops between frames",
+      "ok": true,
+      "detail": "max angular speed 28.0 rad/s (shin_b at 2.292 s; limit 40 rad/s = 1.7 rad per 24 fps frame)"
+    },
+    {
+      "name": "snapping: the body never teleports",
+      "ok": true,
+      "detail": "max root move between samples 10.94 px at 2.208 s"
+    },
+    {
+      "name": "attach: PROP_BLASTER lies in the world before the pick-up and is in the hand after",
+      "ok": true,
+      "detail": "before world, after hand (attach at 0.36 s)"
+    },
+    {
+      "name": "attach: the hand meets PROP_BLASTER's grip when it closes",
+      "ok": true,
+      "detail": "distance 0.36 px"
+    },
+    {
+      "name": "grip: PROP_BLASTER stays in the hand (running, jumping, landing)",
+      "ok": true,
+      "detail": "max hand-to-grip distance 1.21 px over 557 held samples (at 2.24 s)"
+    },
+    {
+      "name": "grip: the second hand holds PROP_BLASTER's fore grip while aiming",
+      "ok": true,
+      "detail": "max distance 0.59 px"
+    },
+    {
+      "name": "muzzle: the flash rides PROP_BLASTER's muzzle anchor",
+      "ok": true,
+      "detail": "muzzle-to-grip distance changes by at most 0.000 px while the flash shows (rigid with the prop)"
+    },
+    {
+      "name": "blend: aiming and the leg action play together",
+      "ok": true,
+      "detail": "at 3.10 s: jump lifts the feet 81 px while the aim holds the arms"
+    }
+  ]
+}

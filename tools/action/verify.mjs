@@ -35,6 +35,7 @@ const rig = JSON.parse(readFileSync(new URL('../../' + 'src/stories/' + story + 
 { let maxOff = 0, maxSlide = 0, worst = null, grounded = 0;
   for (let i = 1; i < frames.length; i++) {
     const t = i * dt, F = frames[i].chars[cid], P = frames[i - 1].chars[cid], g = F.ground - F.ankleH;
+    if (F.root.flip !== P.root.flip) continue;   // a turn mirrors: the feet swap sides on purpose
     if (during(['jump', 'fall'], t) && !during(['land'], t)) continue;
     for (const s of ['f', 'b']) {
       const y = F.bones['shin_' + s].b[1], py = P.bones['shin_' + s].b[1], x = F.bones['shin_' + s].b[0], px = P.bones['shin_' + s].b[0];

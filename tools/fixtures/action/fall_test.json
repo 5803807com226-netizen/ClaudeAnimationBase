@@ -1,0 +1,34 @@
+{
+ "schema": "motion_plan/1",
+ "id": "fall_test",
+ "duration": 2.0,
+ "fps": 24,
+ "aspect": "9:16",
+ "ground_y": 0.8,
+ "characters": [
+  {
+   "id": "CHAR_001",
+   "rig": "test_kai.rig.json",
+   "x": 0.4,
+   "height": 0.34
+  }
+ ],
+ "actions": [
+  {
+   "type": "fall",
+   "start": 0,
+   "duration": 0.55,
+   "from_height": 380
+  },
+  {
+   "type": "land",
+   "start": 0.55,
+   "duration": 0.45
+  },
+  {
+   "type": "idle",
+   "start": 1.0,
+   "duration": 1.0
+  }
+ ]
+}

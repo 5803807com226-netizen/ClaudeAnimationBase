@@ -199,6 +199,7 @@ def main():
         pa, pb = (joints[a]['x'], joints[a]['y']), (joints[b]['x'], joints[b]['y'])
         # a limb's width is read toward its outer end: near the body it overlaps the trunk (a shoulder over the chest)
         if name == 'spine': r = min(radius_at(M, pa, pb, f, True) for f in (.12, .25, .4))   # near the hips: the arms are apart from the trunk there
+        elif name == 'neck': r = radius_at(M, pa, pb, .9, True)   # at the neck joint itself, not across the head or the shoulders
         elif chain == 'body': r = radius_at(M, pa, pb)
         else: r = min(radius_at(M, pa, pb, f, True) for f in (.55, .7, .85))
         out_bones.append({'name': name, 'parent': parent, 'from': a, 'to': b, 'chain': chain, 'z': z, 'radius': round(r, 1)})

@@ -1,0 +1,116 @@
+{
+  "schema": "motion_plan/1",
+  "id": "demo_blaster",
+  "title": "Pick up the blaster, run, jump, aim, fire, land",
+  "duration": 5,
+  "fps": 24,
+  "aspect": "9:16",
+  "ground_y": 0.8,
+  "backdrop": {
+    "sky": "#E6EFF3",
+    "ground": "#D6C6A8",
+    "obstacles": [
+      {
+        "x": 0.73,
+        "w": 130,
+        "h": 150,
+        "color": "#9C7A55"
+      }
+    ]
+  },
+  "camera": {
+    "follow": "CHAR_001",
+    "frame_x": 0.38,
+    "amount": 0.9
+  },
+  "characters": [
+    {
+      "id": "CHAR_001",
+      "rig": "test_kai.rig.json",
+      "x": 0.2,
+      "height": 0.34,
+      "facing": "right"
+    }
+  ],
+  "props": [
+    {
+      "id": "PROP_BLASTER",
+      "spec": "blaster.prop.json",
+      "x": 0.31,
+      "scale": 0.72
+    }
+  ],
+  "actions": [
+    {
+      "type": "pick_up",
+      "start": 0,
+      "duration": 0.8,
+      "target": "PROP_BLASTER",
+      "params": {
+        "target": "PROP_BLASTER"
+      }
+    },
+    {
+      "type": "run",
+      "start": 0.8,
+      "duration": 1.2,
+      "speed": 330,
+      "layer": "lower_body",
+      "params": {
+        "speed": 330
+      }
+    },
+    {
+      "type": "jump",
+      "start": 2,
+      "duration": 1.2,
+      "height": 230,
+      "layer": "lower_body",
+      "params": {
+        "height": 230
+      }
+    },
+    {
+      "type": "aim",
+      "start": 2.15,
+      "duration": 1.15,
+      "target": [
+        1750,
+        930
+      ],
+      "layer": "upper_body",
+      "params": {
+        "target": [
+          1750,
+          930
+        ]
+      }
+    },
+    {
+      "type": "fire",
+      "start": 2.6,
+      "duration": 0.3,
+      "effects": [
+        "muzzle_flash",
+        "bolt",
+        "recoil"
+      ],
+      "params": {}
+    },
+    {
+      "type": "land",
+      "start": 3.2,
+      "duration": 0.4,
+      "effects": [
+        "dust"
+      ],
+      "params": {}
+    },
+    {
+      "type": "idle",
+      "start": 3.6,
+      "duration": 1.4,
+      "params": {}
+    }
+  ]
+}

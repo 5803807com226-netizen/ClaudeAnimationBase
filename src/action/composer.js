@@ -60,12 +60,16 @@ function buildComposer(plan, chars, props) {
     // an action nested inside a longer one of its layer (a dodge inside a run) gives the joints back when it ends
     for (const a of acts) a.nested = acts.some(b => b !== a && b.pri === a.pri && b.start < a.start && b.end > a.end + .1 && [...b.mask].some(m => a.mask.has(m)));
     for (const a of acts) if (a.nested) a.next = null;
+    for (const a of acts) a.nextCovers = !!a.next && [...a.mask].every(m => a.next.mask.has(m));
+    for (const a of acts) if (a.start <= .001) a.bi = 0;   // nothing to blend from at the very start of the scene
     const env = (a, t) => {
       if (t < a.start) return 0;
       let w = a.bi > 0 ? smooth((t - a.start) / a.bi) : 1;
       if (t > a.end) {
-        if (a.next) { if (t > a.next.start + a.next.bi + .02) return 0; }
-        else w *= a.bo > 0 ? 1 - smooth((t - a.end) / a.bo) : 0;
+        // handed over: hold until the successor has blended in, then let go. A successor that covers only part of
+        // this action's joints does not take over the rest: then this one fades out (no joint is dropped at once)
+        if (a.next && a.nextCovers) { if (t > a.next.start + a.next.bi + .02) return 0; }
+        else w *= a.bo > 0 ? 1 - smooth((t - Math.max(a.end, a.next ? a.next.start + a.next.bi : a.end)) / a.bo) : 0;
       }
       return w * a.p.weight;
     };
@@ -122,9 +126,9 @@ function evalCharacter(K, plan, t, CP, opts = {}) {
   }
   reachGuard(K, st, flip);
   if (!opts.noSecondary) secondary(K, plan, t, st, flip, CP);
-  // the turn: squash x through zero at the switch
-  for (const a of acts) if (a.type === 'turn' && t >= a.start && t <= a.end) st.root.sx *= Math.max(.06, Math.abs(Math.cos(Math.PI * clamp((t - a.start) / a.dur))));
-  const root = { x: st.root.x, y: st.root.y + st.root.dy, rot: st.root.rot, s, sx: st.root.sx, sy: st.root.sy, flip };
+  // the turn: a drawing-only squash in x through the switch (the skeleton itself never squashes to zero: its IK would)
+  let vsx = 1; for (const a of acts) if (a.type === 'turn' && t >= a.start && t <= a.end) vsx = Math.max(.15, Math.abs(Math.cos(Math.PI * clamp((t - a.start) / a.dur))));
+  const root = { x: st.root.x, y: st.root.y + st.root.dy, rot: st.root.rot, s, sx: st.root.sx, sy: st.root.sy, flip, vsx };
   return { root, pose: st.pose, ik: st.ik, look: st.look, armHold: st.armHold, st };
 }
 // every planted foot must reach the ground: if the hips are too high for a leg to touch its foothold (a long stance,
@@ -219,7 +223,10 @@ const ACTION_EVAL = {
   dodge(K, a, t, u, st, f) { const k = Math.sin(Math.PI * clamp(u / .7)) * (u < .7 ? 1 : 0); return { root: { dy: k * .12 * K.legLen * K.s, rot: -f * 0 }, pose: { spine: -a.p.lean * k, neck: .2 * k, upperarm_f: -.8 * k, upperarm_b: -.6 * k } }; },
   fall(K, a, t, u, st, f) {
     const g = 2600, lt = t - a.start, h0 = a.p.from_height, y = Math.max(0, h0 - .5 * g * lt * lt), fl = Math.sin(t * 18);
-    return { root: { dy: -y }, pose: { thigh_f: -.6 + .2 * fl, shin_f: .9, thigh_b: .2 - .2 * fl, shin_b: .8, upperarm_f: -2.2 + .3 * fl, upperarm_b: -2 - .3 * fl, forearm_f: -.4, forearm_b: -.4, spine: -.1 }, ik: { leg_f: { w: 0 }, leg_b: { w: 0 } } };
+    // near the ground the feet reach for their landing footholds (as at the end of a jump): touch-down never slides
+    const reach = smooth(1 - y / Math.max(1, Math.min(h0, .5 * K.legLen * K.s))), xl = landAnchor(K, a);
+    const feet = reach > 0 ? { leg_f: { w: reach, target: [standFootX(K, xl, f, 'f'), K.G - K.ankleH - y], endAngle: 0, bend: 1 }, leg_b: { w: reach, target: [standFootX(K, xl, f, 'b'), K.G - K.ankleH - y], endAngle: 0, bend: 1 } } : { leg_f: { w: 0 }, leg_b: { w: 0 } };
+    return { root: { dy: -y }, pose: { thigh_f: -.6 + .2 * fl, shin_f: .9, thigh_b: .2 - .2 * fl, shin_b: .8, upperarm_f: -2.2 + .3 * fl, upperarm_b: -2 - .3 * fl, forearm_f: -.4, forearm_b: -.4, spine: -.1 }, ik: feet };
   },
   land(K, a, t, u, st, f) {
     const ll = K.legLen * K.s, x0 = K.rootX(a.start), lt = t - a.start;
@@ -250,7 +257,7 @@ const ACTION_EVAL = {
     let r = 0; for (let i = 0; i < a.p.shots; i++) { const ts = a.start + i * a.p.interval, d = t - ts; if (d >= 0) r += Math.exp(-14 * d) * (d < .03 ? d / .03 : 1); }
     return { recoil: r * a.p.recoil, pose: { spine: -.12 * r * a.p.recoil, neck: .06 * r } };
   },
-  react(K, a, t, u) { const k = Math.sin(Math.PI * clamp(u / .4)) * (u < .4 ? 1 : 0) + (u >= .4 ? Math.exp(-6 * (u - .4)) * .3 : 0), s = a.p.direction === 'forward' ? 1 : -1;
+  react(K, a, t, u) { const k = u < .22 ? Math.sin(Math.PI / 2 * u / .22) : Math.exp(-5 * (u - .22)), s = a.p.direction === 'forward' ? 1 : -1;   // a sharp jolt, then it settles (continuous)
     return { pose: { spine: s * .35 * k, neck: -s * .3 * k, upperarm_f: -1.2 * k, upperarm_b: -1.4 * k, forearm_f: -.8 * k, forearm_b: -.8 * k } }; },
   recoil(K, a, t, u) { return { recoil: Math.exp(-10 * (t - a.start)) * a.p.strength }; },
   squash_stretch() { return null; }, inertia() { return null; }, head_follow() { return null; },
@@ -391,7 +398,8 @@ function buildProps(plan, CH, props) {
     const scale = (pr.scale ?? .75) * Object.values(CH)[0].s, an = A.spec.anchors;
     const anchor = k => [(an[k][0] - an.origin[0]) * scale, (an[k][1] - an.origin[1]) * scale];   // relative to the prop origin, prop frame
     // rest pose on the ground: origin placed so the image's lowest opaque row touches the ground line
-    const restY = plan.ground_y * H - (A.bottom - an.origin[1]) * scale, rest = { x: pr.x * W, y: pr.y != null ? pr.y * H : restY, ang: pr.angle || 0, flip: 1 };
+    // at rest it lies on the ground, or on a surface (rest_on: a height as a fraction of the frame, e.g. a crate's top)
+    const surf = (pr.rest_on ?? plan.ground_y) * H, restY = surf - (A.bottom - an.origin[1]) * scale, rest = { x: pr.x * W, y: pr.y != null ? pr.y * H : restY, ang: pr.angle || 0, flip: 1 };
     const g = anchor('grip');
     // the attachment timeline from the actions: pick_up attaches at 45 % of the action, drop releases at 35 %, transfer swaps hands at 50 %
     const ev = [];
