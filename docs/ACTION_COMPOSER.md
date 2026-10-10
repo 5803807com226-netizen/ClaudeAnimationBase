@@ -52,6 +52,32 @@ The patch adds no packages:
 
 There is no server and no new localhost port.
 
+## Action shots inside a film (patch v5)
+
+With `patches/autocinematic_action_shots_v5.patch` applied on top of v4, the Opus Shot Director (Motion Plan → Generate Shot Manifest) can choose `"treatment": "action"` for a shot where a character does what the narration says. The manifest format is in `docs/integration/SHOT_MANIFEST_SCHEMA.md`, under "Action shots".
+
+**What Opus gets.**
+- The 33 presets: the `actions` section of the live capability catalog.
+- The list of the project's **Character Refs**: ids and views.
+
+Opus names ids only.
+
+**What the app does.**
+- **Pictures.** The app replaces every character and prop id with that reference picture's path, preferring the `full_body` view. A path written by the model is ignored.
+- **Missing reference.** An id with no reference picture puts the shot back to the no-AI layout, with a note. A prop is a reference too: upload it in Character Refs under its id (e.g. `BLASTER`).
+- **Compile and render.** The compiler rigs the pictures automatically with AutoCinematic's own Python, validates the plan, and renders the shot as one segment of the film. Subtitle, SFX and music work as in any other shot.
+
+**Install.** In the AutoCinematic folder, after v4:
+
+```
+git apply "<ClaudeAnimationBase>\patches\autocinematic_action_shots_v5.patch"
+```
+
+`git apply -R` removes it again. It changes three files:
+- `autocinematic/shot_director.py`
+- `autocinematic/motion_engine.py` (passes `--python`)
+- `prompts/opus_shot_director.txt` (rule 11)
+
 ## Using it (the tabs are in Thai)
 
 1. **ตัวละคร & Rig.** Upload the character image. It is copied into `<project>/action/refs/`; an existing file is never overwritten.

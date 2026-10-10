@@ -108,6 +108,42 @@ These are editorial paper collage shots: imported PNG cut-outs placed and moved 
 - Consecutive collage shots play as one reel, so transitions are drawn across the cut; the job's segment transition is `cut`.
 - Titles with no `out` leave by themselves before a transition.
 
+## Action shots (`"treatment": "action"`)
+
+These are articulated characters from their reference images: the engine rigs the picture and animates its limbs with Action Composer presets (`docs/ACTION_COMPOSER.md`). Nothing is generated. The full example is `tools/fixtures/plans/action_story.json`.
+
+```jsonc
+{ "id": "A02", "start": 1.5, "end": 6.5, "treatment": "action", "backend": "javascript_motion",
+  "narration": "ไคคว้าปืนเลเซอร์ วิ่ง แล้วกระโดดยิงกลางอากาศ",
+  "action": {
+    "characters": [{ "id": "KAI", "image": "refs/kai.png", "x": 0.2, "height": 0.34, "facing": "right" }],  // or "rig": "<char_rig/1 json>"
+    "props": [{ "id": "BLASTER", "image": "refs/blaster.png", "x": 0.31, "scale": 0.72 }],               // or "spec": "<prop/1 json>"
+    "backdrop": { "sky": "#E6EFF3", "ground": "#D6C6A8", "obstacles": [{ "x": 0.73, "w": 130, "h": 150 }] },
+    "actions": [ { "type": "pick_up", "start": 0, "duration": 0.8, "target": "BLASTER" },
+                 { "type": "run", "start": 0.8, "duration": 1.2, "speed": 330 }, … ]   // or "story": "<sentence>" (rule-based, no AI)
+  } }
+```
+
+**How the compiler handles them**
+
+- **Rigs and anchors.** An `image` is rigged automatically by `tools/action/rig_analyze.py`, and a prop's anchors come from `prop_analyze.py`. The results are cached in `out/plans/<id>/action/<shot>/` and redone only when the image changes.
+  - Pass `--python=<python with Pillow and numpy>`. AutoCinematic passes its own.
+  - Paths are relative to the manifest, or absolute.
+- **Validation.** The motion plan is validated by `tools/action/plan.mjs`:
+  - preset names, parameter ranges, prop in hand, targets behind the character;
+  - an unknown preset blocks the shot and names the closest alternatives.
+- **Layers and camera.**
+  - The only layers allowed are `type.*` text. The auto-polish karaoke subtitle is added the same way and drawn on top of the character.
+  - A `camera` capability is blocked. The shot has its own follow camera, `action.camera`; `null` turns it off.
+- **Rendering.** Each action shot is its own story, `_act_<project>_<shot>`, and joins the film as one segment, range `0 … length`.
+  - Its `shot_hash` covers the plan, the rig, prop and image files, and the action engine.
+  - Editing another shot does not re-render it.
+- **Sound.** Automatic SFX come from its timeline: take-off (whoosh), landing (impact), firing (whoosh), pick-up (paper).
+- **Formats.** Values may be per format (`{"9:16": …, "16:9": …}`).
+  - Rendered in another format (`--aspect`), the world keeps the planned pixels: the same run-up reaches the same obstacle.
+  - Aim and point targets keep their height above the ground.
+  - Verified: 9:16 and 16:9 each pass 12/12 motion checks.
+
 ## Validation and error states (compiler output, per shot)
 
 - `ok`.

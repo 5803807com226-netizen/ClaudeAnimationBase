@@ -20,6 +20,7 @@ function playAction(SC) {
   const frameAt = t => { const k = Math.round(t * 2400); if (!memo.has(k)) { if (memo.size > 4000) memo.clear(); memo.set(k, solveFrame(CP, plan, t)); } return memo.get(k); };
   window.ACTION_DEBUG = { frame: t => CP && summarize(frameAt(t)), plan, ready: () => !!CP, chars: CH, composer: () => CP };
   const fxList = () => CP.fx ??= scheduleFx(CP, plan, frameAt);
+  const overlay = SC.type?.length ? typeOverlay({ items: SC.type }) : null;   // text on top (a film's subtitle, labels)
   shots([[0, (t) => {
     if (!CP) return;
     const F = frameAt(t), cam = cameraAt(plan, t, frameAt);
@@ -33,6 +34,7 @@ function playAction(SC) {
     drawFx(fxList(), t, frameAt, plan);
     if (opt.overlay) for (const c of Object.values(F.chars)) drawRigOverlay(c.C, c.S);
     pop();
+    if (overlay) overlay.draw(t);
   }]]);
 }
 

@@ -99,6 +99,31 @@ The dialog was tested under Xvfb on Linux (Python 3.12, Tk 8.6). It was driven t
 - Opus mode with a real `claude` login (only with a stand-in command);
 - AutoCinematic's own production pipelines, which this patch does not change.
 
+## Action shots in a film (patch v5 + compile_plan)
+
+**Test film.** `tools/fixtures/plans/action_story.json` has 3 shots: a title, an action shot from the plain reference images (`test_kai.png`, `blaster.png`), and an end title.
+
+| check | result |
+|---|---|
+| compile: rig and prop anchors made from the images, plan validated, subtitle and 6 SFX cues added | ✓ 3/3 shots compiled |
+| the action shot with the karaoke subtitle drawn on top (low-res sheet, frames inspected) | ✓ |
+| pipeline: the action shot rendered as its own segment, motion-checked, film assembled with audio | ✓ (smoke run, segments cut to 0.5 s: 1080×1920, 36 frames, 1.5 s) |
+| cache: recompiling after editing other shots keeps the action segment | ✓ ("done before, skipped") |
+| motion QA of the compiled action shot, 9:16 and 16:9 (`--aspect=16:9`) | ✓ 12/12 and 12/12 |
+| AutoCinematic v5 with a stand-in Opus: prompt carries reference ids, ACTION PRESETS and rule 11 | ✓ |
+| … the app put the project's reference image in place of a model-written path | ✓ |
+| … an action shot naming a character with no reference fell back to the no-AI layout with a note | ✓ |
+| … the dry compile in AutoCinematic's flow, rigging with the app's Python | ✓ 3/3 |
+| v5 applies on v1–v4, compiles, reverses | ✓ |
+| regressions: `test_engine.mjs`, `test_audiomix.mjs`, dry compiles of `collage_demo` and `magellan_proto` | all passed |
+
+**Not tested:**
+- a full-length render of this film (no full videos in the cloud);
+- a real Opus call;
+- running it on Windows.
+
+The first 16:9 check found two problems. The aim pointed into the ground (a 9:16 pixel target), and the run ended before the crate (obstacles are width fractions). Both were fixed by keeping the planned world in its pixels.
+
 ## Known limitations (seen in the frames)
 
 - The test character's short cartoon arms force a deep squat to reach a prop on the ground (`reachDepth`).

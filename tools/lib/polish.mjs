@@ -76,6 +76,7 @@ const SFX_OF_TRANS = { push: 'whoosh', slide: 'paper', whip: 'whoosh', tear: 'pa
 const SFX_OF_PRESET = { popBounce: 'pop', particleBurst: 'ding', objectReveal: 'whoosh', brushWipe: 'whoosh', barChart: 'tick', lineChart: 'riser', donutChart: 'tick', timeline: 'tick', iconGrid: 'pop', callout: 'pop', captionBar: 'paper' };
 const SFX_OF_ACTOR = { jump: 'whoosh', hop: 'pop', fly: 'whoosh', shake: 'impact', spin: 'whoosh', exit: 'whoosh', turn: 'paper' };
 const SFX_OF_TYPE = { impact: 'impact', stamp: 'impact', counter: 'tick', pop: 'pop', slide: 'whoosh', cutout: 'paper', reveal: 'whoosh' };
+const SFX_OF_ACTION = { jump: 'whoosh', land: 'impact', fire: 'whoosh', pick_up: 'paper', drop: 'impact', dodge: 'whoosh', turn: 'paper', react: 'pop', impact: 'impact' };
 const GAIN = { whoosh: .5, pop: .45, paper: .55, tick: .35, impact: .55, riser: .4, ding: .35, type: .3 };
 
 export function sfxCues(compiled, { dir = 'assets/sfx', minGap = .22, perShot = 5, off = false } = {}) {
@@ -85,7 +86,12 @@ export function sfxCues(compiled, { dir = 'assets/sfx', minGap = .22, perShot = 
   const cues = [], missing = new Set();
   for (const s of compiled) {
     const want = [];   // [offset, category, why]
-    if (s.collage) {
+    if (s.action) {   // an action shot: its own timeline (take-off, landing, shots, pick-ups) cues the sounds
+      for (const a of s.action.plan.actions) {
+        const at = a.start, cat = SFX_OF_ACTION[a.type];
+        if (cat) want.push([a.type === 'jump' ? at + a.duration * .12 : a.type === 'pick_up' ? at + a.duration * .45 : at, cat, `action ${a.type}`]);
+      }
+    } else if (s.collage) {
       const C = s.collage;
       if (C.transition && SFX_OF_TRANS[C.transition.kind]) want.push([0, SFX_OF_TRANS[C.transition.kind], 'transition ' + C.transition.kind]);
       for (const L of C.layers || []) for (const m of L.motion || []) if (SFX_OF_MOTION[m.kind] && typeof (m.at ?? 0) === 'number') want.push([m.at ?? 0, SFX_OF_MOTION[m.kind], `${L.id} ${m.kind}`]);

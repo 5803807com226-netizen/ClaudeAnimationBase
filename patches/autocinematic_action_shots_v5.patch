@@ -1,0 +1,121 @@
+diff --git a/autocinematic/motion_engine.py b/autocinematic/motion_engine.py
+index aa439f2..6b3c322 100644
+--- a/autocinematic/motion_engine.py
++++ b/autocinematic/motion_engine.py
+@@ -13,6 +13,7 @@ import json
+ import re
+ import shutil
+ import subprocess
++import sys
+ from pathlib import Path
+ from typing import Callable, Optional
+ 
+@@ -79,6 +80,7 @@ class MotionEngine:
+             args.append(f"--catalog={self.root / 'out' / 'capabilities.json'}")
+         if aspect and aspect != m.get("aspect"):
+             args.append(f"--aspect={aspect}")
++        args.append(f"--python={sys.executable}")   # action shots: rigs are made from reference images with this Python (Pillow, numpy)
+         rc = self._run(args, "Compile", extra)
+         report = _read(self.root / "out" / "plans" / pid / "compile_report.json", {})
+         if rc == 2 or not report:
+diff --git a/autocinematic/shot_director.py b/autocinematic/shot_director.py
+index 84972b5..8838630 100644
+--- a/autocinematic/shot_director.py
++++ b/autocinematic/shot_director.py
+@@ -22,6 +22,7 @@ from typing import Callable, Optional
+ 
+ from autocinematic.motion_engine import MotionEngine, MotionEngineError, ASPECTS
+ from autocinematic.utils import extract_json
++from autocinematic.character_refs import describe_for_prompt, pick_reference
+ 
+ PROMPT_FILE = "opus_shot_director.txt"
+ SHOT_KEYS = ("story_function", "narration", "visual_concept", "camera", "composition", "transition_in", "sfx_cue")
+@@ -113,11 +114,14 @@ def compact_story(story: dict, shots: list, times: list) -> dict:
+                       for i, (s, (a, b)) in enumerate(zip(shots, times), 1)]}
+ 
+ 
+-def opus_direct(app_root: Path, runner, story: dict, shots: list, times: list, catalog: dict, aspect: str) -> dict:
++def opus_direct(app_root: Path, runner, story: dict, shots: list, times: list, catalog: dict, aspect: str,
++                references: str = "") -> dict:
+     instructions = (app_root / "prompts" / PROMPT_FILE).read_text(encoding="utf-8")
+     stable = instructions + "\n\nCAPABILITY CATALOG " + catalog.get("hash", "") + " (verified only):\n" + \
+         json.dumps(compact_catalog(catalog), ensure_ascii=False, separators=(",", ":"))
+-    prompt = f"ASPECT: {aspect}\nSTORY:\n" + json.dumps(compact_story(story, shots, times), ensure_ascii=False, separators=(",", ":"))
++    if catalog.get("actions"):   # the Action Composer's presets (treatment "action", rule 11)
++        stable += "\n\nACTION PRESETS (treatment \"action\"):\n" + json.dumps(catalog["actions"], ensure_ascii=False, separators=(",", ":"))
++    prompt = f"ASPECT: {aspect}\nREFERENCE IMAGES (for action shots):\n{references or 'none'}\nSTORY:\n" + json.dumps(compact_story(story, shots, times), ensure_ascii=False, separators=(",", ":"))
+     out = extract_json(runner.run("opus", prompt, stable_prefix=stable))
+     if not isinstance(out, dict) or not isinstance(out.get("shots"), list):
+         raise MotionEngineError("Opus did not return {strategy, shots}")
+@@ -140,7 +144,8 @@ def build_manifest(project: Path, engine: MotionEngine, aspect: str, mode: str =
+     if mode == "opus":
+         if runner is None:
+             raise MotionEngineError("Opus mode needs the app's model runner")
+-        out = opus_direct(app_root or Path(__file__).resolve().parent.parent, runner, story, shots, times, catalog, aspect)
++        out = opus_direct(app_root or Path(__file__).resolve().parent.parent, runner, story, shots, times, catalog, aspect,
++                          references=describe_for_prompt(project))
+         directed = {str(s.get("id")): s for s in out["shots"] if isinstance(s, dict)}
+         strategy = {**strategy, **(out.get("strategy") or {}), "ai_video": "forbidden"}
+         data = out.get("data") or {}
+@@ -159,6 +164,15 @@ def build_manifest(project: Path, engine: MotionEngine, aspect: str, mode: str =
+         if shot["treatment"] == "collage" and isinstance(body.get("collage"), dict):
+             pid = re.sub(r"[^A-Za-z0-9_-]", "_", project.name)[:50] or "story"   # the art folder is per project: the app sets it, not Opus
+             shot["collage"] = {**body["collage"], "assets": f"assets/stories/{pid}/"}   # camera keys, boil, generation style (engine collage scene)
++        if shot["treatment"] == "action":
++            act, missing = action_refs(project, body.get("action"))
++            if missing:   # an action shot needs the character's picture: without it the shot falls back to the test layout
++                notes.append(f"{sid}: action shot needs reference images for {', '.join(missing)} (Character Refs); used the no-AI test layout")
++                shot = {**shot, **{k: v for k, v in test_shot(s, i, aspect, b - a).items() if k != "id"}}
++            else:
++                shot["action"] = act
++                shot["layers"] = [L for L in shot["layers"] if str(L.get("cap", "")).startswith("type.")]
++                shot["camera"] = None
+         if d is None and mode == "opus":
+             shot["notes"] = "substituted: no-AI test layout"
+         m_shots.append(shot)
+@@ -172,6 +186,25 @@ def build_manifest(project: Path, engine: MotionEngine, aspect: str, mode: str =
+     return manifest, report
+ 
+ 
++def action_refs(project: Path, action) -> tuple[Optional[dict], list]:
++    """An action shot's characters and props -> the project's reference images (Character Refs), as absolute paths.
++    Returns (action, missing ids). Opus names ids; the app supplies the pictures (never a path from the model)."""
++    if not isinstance(action, dict):
++        return None, ["(no action block)"]
++    out, missing = json.loads(json.dumps(action)), []
++    for key, view in (("characters", "full_body"), ("props", "any")):
++        for c in out.get(key) or []:
++            c.pop("rig", None), c.pop("spec", None), c.pop("image", None)
++            ref = pick_reference(project, str(c.get("id", "")), c.pop("view", None) or view)
++            if ref is None:
++                missing.append(str(c.get("id")))
++            else:
++                c["image"] = str(Path(ref).resolve())
++    if not out.get("characters"):
++        missing.append("(no character)")
++    return out, missing
++
++
+ def validate(engine: MotionEngine, manifest: dict) -> dict:
+     """Dry-run the engine compiler against the live catalog; nothing is rendered or written into the project."""
+     with tempfile.TemporaryDirectory() as tmp:
+diff --git a/prompts/opus_shot_director.txt b/prompts/opus_shot_director.txt
+index 81164b5..049a7ed 100644
+--- a/prompts/opus_shot_director.txt
++++ b/prompts/opus_shot_director.txt
+@@ -13,6 +13,7 @@ Return ONLY one JSON object, no prose, no markdown:
+                "layers": [ { "id": "<short id>", "cap": "<capability id>", "params": { ... } } ],
+                "transition_in": "cut|fade|dip|slide|wipe"  (collage shots: { "cap": "transition.<push|slide|tear|iris|whip|fade|cut>", "params": { ... } }),
+                "collage": { ... }  (only for treatment "collage", see rule 10),
++               "action": { ... }  (only for treatment "action", see rule 11),
+                "expected_motion": { "min_changed_frac": 0.01, "intentional_still": false } } ]
+ }
+ 
+@@ -31,3 +32,7 @@ Hard rules (the compiler rejects violations; a rejected shot is not rendered):
+     - Its layers are { "id", "cap": "collage.layer", "params": { "file": "<lower_snake_case>.png", "size": [w] or [null, h], "at": [x, y], "anchor": [ax, ay], "depth", "step": 2, "subject": true for the focal object, "paper": { "shadow": {...}, "border": px }, "gen": { "engine": "zimage", "size": [1024, 1024], "matte": "chroma", "prompt": "<the object alone, no text, no letters, no logo>" } }, "motion": [ { "cap": "collage.<motion>", "params": { ... } } ] } plus "type.*" text layers (prefer type.label, type.stamp, type.cutout).
+     - Reuse the same file (same name) for a recurring object; give "gen" on its first use. Never put text in a gen prompt.
+     - Motion vocabulary (catalog ids collage.*): place, pop, drop, slam, swing, wipe, appear for entrances; fly, roll, walk, orbit, flutter for travel; follow + leave for a hand carrying an object; sway, float, pulse, cycle, boil for life; shake, spin for accents; peel, vanish for exits. Every collage shot needs an entrance and something alive; hands need follow then leave.
++11. Treatment "action" (a character from REFERENCE IMAGES performs: walk, run, jump, pick up, aim, wave, point...). The engine rigs the uploaded picture and animates its limbs; nothing is generated. Use it only for a shot where a character DOES something the narration describes, and only with a character_id listed in REFERENCE IMAGES (a prop, too, must be a listed id). Otherwise do not use it.
++    - The shot has "action": { "characters": [ { "id": "<character_id>", "x": 0.2, "height": 0.34, "facing": "right" } ], "props": [ { "id": "<id>", "x": 0.31, "scale": 0.72 } ], "backdrop": { "sky": "#rrggbb", "ground": "#rrggbb" }, "actions": [ { "type": "<ACTION PRESETS name>", "start": <shot-local s>, "duration": <s>, "target"?: "<prop id>" | [x, y], "effects"?: [...], <preset params> } ] }. x/height are frame fractions; targets [x, y] are frame pixels AHEAD of the character (the camera follows it).
++    - Only preset names and params from ACTION PRESETS. Actions on different layers overlap (run on lower_body while aim on upper_body); pick_up a prop before aim/fire; every jump is followed by land; end with idle. Every action ends inside the shot.
++    - Its "layers" are only "type.*" text (the subtitle is added automatically); it has no "camera" capability.
