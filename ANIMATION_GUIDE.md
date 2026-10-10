@@ -329,7 +329,7 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 | `objectReveal` | arrives on an arc from off-screen (or grows), lands with a wobble and a glow | `from` (`below` `above` `left` `right` `center`), `dist`, `arc`, `glow`, `glowR`, `wobble` |
 | `particleBurst` | hash-seeded confetti on arcs with gravity and a flash | `count`, `pSize`, `shape` (or `mix`), `colors`, `angle`, `arc`, `gravity`, `glow`, `spin`, `seed` |
 
-**Watercolor icon actors** ([src/presets/actor.js](src/presets/actor.js)): `iconActor` paints any of the 4,134 [game-icons.net](https://game-icons.net) silhouettes as watercolor. You get a wash, blooms, pigment pooling at the edges, paper grain and an ink line, boiling at 8 fps. The actor plays a list of moves:
+**Watercolor icon actors** ([src/presets/actor.js](src/presets/actor.js)): `iconActor` paints any of about 3,300 public-domain silhouettes (Pinhead, Temaki and Maki, all CC0 1.0: no credit needed) as watercolor. You get a wash, blooms, pigment pooling at the edges, paper grain and an ink line, boiling at 8 fps. The actor plays a list of moves:
 
 - `enter` (`pop`, `drop`, `slide`, `grow`);
 - `walk`, `run`, `hop`, `jump`, `fly`, `swim`, each with `to: [x, y]`;
@@ -338,9 +338,9 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 
 Each move starts where the last ended. The actor stands on its feet at `(x, y)`, faces the way it travels, keeps squash and stretch and a ground shadow, and breathes between moves. `popBounce` and `objectReveal` take `icon` instead of `shape`.
 
-Names come from [tools/lib/icons.mjs](tools/lib/icons.mjs), which accepts English or Thai nouns: `node tools/lib/icons.mjs search mammoth`. The plan compiler ships only the icons a story uses (`icons.js` in its folder); [src/icons/core.js](src/icons/core.js) is a small committed set for demos.
+Names come from [tools/lib/icons.mjs](tools/lib/icons.mjs), which accepts English or Thai nouns: `node tools/lib/icons.mjs search horse`. The plan compiler ships only the icons a story uses (`icons.js` in its folder); [src/icons/core.js](src/icons/core.js) is a small committed set for demos.
 
-The icons are CC BY 3.0. The compiler writes `out/plans/<id>/credits.txt`; put its line in the video's description.
+Only CC0 (public-domain) icon sets are used, so videos need no credit line. Never add a set whose licence asks for credit or limits use. Some subjects are not in these sets (mammoth, caveman, tank, dinosaur, soldier …); the compiler blocks them rather than show a look-alike.
 
 These are vector silhouettes drawn by code, used by kinetic and preset shots. Collage scenes still use imported artwork (docs/COLLAGE_PIPELINE.md).
 

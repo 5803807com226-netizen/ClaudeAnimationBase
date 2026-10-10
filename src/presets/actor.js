@@ -1,7 +1,7 @@
 // @requires src/icons/core.js
-// actor.js: WATERCOLOR ICON ACTORS. Any of the 4,134 game-icons.net silhouettes (CC BY 3.0, credit "game-icons.net";
-// tools/lib/icons.mjs finds them by English or Thai words, the plan compiler ships only the ones a story uses) painted
-// as a watercolor cut-out: a wash with soft bleeding edges, lighter blooms, pigment pooling at the rim, paper
+// actor.js: WATERCOLOR ICON ACTORS. Any of about 3,300 public-domain silhouettes (Pinhead, Temaki and Maki, CC0 1.0:
+// no credit needed; tools/lib/icons.mjs finds them by English or Thai words, the plan compiler ships only the ones a
+// story uses) painted as a watercolor cut-out: a wash with soft bleeding edges, lighter blooms, pigment pooling at the rim, paper
 // granulation and a thin ink outline over the icon's own detail lines. Three hand-painted variants boil at 8 fps.
 //
 // iconActor: the icon as a character that ACTS, from a list of moves played in order (each starts where the last
@@ -17,11 +17,17 @@
 //     exit   { style: 'pop' | 'slide' | 'fade' }    leave (slide: runs off the side it faces)
 //   Between moves it breathes. faces: the way the icon's drawing looks ('left' | 'right'; core icons are known).
 // Object presets (popBounce, objectReveal) take `icon` too: the icon replaces their shape.
-// the way an icon's drawing looks, where it is not right (nearly every game-icons.net figure faces right)
+// the way an icon's drawing looks, where it is not right (nearly every figure in these sets faces right)
 const ICON_FACES = {};
 const ICON_TEX = {}, ICON_BOX = {}, ICON_WARNED = new Set();
 let ICON_T = 0;   // the current preset time (set by preset()), for the boil
-const iconPath = name => { const d = window.ICON_PATHS?.[name]?.d; return d ? new Path2D(d) : null; };
+// an icon's outline as a Path2D in a 512 × 512 working box (the sets draw on 15, 50 or 100 units; brush widths below are in 512 units)
+const ICON_P2D = {};
+const iconPath = name => {
+  if (ICON_P2D[name]) return ICON_P2D[name]; const I = window.ICON_PATHS?.[name]; if (!I?.d) return null;
+  const p = new Path2D(I.d), u = 512 / (I.s || 512); if (u === 1) return (ICON_P2D[name] = p);
+  const q = new Path2D(); q.addPath(p, new DOMMatrix().scale(u)); return (ICON_P2D[name] = q);
+};
 function shadeHex(hex, f) {   // f < 0 darker, f > 0 lighter
   const n = parseInt(String(hex).replace('#', '').padEnd(6, '0').slice(0, 6), 16), ch = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f));
   return '#' + ch.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
@@ -43,7 +49,7 @@ function iconGrain() {   // a tile of paper granulation: dark specks and fibres
   return (ICON_GRAIN = c);
 }
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-// one painted variant of an icon at R px (the 512 box), as a p5.Graphics
+// one painted variant of an icon at R px (the 512 box), as a p5.Image
 function iconTexture(name, color, ink, R, v) {
   const key = [name, color, ink, R, v].join('|'); if (ICON_TEX[key]) return ICON_TEX[key];
   // painted on a CPU canvas, then handed to p5 as a p5.Image (uploaded to the GPU once; a p5.Graphics would be
@@ -153,11 +159,11 @@ function actorState(t, o) {
   return F;
 }
 definePreset('iconActor', {
-  label: 'Watercolor Icon Actor', about: 'any game-icons.net silhouette (by name: mammoth, caveman, battle-tank, sailboat … 4,134 icons) painted as watercolor, acting from a list of moves: enter, walk, run, hop, jump, fly, swim, shake, spin, turn, wait, exit',
+  label: 'Watercolor Icon Actor', about: 'any public-domain silhouette (by name: elephant, horse-running, dog, lion, bird-flying, person-walking, sailing-ship, car, fighter-jet … about 3,300 CC0 icons) painted as watercolor, acting from a list of moves: enter, walk, run, hop, jump, fly, swim, shake, spin, turn, wait, exit',
   meta: { version: '1.0.0', category: 'object', tags: ['icon', 'watercolor', 'character', 'walk', 'jump', 'fly', 'actor', 'silhouette'],
     params: { icon: { type: 'string', about: 'an icon name or English/Thai noun, resolved by the compiler' }, faces: { enum: ['left', 'right', 'auto'] }, dir: { enum: ['left', 'right'] },
-      moves: { type: 'array', items: { do: { enum: ACTOR_MOVES } } } }, assets: [{ param: 'icon', type: 'icon (game-icons.net, CC BY 3.0)' }] },
-  defaults: { icon: 'mammoth', color: PAL.ochre, ink: PAL.ink, x: W / 2, y: ny(.78), size: 300 * US(), faces: 'auto', dir: 'right', moves: [], shadow: true, boil: true },
+      moves: { type: 'array', items: { do: { enum: ACTOR_MOVES } } } }, assets: [{ param: 'icon', type: 'icon (CC0 icon library: Pinhead, Temaki, Maki)' }] },
+  defaults: { icon: 'elephant', color: PAL.ochre, ink: PAL.ink, x: W / 2, y: ny(.78), size: 300 * US(), faces: 'auto', dir: 'right', moves: [], shadow: true, boil: true },
   run(t, o) {
     const F = actorState(t, o); if (F.scale <= .001 || F.alpha <= .003) return;
     const native = (o.faces === 'auto' ? ICON_FACES[o.icon] : o.faces) === 'left' ? -1 : 1, flip = F.face * native;
@@ -168,9 +174,9 @@ definePreset('iconActor', {
     pop();
   },
   demo: { bg: PAL.cream, ground: { y: ny(.8), color: '#E4D6BC' }, layers: [
-    ['iconActor', { id: 'mm', icon: 'mammoth', color: '#B07A4E', x: nx(.62), y: ny(.8), size: 300 * US(), moves: [{ do: 'enter', at: .1, style: 'slide', from: 'right' }, { do: 'walk', at: .9, dur: 1.6, to: [nx(.4), ny(.8)] }, { do: 'turn', at: 2.6 }] }],
-    ['iconActor', { id: 'cm', icon: 'caveman', color: '#C9603A', x: nx(.2), y: ny(.8), size: 220 * US(), moves: [{ do: 'enter', at: .5, style: 'pop' }, { do: 'jump', at: 1.4, height: 160 * US() }, { do: 'hop', at: 2.5, dur: 1, count: 2, to: [nx(.12), ny(.8)] }] }],
-    ['iconActor', { id: 'bd', icon: 'dove', color: '#3A9C98', x: nx(.15), y: ny(.3), size: 90 * US(), moves: [{ do: 'enter', at: .2, style: 'grow' }, { do: 'fly', at: .5, dur: 3, to: [nx(.85), ny(.25)], arc: 120 * US() }] }],
+    ['iconActor', { id: 'mm', icon: 'elephant', color: '#8E8478', x: nx(.62), y: ny(.8), size: 300 * US(), moves: [{ do: 'enter', at: .1, style: 'slide', from: 'right' }, { do: 'walk', at: .9, dur: 1.6, to: [nx(.4), ny(.8)] }, { do: 'turn', at: 2.6 }] }],
+    ['iconActor', { id: 'cm', icon: 'person-running', color: '#C9603A', x: nx(.2), y: ny(.8), size: 220 * US(), moves: [{ do: 'enter', at: .5, style: 'pop' }, { do: 'jump', at: 1.4, height: 160 * US() }, { do: 'hop', at: 2.5, dur: 1, count: 2, to: [nx(.12), ny(.8)] }] }],
+    ['iconActor', { id: 'bd', icon: 'bird-flying', color: '#3A9C98', x: nx(.15), y: ny(.3), size: 90 * US(), moves: [{ do: 'enter', at: .2, style: 'grow' }, { do: 'fly', at: .5, dur: 3, to: [nx(.85), ny(.25)], arc: 120 * US() }] }],
   ] },
 });
 
