@@ -47,6 +47,27 @@ To use the Claude API instead, add `"provider": "api"` and `"anthropicApiKey"` t
 
 Other ways to start it: `npm run studio`, or `node studio/server.mjs`.
 
+## The workspace: one program for everything
+
+The studio is the single program for the whole repository. Open it without a console window by double-clicking **`AnimationStudio.vbs`**; `MotionStudio.bat` does the same and also shows the server log. **⏻ ปิดโปรแกรม** in the sidebar quits it. Opening it a second time shows the studio that is already running.
+
+The sidebar groups the pages:
+
+| group | page | what it runs |
+|---|---|---|
+| เริ่มต้น | หน้าหลัก | system status, shortcuts, latest videos |
+| สร้างงาน | สร้างวิดีโอด้วย AI | the project flow above (story → Opus → artwork → video) |
+| | ตัวละครและท่าทาง | Action Composer: `rig_analyze.py` → a joint editor (drag a joint; hand-placed joints are saved as `manual`) → the 33 presets on a timeline → preview sheet, `verify.mjs` checks, clip |
+| | ภาพประกอบ | per story: `validate_assets`, `gen_assets --dry`, generate what is missing |
+| ผลิตและผลงาน | เรนเดอร์ | every job (`jobs/`, compiled plans): render, failed-only, quick test (1.5 s per scene), re-render all; per-scene previews and status; compile the example plans |
+| | คลังวิดีโอ | every finished video with its file location |
+| ข้อมูลอ้างอิง | คลังเอฟเฟกต์และท่าทาง | the live capability catalog and the Action Composer presets, searchable, in Thai |
+| ระบบ | การเชื่อมต่อ | Claude Code, ComfyUI, AutoCinematic, with what to do when one is missing |
+| | ตรวจสุขภาพระบบ | `tools/audit_windows.mjs` with selectable steps; the latest report as a table |
+| | ตั้งค่า | `studio/config.local.json` (python, ComfyUI engines file, AutoCinematic folder, model, graphics mode); only these keys are written, and the API key is never shown |
+
+One job runs at a time. The bar at the bottom of every page shows it, opens its live log, and stops it. Server side: `studio/workspace.mjs`. It only runs the existing tools (a whitelist) and reads the files they write.
+
 ## Settings: `studio/config.local.json`
 
 The file is optional and never committed. Example:

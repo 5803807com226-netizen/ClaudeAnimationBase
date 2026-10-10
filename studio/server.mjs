@@ -15,6 +15,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { resolve, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as D from './director.mjs';
+import { handleWorkspace } from './workspace.mjs';
 
 process.chdir(resolve(dirname(fileURLToPath(import.meta.url)), '..'));   // run from the repository root
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
@@ -166,7 +167,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(type === 'application/json' ? JSON.stringify(body) : body); };
 const body = req => new Promise(r => { let b = ''; req.on('data', d => b += d); req.on('end', () => { try { r(b ? JSON.parse(b) : {}); } catch (e) { r({}); } }); });
 function serveFile(res, rel, req) {
-  const f = resolve(ROOT, decodeURIComponent(rel)); const allowed = ['projects', 'out', 'studio'].some(d => f.startsWith(resolve(ROOT, d) + (process.platform === 'win32' ? '\\' : '/')));
+  const f = resolve(ROOT, decodeURIComponent(rel)); const allowed = ['projects', 'out', 'studio', 'assets/stories', 'assets/fonts'].some(d => f.startsWith(resolve(ROOT, d) + (process.platform === 'win32' ? '\\' : '/')));
   if (!allowed || !existsSync(f) || !statSync(f).isFile()) return send(res, 404, { error: 'not found' });
   const size = statSync(f).size, range = req.headers.range, type = MIME[extname(f)] || 'application/octet-stream';
   if (range && type === 'video/mp4') { const [a, b] = range.replace('bytes=', '').split('-').map(Number), end = b || size - 1;
@@ -178,6 +179,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x'), p = url.pathname, m = p.match(/^\/api\/project\/([^/]+)(?:\/(\w+))?$/);
     if (p === '/' || p === '/index.html') return send(res, 200, readFileSync('studio/app.html'), MIME['.html']);
     if (p.startsWith('/files/')) return serveFile(res, p.slice(7), req);
+    if (await handleWorkspace(p, req, res, { send, body, cfg, PY, RF, run, startJob })) return;
     if (p === '/api/state') { const c = cfg(); return send(res, 200, { projects: listProjects(), credentials: D.hasCredentials(c), provider: c.provider || 'claude-code', comfy: existsSync(ENGINES()), model: (c.provider || 'claude-code') === 'claude-code' ? (c.claudeModel || 'opus') + ' (Claude Code, your plan)' : D.MODEL + ' (API)', job: JOB && { name: JOB.name, status: JOB.status, step: JOB.step } }); }
     if (p === '/api/job') return send(res, 200, JOB ? { name: JOB.name, status: JOB.status, step: JOB.step, log: JOB.log.slice(+(url.searchParams.get('from') || 0)), total: JOB.log.length } : { status: 'idle', log: [], total: 0 });
     if (p === '/api/job/stop' && req.method === 'POST') { if (JOB?.child) JOB.child.kill(); if (JOB) { JOB.status = 'failed'; log('stopped by you'); } return send(res, 200, { ok: true }); }
@@ -199,6 +201,11 @@ const server = http.createServer(async (req, res) => {
     }
     send(res, 404, { error: 'not found' });
   } catch (e) { send(res, 500, { error: e.message }); }
+});
+const openBrowser = url => spawn(process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open', process.platform === 'win32' ? ['/c', 'start', '', url] : [url], { detached: true, stdio: 'ignore' }).on('error', () => {});
+server.on('error', e => {   // already running (opened twice): just show the open studio
+  if (e.code === 'EADDRINUSE') { console.log(`Motion Studio is already running: http://127.0.0.1:${PORT}/`); if (!args['no-open']) openBrowser(`http://127.0.0.1:${PORT}/`); setTimeout(() => process.exit(0), 500); }
+  else throw e;
 });
 server.listen(PORT, '127.0.0.1', () => {
   const url = `http://127.0.0.1:${PORT}/`; console.log(`Motion Studio: ${url}  (Ctrl+C to quit)`);
