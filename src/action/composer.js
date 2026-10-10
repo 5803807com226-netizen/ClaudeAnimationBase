@@ -34,10 +34,25 @@ function buildComposer(plan, chars, props) {
       const layer = a.layer && ACT_PRIORITY[a.layer] != null ? a.layer : cat.layer;
       return { ...a, i, type, cat, p: prm, layer, pri: ACT_PRIORITY[layer] ?? 1, mask: new Set(a.mask || cat.mask), start: a.start, end: a.start + a.duration, dur: a.duration,
         bi: Math.min(prm.blend_in, a.duration / 2), bo: prm.blend_out, additive: !!cat.additive };
-    }).sort((a, b) => a.pri - b.pri || a.start - b.start || a.i - b.i);
+    });
+    // while a prop is in a hand and nothing else directs that arm, the arm holds it in front at the waist (an implicit
+    // carry action on the upper body, from the moment the hand closes until it lets go)
+    for (const pr of plan.props || []) {
+      let at = null, hand = 'f';
+      for (const a of [...plan.actions].sort((x, y) => x.start - y.start)) {
+        const ty = ACTION_ALIASES[a.type] || a.type, tgt = a.target ?? a.params?.target; if (tgt !== pr.id || (a.character && a.character !== ch.id)) continue;
+        if (ty === 'pick_up') { at = a.start + a.duration * .45; hand = a.hand || a.params?.hand || 'f'; }
+        if (ty === 'drop' && at != null) { acts.push(implicitCarry(at, a.start + a.duration * .35, hand)); at = null; }
+      }
+      if (at != null) acts.push(implicitCarry(at, plan.duration + 1, hand));
+    }
+    acts.sort((a, b) => a.pri - b.pri || a.start - b.start || a.i - b.i);
     // successor: the next action of the same layer whose mask overlaps, starting near this one's end (it takes over)
+    for (const a of acts) if (GROUNDED.has(a.type) && acts.some(b => GAITS[b.type] && b.pri === a.pri && Math.abs(b.end - a.start) < .05)) a.bi = Math.min(a.bi, .08);   // a stop takes over fast (its step-in does the rest)
     for (const a of acts) {
-      const nx = acts.filter(b => b !== a && b.pri === a.pri && b.start >= a.start + .01 && b.start <= a.end + .05 && [...b.mask].some(m => a.mask.has(m)));
+      // the next action of this layer that shares joints takes over; until it does, this one holds its last pose
+      // (a gap in a layer does not drop the body back to neutral)
+      const nx = acts.filter(b => b !== a && b.pri === a.pri && !b.additive && !a.additive && b.start >= a.start + .01 && [...b.mask].some(m => a.mask.has(m)));
       a.next = nx.sort((x, y) => x.start - y.start)[0] || null;
     }
     const env = (a, t) => {
@@ -73,6 +88,11 @@ function buildComposer(plan, chars, props) {
   return { chars: out, props: buildProps(plan, out, props) };
 }
 
+function implicitCarry(t0, t1, hand) {
+  const cat = ACTION_CATALOG.carry, p = {}; for (const [k, d] of Object.entries(cat.params)) p[k] = d.default;
+  p.blend_in = .3;
+  return { type: 'carry', implicit: true, i: 1e6, cat, p, layer: 'upper_body', pri: ACT_PRIORITY.upper_body, mask: new Set(['arm_' + hand]), start: t0, end: t1, dur: Math.max(.05, t1 - t0), bi: .3, bo: .25, additive: false, hand };
+}
 // ---------- per-frame evaluation ----------
 // state: { root, pose, ik, look, groups } → solved skeleton, prop poses, effect list
 function composeAt(CP, plan, t, opts = {}) {
@@ -92,11 +112,23 @@ function evalCharacter(K, plan, t, CP, opts = {}) {
     const o = pre(K, a, Math.min(t, a.next ? t : t), clamp((t - a.start) / a.dur), st, flip, CP, plan); if (!o) continue;
     mergeAction(st, o, a, w * (a.p.strength != null && a.additive ? a.p.strength : 1));
   }
+  reachGuard(K, st, flip);
   if (!opts.noSecondary) secondary(K, plan, t, st, flip, CP);
   // the turn: squash x through zero at the switch
   for (const a of acts) if (a.type === 'turn' && t >= a.start && t <= a.end) st.root.sx *= Math.max(.06, Math.abs(Math.cos(Math.PI * clamp((t - a.start) / a.dur))));
   const root = { x: st.root.x, y: st.root.y + st.root.dy, rot: st.root.rot, s, sx: st.root.sx, sy: st.root.sy, flip };
   return { root, pose: st.pose, ik: st.ik, look: st.look, armHold: st.armHold, st };
+}
+// every planted foot must reach the ground: if the hips are too high for a leg to touch its foothold (a long stance,
+// the hips not over the feet after a stop), they come down just enough. Feet never hover; the body gives instead.
+function reachGuard(K, st, f) {
+  const C = K.C, L = (C.byName.thigh_f.len + C.byName.shin_f.len) * K.s * .995;
+  for (const side of ['f', 'b']) {
+    const k = st.ik['leg_' + side]; if (!k || !(k.w > .99) || !k.target || k.target[1] < K.G - K.ankleH - .5) continue;
+    const off = C.byName['thigh_' + side].off, hx = st.root.x + f * off[0] * K.s, hy = st.root.y + st.root.dy + off[1] * K.s * st.root.sy, dx = k.target[0] - hx;
+    if (Math.abs(dx) >= L) continue;
+    const minY = k.target[1] - Math.sqrt(L * L - dx * dx); if (hy < minY) st.root.dy += minY - hy;
+  }
 }
 // merge one action's output into the running state, group by group (mask), weight w
 function mergeAction(st, o, a, w) {
@@ -110,7 +142,8 @@ function mergeAction(st, o, a, w) {
     if (limb && o.ik && o.ik[limb] !== undefined && !add) {
       const P = st.ik[limb] || { w: 0 }, N = o.ik[limb] || { w: 0 };
       st.ik[limb] = { w: lerp(P.w || 0, N.w || 0, w), target: P.target && N.target ? lerp2(P.target, N.target, w) : (N.target || P.target),
-        endAngle: P.endAngle != null && N.endAngle != null ? lerpA(P.endAngle, N.endAngle, w) : (N.endAngle ?? P.endAngle), bend: N.bend ?? P.bend };
+        endAngle: P.endAngle != null && N.endAngle != null ? lerpA(P.endAngle, N.endAngle, w) : (N.endAngle ?? P.endAngle), bend: N.bend ?? P.bend,
+        grip: N.w > 0 && N.target ? !!N.grip : !!P.grip };   // a grip target is where the hand closes, not where the wrist goes
     }
   }
   if (o.look && m.has('head')) st.look = st.look && !add ? { target: lerp2(st.look.target, o.look.target, w), w: lerp(st.look.w, o.look.w, w) } : { ...o.look, w: (o.look.w ?? 1) * w };
@@ -131,14 +164,18 @@ function standBase(K, st, t, flip) {
 // each returns { root: { dy, rot, sx, sy }, pose: { bone: delta }, ik: { limb: { w, target, endAngle, bend } }, look, aim, armHold, recoil }
 const ACTION_EVAL = {
   idle(K, a, t, u, st, f) {
-    const b = Math.sin(t * Math.PI * 2 * .32), x0 = standAnchor(K, a);
+    const b = Math.sin(t * Math.PI * 2 * .32), x0 = standAnchor(K, a), ik = feetPlanted(K, x0, f);
+    if (a.stepIn) {   // after a walk or run: the free foot steps in beside the planted one (lifted: it never drags)
+      const e = smooth((t - a.start) / .3), S2 = a.stepIn, lift = Math.sin(Math.PI * e) * .07 * K.legLen * K.s;
+      ik['leg_' + S2.side] = { ...ik['leg_' + S2.side], target: [lerp(S2.from[0], S2.to[0], e), lerp(S2.from[1], S2.to[1], e) - lift] };
+    }
     return { root: { dy: b * .006 * K.legLen * K.s }, pose: { spine: .03 + b * .015, neck: -.02, head: b * .01, upperarm_f: -.06 + b * .02, upperarm_b: .08 - b * .02, forearm_f: -.2, forearm_b: -.24 },
-      ik: feetPlanted(K, x0, f) };
+      ik };
   },
   breathe(K, a, t) { const b = Math.sin(t * Math.PI * 2 * a.p.rate); return { pose: { spine: b * .02, neck: -b * .012 }, root: { dy: b * .004 * K.legLen * K.s } }; },
-  walk(K, a, t, u, st, f) { return actGait(K, a, t, st, f, { stance: .62, lift: .09, bob: .02, lean: .05, armAmp: .32, foreBend: -.25, stride: .62, crouch: .09 }); },
-  run(K, a, t, u, st, f) { return actGait(K, a, t, st, f, { stance: .38, lift: .2, bob: .045, lean: a.p.lean, armAmp: .62, foreBend: -1.35, stride: 1.05, crouch: .11 }); },
-  sprint(K, a, t, u, st, f) { return actGait(K, a, t, st, f, { stance: .32, lift: .26, bob: .05, lean: a.p.lean, armAmp: .8, foreBend: -1.5, stride: 1.35, crouch: .16 }); },
+  walk(K, a, t, u, st, f) { return actGait(K, a, t, st, f, GAITS.walk(a)); },
+  run(K, a, t, u, st, f) { return actGait(K, a, t, st, f, GAITS.run(a)); },
+  sprint(K, a, t, u, st, f) { return actGait(K, a, t, st, f, GAITS.sprint(a)); },
   jump(K, a, t, u, st, f) {
     // anticipation (crouch, arms back) → push-off (the legs extend while the feet still hold the ground, IK) → air (the
     // legs tuck, FK) → reaching down for the ground at the end. Every pose is interpolated from the one before it, so
@@ -187,8 +224,8 @@ const ACTION_EVAL = {
   point(K, a, t, u, st, f) { if (!a.p.target) return null; const h = a.p.hand, k = smooth(Math.min(1, u * 4)); return { pointAt: { hand: h, target: a.p.target, k }, pose: { spine: -.05 * k } }; },
   reach(K, a, t, u, st, f, CP) { return reachOut(K, a, u, f, CP, false); },
   pick_up(K, a, t, u, st, f, CP) { return reachOut(K, a, u, f, CP, true); },
-  hold() { return { armHold: { f: 1 } }; },
-  carry() { return { armHold: { f: 1 } }; },
+  hold(K, a) { const h = a.hand || 'f'; return { pose: { ['upperarm_' + h]: -.12, ['forearm_' + h]: -.45, ['hand_' + h]: 0 } }; },
+  carry(K, a, t) { const h = a.hand || a.p?.hand || 'f', sw = Math.sin(t * 5.2) * .04; return { pose: { ['upperarm_' + h]: -.28 + sw, ['forearm_' + h]: -.62, ['hand_' + h]: 0 } }; },
   drop(K, a, t, u) { return { pose: { upperarm_f: -.35 * Math.sin(Math.PI * clamp(u * 1.5)), forearm_f: -.6 } }; },
   transfer(K, a, t, u) { return { pose: { upperarm_f: -.9 * Math.sin(Math.PI * u), upperarm_b: -.9 * Math.sin(Math.PI * u), forearm_f: -.8, forearm_b: -.8 } }; },
   aim(K, a, t, u, st, f) {
@@ -209,6 +246,11 @@ const ACTION_EVAL = {
   arm_swing(K, a, t) { const sw = Math.sin(t * Math.PI * 2 * a.p.rate) * .45; return { pose: { upperarm_f: sw, upperarm_b: -sw } }; },
   motion_trail() { return null; }, dust() { return null; }, impact() { return null; },
 };
+const GAITS = {
+  walk: a => ({ stance: .62, lift: .09, bob: .02, lean: .05, armAmp: .32, foreBend: -.25, stride: .62, crouch: .09 }),
+  run: a => ({ stance: .38, lift: .2, bob: .045, lean: a.p.lean, armAmp: .62, foreBend: -1.35, stride: 1.05, crouch: .11 }),
+  sprint: a => ({ stance: .32, lift: .26, bob: .05, lean: a.p.lean, armAmp: .8, foreBend: -1.5, stride: 1.35, crouch: .16 }),
+};
 // where the feet go down: a landing pins them under the hips at the end of the momentum; a standing action that
 // follows a landing (or another standing action) keeps those footholds, so the feet never slide between them
 const GROUNDED = new Set(['land', 'idle', 'crouch', 'pick_up', 'reach']);
@@ -217,8 +259,19 @@ function landAnchor(K, a) {
   return land ? K.rootX(land.start + .1) : K.rootX(a.end + .1);
 }
 function standAnchor(K, a) {
-  const prev = K.acts.filter(b => b !== a && b.pri === a.pri && GROUNDED.has(b.type) && b.start < a.start && Math.abs(b.end - a.start) < .05).sort((x, y) => y.start - x.start)[0];
+  const prev = K.acts.filter(b => b !== a && b.pri === a.pri && b.start < a.start && b.end <= a.start + .05 && [...b.mask].some(m => m.startsWith('leg'))).sort((x, y) => y.end - x.end || y.start - x.start)[0];
+  if (!prev || !(GROUNDED.has(prev.type) || GAITS[prev.type])) return K.rootX(a.start);   // after a jump, a fall … : under the hips
   if (!prev) return K.rootX(a.start);
+  if (GAITS[prev.type]) {
+    // stopping from a walk or run: the foot that is planted when the gait ends stays exactly where it is; the stance
+    // is built around it (the other foot steps in beside it, in the air)
+    const f = K.flipAt(a.start), G2 = actGait(K, prev, prev.end, null, f, GAITS[prev.type](prev)), ll = K.legLen * K.s;
+    const ground = side => G2.ik['leg_' + side].target[1] >= K.G - K.ankleH - .5;
+    const side = ground('f') ? 'f' : ground('b') ? 'b' : 'f', fx = G2.ik['leg_' + side].target[0];
+    const x0 = fx - f * (footRest(K, side) + (side === 'f' ? STANCE : -STANCE) * ll), other = side === 'f' ? 'b' : 'f';
+    a.stepIn ??= { side: other, from: G2.ik['leg_' + other].target, to: ankleTarget(K, standFootX(K, x0, f, other)) };
+    return x0;
+  }
   return prev.type === 'land' ? landAnchor(K, prev) : standAnchor(K, prev);
 }
 // both feet planted around x0 (the standing stance: front foot a little ahead, back foot a little behind)
@@ -263,20 +316,28 @@ function reachOut(K, a, u, f, CP, pick) {
   const h = a.p.hand || 'f', ll = K.legLen * K.s, x0 = K.rootX(a.start);
   const need = a.depth ??= reachDepth(K, a, gp, f, h);
   const down = u < .45 ? smooth(u / .45) : 1 - smooth((u - .55) / .45) * (u > .55 ? 1 : 0);
-  const hk = u < .45 ? smooth(u / .45) : (pick ? 1 : 1 - smooth((u - .45) / .3));
+  // the hand: in by 45 % (IK onto the grip, turned to the handle), closes, then the IK lets go over 30 % while the
+  // target rises with the body: the arm settles into the carry pose with the prop already in hand
+  const hk = u < .45 ? smooth(u / .45) : 1 - smooth((u - .45) / .3);
+  const pr = typeof tgt === 'string' ? CP.props[tgt] : null, handAng = (pr ? pr.rest.ang + pr.holdAngle : Math.PI / 2);
+  const rise = u < .45 ? 0 : (down - 1) * need.depth * -1;   // how far the hips have come back up since the grab
+  const target = [gp[0], gp[1] - (u < .45 ? 0 : need.depth * (1 - down))];
   return { root: { dy: down * need.depth }, pose: { spine: down * need.lean, neck: -down * need.lean * .5 },
-    ik: { ['arm_' + h]: { w: pick && u >= .45 ? 0 : hk, target: gp, endAngle: Math.PI / 2 + f * 0, bend: -1, grip: true }, ...feetPlanted(K, x0, f) }, reachHand: h };
+    ik: { ['arm_' + h]: { w: hk, target, endAngle: handAng, bend: -1, grip: true }, ...feetPlanted(K, x0, f) }, reachHand: h };
 }
 function reachDepth(K, a, gp, f, h) {
-  // the smallest crouch (with a forward lean) that brings the shoulder within 92 % of the arm's length of the grip
+  // the most comfortable pose (least knee bend, then least lean) whose shoulder is within 92 % of the arm's reach of
+  // the grip: people bend at the hips as much as at the knees to pick something up (lean up to 1.3 rad, ~75°)
   const C = K.C, armLen = C.byName['upperarm_' + h].len + C.byName['forearm_' + h].len + C.byName['hand_' + h].len * .55;
-  for (let d = 0; d <= .62; d += .02) {
-    const lean = Math.min(.55, d * 1.3);
-    const S = solveSkeleton(C, { x: K.rootX(a.start), y: K.standY + d * K.legLen * K.s, rot: 0, s: K.s, sx: 1, sy: 1, flip: f }, { spine: lean });
-    const sh = S.world['upperarm_' + h].a;
-    if (Math.hypot(gp[0] - sh[0], gp[1] - sh[1]) <= armLen * K.s * .92) return { depth: d * K.legLen * K.s, lean };
+  let best = null;
+  for (let d = 0; d <= .9; d += .03) for (let lean = 0; lean <= 1.3; lean += .1) {   // up to a deep squat (short cartoon arms need it)
+    const S = solveSkeleton(C, { x: K.rootX(a.start), y: K.standY + d * K.legLen * K.s, rot: 0, s: K.s, sx: 1, sy: 1, flip: f }, { spine: lean, neck: -lean * .5 });
+    const sh = S.world['upperarm_' + h].a, cost = d + lean * .45;
+    if (Math.hypot(gp[0] - sh[0], gp[1] - sh[1]) <= armLen * K.s * .92 && (!best || cost < best.cost)) best = { depth: d * K.legLen * K.s, lean, cost };
   }
-  return { depth: .62 * K.legLen * K.s, lean: .55, unreachable: true };
+  if (best) return best;
+  console.warn(`${a.type}: the target is out of the arm's reach from where the character stands (move the prop or the character closer)`);
+  return { depth: .9 * K.legLen * K.s, lean: .9, unreachable: true };
 }
 
 // ---------- secondary motion (automatic, scaled by squash_stretch / inertia / head_follow actions) ----------
@@ -310,7 +371,7 @@ function buildProps(plan, CH, props) {
       if (ty === 'transfer') ev.push({ t: a.start + a.duration * .5, kind: 'swap', hand: a.to || a.params?.to || 'b' });
     }
     ev.sort((a, b) => a.t - b.t);
-    out[pr.id] = { pr, A, scale, anchor, rest, restGrip: [rest.x + g[0], rest.y + g[1]], ev, holdAngle: A.spec.hold_angle ?? 0 };
+    out[pr.id] = { pr, A, scale, anchor, rest, restGrip: [rest.x + g[0], rest.y + g[1]], ev, holdAngle: A.spec.hold_angle ?? .6 };
   }
   return out;
 }

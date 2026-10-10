@@ -18,7 +18,7 @@ function playAction(SC) {
     density: +(ACT_Q.get('density') || plan.render?.points?.density || 6), size: +(ACT_Q.get('psize') || plan.render?.points?.size || 1) };
   const memo = new Map();
   const frameAt = t => { const k = Math.round(t * 2400); if (!memo.has(k)) { if (memo.size > 4000) memo.clear(); memo.set(k, solveFrame(CP, plan, t)); } return memo.get(k); };
-  window.ACTION_DEBUG = { frame: t => CP && summarize(frameAt(t)), plan, ready: () => !!CP, chars: CH };
+  window.ACTION_DEBUG = { frame: t => CP && summarize(frameAt(t)), plan, ready: () => !!CP, chars: CH, composer: () => CP };
   const fxList = () => CP.fx ??= scheduleFx(CP, plan, frameAt);
   shots([[0, (t) => {
     if (!CP) return;
@@ -77,10 +77,9 @@ function solveFrame(CP, plan, t) {
       const handPose = propFromHand(P, C, S, K, f, hand);
       const aimW = c.st.aim?.w || 0;
       pose = aimW > 0 ? blendPose(handPose, propAimed(P, C, S, K, f, c.st.aim, c.st.recoil || 0), aimW) : handPose;
-      // just attached: ease from where it lay into the hand (no pop)
-      const k = clamp((t - pr.attachT) / .18); if (k < 1) pose = blendPose(restPose(P), pose, smooth(k));
       // the hands solve onto the grips: the primary always, the other hand onto grip 2 while aiming two-handed
-      const ex = {}, ha = pose.ang + Math.PI / 2;
+      // (the reach brings the hand to the grip at the prop's own angle, so attaching needs no blend: nothing pops)
+      const ex = {}, ha = pose.ang + P.holdAngle;
       ex['arm_' + hand] = { w: 1, target: propPoint(P, pose, 'grip', f), endAngle: ha, grip: true, bend: -1 };
       const other = hand === 'f' ? 'b' : 'f';
       if (aimW > 0 && c.st.aim.two && P.A.spec.anchors.grip2) ex['arm_' + other] = { w: aimW, target: propPoint(P, pose, 'grip2', f), endAngle: ha, grip: true, bend: -1 };
@@ -98,7 +97,7 @@ const blendPose = (a, b, k) => ({ ...b, x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, 
 function propPoint(P, pose, key, flip = pose.flip ?? 1) { const [ox, oy] = P.anchor(key), c = Math.cos(pose.ang), s = Math.sin(pose.ang); return [pose.x + flip * (ox * c - oy * s), pose.y + ox * s + oy * c]; }
 // held in one hand: the grip anchor on the hand's grip point, pointing along the hand turned forward
 function propFromHand(P, C, S, K, f, hand) {
-  const ha = S.A['hand_' + hand], ang = ha - Math.PI / 2 + (P.holdAngle || 0), gp = bonePoint(C, S, 'hand_' + hand, C.byName['hand_' + hand].len * GRIP_ALONG);
+  const ha = S.A['hand_' + hand], ang = ha - P.holdAngle, gp = bonePoint(C, S, 'hand_' + hand, C.byName['hand_' + hand].len * GRIP_ALONG);
   const [gx, gy] = P.anchor('grip'), c = Math.cos(ang), s = Math.sin(ang);
   return { x: gp[0] - f * (gx * c - gy * s), y: gp[1] - (gx * s + gy * c), ang, flip: f };
 }
