@@ -17,6 +17,7 @@
 //        segments: [ { id, type: 'story', story, range: [a, b] }
 //                  | { id, type: 'ltx', engine: 'ltx', prompt, negative, seconds, image (optional: image-to-video),
 //                      text: 'line|line' (live Thai text, optional), textY } ] }
+import { audioMix } from './lib/audiomix.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, statSync, copyFileSync } from 'node:fs';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -169,12 +170,13 @@ try {
 
   // 3. assemble: per-boundary transitions (the director's choice, or the job's single fade), then the sound: narration
   //    (cut per beat and placed where its shot actually starts, so pauses and transitions never drift it), SFX cues,
-  //    an optional low ambience bed. No music. Missing sound files are skipped and reported.
+  //    an optional low ambience bed, an optional music bed (looped, faded, ducked under the narration with a sidechain
+  //    compressor: job.music { file, gain, duck: 0..1 how far it dips, 0 = off }). Missing sound files are skipped and reported.
   const final = `${dir}${job.id}.mp4`, fade = args.fade != null ? +args.fade : job.fade ?? .3;
   const have = f => { if (f && existsSync(f)) return f; if (f) report.substitutes.push({ segment: 'audio', substitute: `missing ${f}: skipped` }); return null; };
-  const narr = have(job.narration?.audio || job.audio), amb = have(job.ambience?.file);
+  const narr = have(job.narration?.audio || job.audio), amb = have(job.ambience?.file), mus = have(job.music?.file);
   const sfx = (job.sfx || []).filter(c => have(c.file));
-  await step('assemble', ['assemble/3', segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
+  await step('assemble', ['assemble/4', segs.map(fileHash), fade, job.segments.map(S => S.transition), narr && fileHash(narr), amb && fileHash(amb), job.ambience, mus && fileHash(mus), job.music, sfx.map(c => [c, fileHash(c.file)]), plan?.windows], final, () => {
     // xfade needs inputs on one timebase and frame rate; without this ffmpeg silently cuts the output short (2 × 1.5 s
     // segments came out 1.58 s long)
     const d = segs.map(duration), starts = [0]; let chain = segs.map((_, i) => `[${i}:v]settb=AVTB,fps=${fps},format=yuv420p[n${i}];`).join(''), last = '[n0]', t = 0;
@@ -189,18 +191,8 @@ try {
       chain += `${last}[n${i}]xfade=transition=${name}:duration=${dur.toFixed(3)}:offset=${t.toFixed(3)}[x${i}];`; last = `[x${i}]`;
     }
     const total = t + d[segs.length - 1], inputs = segs.flatMap(s => ['-i', s]), A = [];
-    let k = segs.length; const ms = x => Math.max(0, Math.round(x * 1000));
-    if (narr) {
-      inputs.push('-i', narr); const n = k++;
-      if (plan) plan.windows.forEach((w, i) => A.push(`[${n}:a]atrim=${w.start}:${w.end},asetpts=PTS-STARTPTS,adelay=${ms(starts[i])}:all=1[n${i}]`));
-      else A.push(`[${n}:a]anull[n0]`);
-    }
-    const byBeat = Object.fromEntries(job.segments.map((S, i) => [S.beat || S.id, starts[i]]));
-    sfx.forEach((c, i) => { inputs.push('-i', c.file); const at = c.at ?? ((byBeat[c.beat] ?? 0) + (c.offset || 0));
-      A.push(`[${k++}:a]volume=${c.gain ?? 1},adelay=${ms(at)}:all=1[s${i}]`); });
-    if (amb) { inputs.push('-stream_loop', '-1', '-i', amb); A.push(`[${k++}:a]volume=${job.ambience.gain ?? .12},afade=t=in:d=1,afade=t=out:st=${Math.max(0, total - 1.5).toFixed(2)}:d=1.5[amb]`); }
-    const labels = A.map(f => f.match(/\[(\w+)\]$/)[1]);
-    const mix = labels.length ? `;${A.join(';')};${labels.map(l => `[${l}]`).join('')}amix=inputs=${labels.length}:normalize=0,apad,atrim=0:${total.toFixed(3)}[a]` : '';
+    const AM = audioMix({ k0: segs.length, total, starts, segments: job.segments, narr, windows: plan?.windows, sfx, amb, ambience: job.ambience, mus, music: job.music });
+    inputs.push(...AM.inputs); const mix = AM.mix;
     const grain = job.continuity?.globalGrain ? `,noise=alls=${job.continuity.globalGrain}:allf=t` : '';
     run('ffmpeg', ['-y', '-loglevel', 'error', ...inputs,
       '-filter_complex', `${chain}${last}null${grain}[v]${mix}`,

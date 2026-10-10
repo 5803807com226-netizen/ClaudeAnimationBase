@@ -17,7 +17,10 @@ const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16'
   // map capabilities: fixture = the compiled Magellan prototype plan (aspect_test target map_proto); production formats only
   mapView: ['9:16', '16:9'], mapBase: ['9:16', '16:9'], routeDraw: ['9:16', '16:9'], mapMarker: ['9:16', '16:9'], mapLabel: ['9:16', '16:9'],
   // style kit (fixture: aspect_test target map_style)
-  mapRegion: ['9:16', '16:9'], mapSprite: ['9:16', '16:9'], captionBar: ['9:16', '16:9'] };
+  mapRegion: ['9:16', '16:9'], mapSprite: ['9:16', '16:9'], captionBar: ['9:16', '16:9'],
+  // infographic kit (src/presets/infographic.js; fixtures: their gallery demos)
+  barChart: ['9:16', '16:9', '4:5'], lineChart: ['9:16', '16:9', '4:5'], donutChart: ['9:16', '16:9', '4:5'],
+  timeline: ['9:16', '16:9', '4:5'], iconGrid: ['9:16', '16:9', '4:5'], callout: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
 const presetK = (t, o) => easeBy(o.ease)(seg(t, o.at, o.at + o.dur));   // eased 0..1 progress of the main move
@@ -73,7 +76,7 @@ window.CAPABILITY_CATALOG = () => [
   ...(typeof TYPE_PRESETS === 'undefined' ? [] : Object.keys(TYPE_PRESETS).map(n => capabilityOf({ name: n, label: n, about: 'kinetic typography item preset (playType / typeOverlay)',
     defaults: { text: '', end: 1, x: .5, y: .5, maxWidth: .84, maxLines: 3, safe: 'title', style: {}, out: null, by: 'word', stagger: .08, prefer: 'up', say: null, unitDur: null, from: null, to: null,
       rate: 12, tilt: null, boil: 1, papers: [], inks: [], weights: [], bar: null, padX: .28, padY: .12, cursor: null, words: [], keep: true, burst: null, flash: null, hlAt: null,
-      digits: null, decimals: 0, locale: null, prefix: '', suffix: '', suffixStyle: {} }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
+      digits: null, decimals: 0, locale: null, prefix: '', suffix: '', suffixStyle: {}, avoid: true, pill: null, pillAlpha: .62, dim: .78 }, meta: { category: 'type', tags: ['text', 'title', 'label', 'caption'], layers: ['text'], camera: 'screen' } }, 'type', TYPE_PRESET_ASPECTS[n]))),
   // collage motions: a layer's `motion: [{ kind, ... }]` in a collage manifest (src/collage/collage.js); artwork is imported PNGs
   ...(typeof COLLAGE_MOTIONS === 'undefined' ? [] : Object.entries(COLLAGE_MOTIONS).map(([n, M]) => ({ ...capabilityOf({ name: n, label: n, about: M.about, defaults: M.defaults,
     meta: { category: 'collage', tags: ['collage', 'cutout', 'paper', 'stop-motion'], layers: ['collage layer'], camera: 'world', assets: ['png cut-out (the layer)'] } }, 'collage', COLLAGE_MOTION_ASPECTS[n]), id: 'collage.' + n }))),

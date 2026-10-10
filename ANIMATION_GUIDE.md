@@ -329,6 +329,17 @@ Reusable, configurable moves in [src/presets/](src/presets/), built on the helpe
 | `objectReveal` | arrives on an arc from off-screen (or grows), lands with a wobble and a glow | `from` (`below` `above` `left` `right` `center`), `dist`, `arc`, `glow`, `glowR`, `wobble` |
 | `particleBurst` | hash-seeded confetti on arcs with gravity and a flash | `count`, `pSize`, `shape` (or `mix`), `colors`, `angle`, `arc`, `gravity`, `glow`, `spin`, `seed` |
 
+The **infographic kit** ([src/presets/infographic.js](src/presets/infographic.js)) draws data in screen space with live Thai labels. Every chart builds in like an explainer (bars grow with overshoot, values count up, lines draw themselves), then holds. `x, y, w, h` are frame fractions, and the defaults are per format. All charts share `title`, `card`, `colors`, `unit`, `decimals`, `highlight` (the item the narration is about) and `out: { at, dur }`.
+
+| preset | shows | its own options |
+|---|---|---|
+| `barChart` | compare / rank | `items: [{ label, value }]`, `max`, `horizontal`, `stagger` |
+| `lineChart` | a trend over time; a badge on the last value | `points: [{ label, value }]`, `min`, `max`, `area`, `color` |
+| `donutChart` | shares of a whole; one item + `max` = a progress ring | `items`, `max`, `thickness`, `centerText`, `legend` |
+| `timeline` | dates, steps, a process | `events: [{ label, text }]`, `stagger`, `color` |
+| `iconGrid` | "7 in 10 people" | `value`, `total`, `cols`, `shape` (`person` `circle` `square` `heart` `star`), `label` |
+| `callout` | point at something in the picture | `point`, `labelAt` (frame fractions), `label`, `sub`, `color` |
+
 `presetShot(spec)` builds a shot from data: `{ bg, ground: { y, color }, camera: {cameraMove options}, layers: [...], after: [...] }`. A layer is `['presetName', opts]` (opts may be `dur => opts`, to time things from the shot's end) or your own `fn(lt, dur)`, such as a `clawd()` call. `after` layers are drawn in screen space, after the camera (transitions). Register shots with `shots([[0, shotA], [4.5, shotB]])`, as usual. [src/scenes/preset_example.js](src/scenes/preset_example.js) is the template. Presets don't replace the rules: a shot built from them still needs an event, timed reads and acting.
 
 ### Motion systems (Phase 1)

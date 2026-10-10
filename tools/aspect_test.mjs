@@ -21,6 +21,8 @@ const TARGETS = [
   { name: 'phase2_lumo', story: 'phase2_lumo', times: [.8, 2.6, 4.4, 6.4] },
   { name: 'phase1_demo', story: 'phase1_demo', times: [.8, 2.4, 4.2, 6] },
   { name: 'type_demo', story: 'type_demo', times: [.6, 1.6, 2.6, 3.6, 4.6] },
+  // karaoke subtitles (type preset 'subtitle'): one short line, one long line that wraps
+  { name: 'subtitle_demo', story: 'subtitle_demo', times: [1.0, 3.2] },
   { name: 'look_infographic', story: 'look_infographic', times: [2.4, .6, 3.6] },
   { name: 'collage_test', story: 'collage_test', times: [1.8, .5, 2.95] },
   { name: 'pilot_collage', story: 'pilot_collage', times: [2.4, .6, 1.3, 2.95] },
@@ -43,6 +45,8 @@ const TARGETS = [
   // (compile: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_style.json --allow-experimental)
   { name: 'map_style', story: '_plan_magellan_style', times: [1.5, 7.2, 12] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
+  // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
+  ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
 ];
 const only = args.only ? String(args.only).split(',') : null;
 const browser = await launch();
@@ -54,8 +58,8 @@ function check(r, t) {
   for (const a of r.stage?.actors || []) if (out(a, r.stage.safe)) fails.push(`${t}s: character box ${fmt(a)} leaves the action-safe area ${fmt(r.stage.safe)}`);
   for (const it of r.type?.items || []) {
     if (out(it, { x0: 0, y0: 0, x1: r.W, y1: r.H })) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overflows the frame`);
-    else if (out(it, r.type.safe)) fails.push(`${t}s: text "${it.id}" ${fmt(it)} leaves the title-safe area ${fmt(r.type.safe)}`);
-    for (const s of r.type.subjects || []) if (it.x0 < s.x1 && it.x1 > s.x0 && it.y0 < s.y1 && it.y1 > s.y0) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overlaps a subject ${fmt(s)}`);
+    else if (out(it, it.safeBox || r.type.safe)) fails.push(`${t}s: text "${it.id}" ${fmt(it)} leaves the ${it.safe || 'title'}-safe area ${fmt(it.safeBox || r.type.safe)}`);
+    if (!it.overlay) for (const s of r.type.subjects || []) if (it.x0 < s.x1 && it.x1 > s.x0 && it.y0 < s.y1 && it.y1 > s.y0) fails.push(`${t}s: text "${it.id}" ${fmt(it)} overlaps a subject ${fmt(s)}`);
   }
   const items = r.type?.items || [];   // text never overlaps other text on screen at the same moment
   for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) { const a = items[i], b = items[j];

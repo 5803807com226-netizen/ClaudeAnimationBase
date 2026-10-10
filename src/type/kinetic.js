@@ -180,6 +180,23 @@ const TYPE_PRESETS = {
       });
     }
   },
+  // Subtitle (karaoke): the spoken line in the subtitle zone on a soft dark pill, every word lit in turn as it is said
+  // (word times from it.words [t, ...] when known, else spread over at..end by grapheme count), the current word in the
+  // accent colour with a small lift. Defaults: safe 'subtitle', never moved off subjects (it sits on its pill).
+  subtitle(t, it, c, L, X, Y, ex) {
+    if (t < it.at) return;
+    const st = it.style, ws = wordTimes(L, it.at, it.end), a = (it.cont ? 1 : seg(t, it.at, it.at + .15)) * ex.alpha;   // cont: a later page, no fade-in
+    if (it.words) ws.forEach((w, i) => { w.t0 = it.words[i] ?? w.t0; w.t1 = it.words[i + 1] ?? w.t1; });
+    if (it.pill !== false) {
+      const bw = Math.max(...L.lines.map(l => l.w)) + L.size * .9, bh = L.h + L.size * .45;
+      c.save(); c.globalAlpha = a * (it.pillAlpha ?? .62); c.fillStyle = it.pill || '#15141A'; c.beginPath(); c.roundRect(X - bw / 2, Y - bh / 2 + (ex.dy || 0), bw, bh, L.size * .35); c.fill(); c.restore();
+    }
+    for (const w of ws) {
+      const on = t >= w.t0 && t < w.t1, done = t >= w.t1, k = on ? easeOut(seg(t, w.t0, w.t0 + .12)) : 0;
+      drawText(c, w.text, X - w.lw / 2 + w.x + w.w / 2, Y + w.ly + (ex.dy || 0) - k * L.size * .06, st,
+        { s: (1 + .06 * k) * ex.s, alpha: a * (on || done ? 1 : (it.dim ?? .78)), color: on ? (st.highlight || '#FFD43B') : st.color || '#FFFFFF' });
+    }
+  },
   // Animated Number Counter: from → to with easing, locale formatting (Thai digits with digits: 'thai'), a prefix and
   // suffix (in suffixStyle), a pop as each new value lands on its final digits, and an impact when it arrives
   counter(t, it, c, L, X, Y, ex) {
@@ -211,8 +228,39 @@ function typeOverlay(spec) {
   registerFonts(spec.fonts);
   const N = spec.narration || [];
   const res = o => o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, av(v)])) : o;
-  const items = spec.items.map((it0, i) => {
-    const it = res(it0), n = it.say != null ? N[it.say] : null, at = it.at ?? n?.at ?? 0;
+  // A subtitle is shown in PAGES, as broadcast captions are: the narration is split at word boundaries into pages that
+  // each fit the subtitle band (the lines it has room for), timed by their share of the graphemes, and every page
+  // leaves when the next arrives. Fonts may still be loading here, so a page's capacity is a conservative estimate;
+  // the fit below shrinks a page that still runs long.
+  const subtitlePages = it0 => {
+    if (it0.preset !== 'subtitle' || it0.pages === false) return [it0];
+    const n = it0.say != null ? N[it0.say] : null, text = it0.text ?? n?.text ?? '', at = it0.at ?? n?.at ?? 0, end = it0.end ?? (it0.dur != null ? at + it0.dur : n?.end ?? at + 1);
+    const size = av(it0.style?.size) ?? byAspect({ '9:16': 62, '16:9': 50, '4:5': 56 }), sa = safeArea('subtitle');
+    const perPage = Math.max(1, Math.min(2, Math.floor(sa.h / (size * TS() * 1.3)))), mw = Math.min((av(it0.maxWidth) ?? byAspect({ '9:16': .86, '16:9': .64, '4:5': .84 })) * W, sa.w);
+    const cap = Math.max(6, Math.floor(mw / (size * TS() * .58))) * perPage;   // graphemes per page
+    // fill a page word by word; when it overflows, break at its last space (Thai marks phrases with spaces) if that
+    // keeps the page at least half full, else at the word
+    const pages = []; let cur = [];
+    const glen = a => a.reduce((n, w) => n + graphemes(w).length, 0);
+    for (const w of words(text)) {
+      if (!cur.length && !w.trim()) continue;
+      if (glen(cur) + graphemes(w).length > cap && cur.some(x => x.trim())) {
+        const sp = cur.findLastIndex(x => !x.trim()), cut = sp > 0 && glen(cur.slice(0, sp)) >= cap * .5 ? sp : cur.length;
+        pages.push(cur.slice(0, cut).join('').trim()); cur = cur.slice(cut).filter((x, i) => i || x.trim());
+      }
+      cur.push(w);
+    }
+    if (cur.join('').trim()) pages.push(cur.join('').trim());
+    const total = pages.reduce((a, p) => a + graphemes(p).length, 0) || 1; let acc = 0;
+    return pages.map((p, k) => { const t0 = at + (end - at) * acc / total; acc += graphemes(p).length; const t1 = at + (end - at) * acc / total;
+      return { ...it0, id: it0.id && pages.length > 1 ? `${it0.id}.${k}` : it0.id, say: undefined, text: p, at: +t0.toFixed(3), end: +t1.toFixed(3), maxLines: perPage,
+        // pages swap instantly (a fade between them reads as a flicker): only the first fades in, only the last fades out
+        words: pages.length > 1 ? undefined : it0.words, cont: k > 0, out: it0.out ?? (k < pages.length - 1 ? { at: +(t1 - .02).toFixed(3), dur: .02 } : { at: +(t1 - .1).toFixed(3), dur: .1 }) }; });
+  };
+  const items = spec.items.flatMap(subtitlePages).map((it0, i) => {
+    const sub = it0.preset === 'subtitle' ? { safe: 'subtitle', avoid: false, maxLines: 2, y: { '9:16': .85, '16:9': .895, '4:5': .885 }, maxWidth: { '9:16': .86, '16:9': .64, '4:5': .84 }, ...it0,   // subtitle defaults: phone-legible, short lines
+      style: { font: 'display', weight: 700, size: byAspect({ '9:16': 62, '16:9': 50, '4:5': 56 }), color: '#FFFFFF', highlight: '#FFD43B', ...(it0.style || {}) } } : it0;
+    const it = res(sub), n = it.say != null ? N[it.say] : null, at = it.at ?? n?.at ?? 0;
     return { ...it, id: it.id || `${it.preset}#${i}`, text: it.text ?? n?.text ?? '', at, end: it.end ?? (it.dur != null ? at + it.dur : n?.end ?? at + 1),
       style: { size: 80, ...res(it.style) }, suffixStyle: res(it.suffixStyle) };
   });
@@ -231,7 +279,7 @@ function typeOverlay(spec) {
     if (it.safe !== false) {
       X = clamp(X, sa.x0 + bw / 2, Math.max(sa.x0 + bw / 2, sa.x1 - bw / 2)); Y = clamp(Y, sa.y0 + bh / 2, Math.max(sa.y0 + bh / 2, sa.y1 - bh / 2));
     }
-    Y = avoidSubjects(it, X, Y, bw, bh, sa);
+    if (it.avoid !== false) Y = avoidSubjects(it, X, Y, bw, bh, sa);   // avoid: false (subtitles) stays where it is
     placed.push({ it, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
     return (it._fit = { L, X, Y, box: { x0: X - bw / 2, x1: X + bw / 2, y0: Y - bh / 2, y1: Y + bh / 2 } });
   };
@@ -257,7 +305,7 @@ function typeOverlay(spec) {
   // place every item once, in order, before anything reads a position: frames rendered in any order (parallel workers)
   // get the same layout
   let laidOut = false; const layoutAll = () => { if (!laidOut) { laidOut = true; items.forEach(fitted); } };
-  window.TYPE_INFO = t => (layoutAll(), { safe: safeArea('title'), subjects: spec.subjects ? spec.subjects(t) : [], items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box })) });
+  window.TYPE_INFO = t => (layoutAll(), { safe: safeArea('title'), subjects: spec.subjects ? spec.subjects(t) : [], items: items.filter(it => t >= it.at && exitOf(t, it).alpha > .003).map(it => ({ id: it.id, ...fitted(it).box, safe: it.safe === false ? null : (it.safe || 'title'), safeBox: it.safe === false ? { x0: 0, y0: 0, x1: W, y1: H } : safeArea(it.safe || 'title'), overlay: it.avoid === false })) });
   const draw = t => {
     layoutAll();
     const c = typeLayer(); c.clearRect(0, 0, W, H);
@@ -287,4 +335,4 @@ function playType(spec) {
 
 // Verified aspect support per typography preset (tools/aspect_test.mjs; never list a ratio that has not passed).
 const TYPE_PRESET_ASPECTS = { pop: ['9:16', '16:9', '4:5'], slide: ['9:16', '16:9', '4:5'], impact: ['9:16', '16:9', '4:5'], highlight: ['9:16', '16:9', '4:5'], reveal: ['9:16', '16:9', '4:5'], counter: ['9:16', '16:9', '4:5'],
-  label: ['9:16', '16:9'], stamp: ['9:16', '16:9'], cutout: ['9:16', '16:9'] };   // label, stamp, cutout: fixtures collage_reel, collage_kit
+  label: ['9:16', '16:9'], stamp: ['9:16', '16:9'], cutout: ['9:16', '16:9'], subtitle: ['9:16', '16:9', '4:5'] };   // label, stamp, cutout: fixtures collage_reel, collage_kit; subtitle: subtitle_demo

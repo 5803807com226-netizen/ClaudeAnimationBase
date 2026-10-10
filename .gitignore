@@ -8,3 +8,5 @@ src/stories/_plan_*/
 projects/
 studio/config.local.json
 assets/stories/*/footage/
+# starter SFX made by tools/make_sfx.py (regenerated, never committed); your own SFX files in assets/sfx/<category>/ are yours to commit or not
+assets/sfx/*/starter_*.wav

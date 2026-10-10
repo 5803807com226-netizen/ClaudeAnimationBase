@@ -30,6 +30,9 @@ Prefer `collage` when in doubt: it looks the most premium. Never invent facts, p
 - Text: titles near the top (y 0.1–0.25) or in clear space, never over the focal subject (the engine moves text off subjects, but plan for it).
 - Times inside a shot are SHOT-LOCAL seconds (0 = shot start).
 
+- Data: when the story gives numbers, show them as an infographic instead of reading them out: `barChart` (compare, rank), `lineChart` (a trend over time), `donutChart` (shares of a whole; one item + `max` = a progress ring), `iconGrid` ("7 in 10 people"), `timeline` (dates, steps), `callout` (point at something in the picture). Give a chart its own shot (treatment `kinetic_typography`, a plain `background`, optionally `cameraMove`), even inside a collage film; a collage shot cannot hold one. Values only from the story, labels in Thai, `highlight` the item the narration is about, `at` 0.2–0.4 s so it builds while the line is spoken.
+- Automatic finishing (you do not need to write these, the compiler adds what is missing and never overrides what you wrote): a karaoke subtitle of each shot's narration (so keep your own titles in the top half), entrances and a slow camera push on collage shots that have none, a transition between collage shots, stop-motion boil, and sound effects on entrances, transitions and titles. Spend your effort on the story, the focal subject, the motif and the acting.
+
 # 4. World coordinates (collage)
 
 Collage layers live on a 1080 × 1920 page (centre 540, 960). At zoom 1 a 9:16 frame shows the whole page; a 16:9 frame shows 1920 × 1080 around the camera centre. Keep focal subjects within x 140–940, y 500–1500 so both formats work. Camera keys: `[[t, x, y, zoom, "smooth"], ...]`, gentle (zoom 1.0–1.2 unless a push).

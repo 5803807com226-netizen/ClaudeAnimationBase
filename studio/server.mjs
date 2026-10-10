@@ -62,7 +62,7 @@ function startJob(name, steps) {
 
 // ---------- the steps ----------
 async function catalog() {   // the live capability catalog (what the engine can render), refreshed when the engine changes
-  const f = 'out/capabilities.json', newest = ['src/collage/collage.js', 'src/presets/index.js', 'src/type/kinetic.js', 'src/presets/map.js'].map(x => statSync(x).mtimeMs);
+  const f = 'out/capabilities.json', newest = ['src/collage/collage.js', 'src/type/kinetic.js', ...readdirSync('src/presets').filter(x => x.endsWith('.js')).map(x => 'src/presets/' + x)].map(x => statSync(x).mtimeMs);
   if (!existsSync(f) || statSync(f).mtimeMs < Math.max(...newest)) await run('node', ['tools/capabilities.mjs', `--out=${f}`, ...RF()]);
   return rj(f);
 }
@@ -83,8 +83,19 @@ async function stepDirect(id, mode) {
   if (P.footage.some(c => !c.dir)) throw new Error('prepare the footage plates first (button: เตรียมฟุตเทจ)');
   saveDirection(id, await D.direct(api(), cat, P, { log }), 'direct');
 }
+// the project's sound and finishing settings go into the manifest before every compile (so changing them needs no new direction)
+function applySettings(P, m) {
+  const M = rj(m), A = { ...(M.audio || {}) };
+  if (P.narration?.file) A.narration = { measured: false, ...A.narration, file: P.narration.file }; else delete A.narration;
+  if (P.music?.file) A.music = { gain: .22, duck: .7, ...(A.music || {}), file: P.music.file }; else delete A.music;
+  if (P.sfx === false) A.sfx = false; else delete A.sfx;
+  M.audio = A; M.subtitles = P.subtitles !== false; M.polish = P.polish !== false;
+  wj(m, M);
+}
 async function stepCompile(id, { repair = true } = {}) {
   const P = rj(PDIR(id) + 'project.json'), m = PDIR(id) + 'manifest.json'; if (!existsSync(m)) throw new Error('no manifest yet: run the Director first');
+  applySettings(P, m);
+  if (P.sfx !== false && !existsSync('assets/sfx/pop/starter_1.wav')) { log('making the starter SFX pack (once)…'); await run(PY(), ['tools/make_sfx.py'], { allowFail: true }); }
   await catalog();
   for (const a of [P.aspect]) {
     const code = await run('node', ['tools/compile_plan.mjs', `--manifest=${m}`, '--catalog=out/capabilities.json', ...(a !== rj(m).aspect ? [`--aspect=${a}`] : [])], { allowFail: true });
@@ -93,6 +104,7 @@ async function stepCompile(id, { repair = true } = {}) {
     if (code !== 1 || !repair || !rep || rj(PDIR(id) + 'director.json')?.history?.at(-1)?.kind === 'test') throw new Error('the compiler blocked some shots (see the log)');
     log('asking Opus to fix the blocked shots (one call)…');
     saveDirection(id, await D.repair(api(), rj('out/capabilities.json'), P, rj(m), rep, { log }), 'repair');
+    applySettings(P, m);
     if (await run('node', ['tools/compile_plan.mjs', `--manifest=${m}`, '--catalog=out/capabilities.json'], { allowFail: true }) !== 0) throw new Error('still blocked after one repair: see the log, edit the manifest, or direct again');
   }
 }

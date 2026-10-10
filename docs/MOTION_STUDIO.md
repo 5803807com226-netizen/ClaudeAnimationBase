@@ -88,6 +88,17 @@ ComfyUI uses the same `tools/comfy/engines.local.json` as the other guides. The 
 - Artwork: `assets/stories/<id>/`.
 - Final video: `out/pipeline/<id>/<id>.mp4`.
 
+## Automatic finishing and sound
+
+The project form has three switches, all on by default:
+- **ซับไตเติลไฮไลต์ตามเสียง:** a karaoke subtitle of each shot's narration (the spoken word lights up);
+- **เสียงประกอบ (SFX) อัตโนมัติ:** sound effects on entrances, transitions and titles. The first compile makes a starter pack in `assets/sfx/`; put your own `.wav` files in its category folders to use them;
+- **ขัดเกลาอัตโนมัติ:** entrances, camera, transitions and stop-motion life wherever the direction left them out.
+
+**เพลงประกอบ** takes a music file. It loops under the whole video, fades in and out, and dips automatically while the narration speaks.
+
+These settings are applied at every compile, so changing them needs no new direction. Details: [PIPELINE.md](PIPELINE.md#automatic-finishing-in-the-plan-compiler).
+
 ## What Opus is told
 
 `studio/playbook.md` holds the Director's instructions; you can edit it. It covers:

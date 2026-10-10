@@ -95,6 +95,10 @@ function render() {
     <label>เรื่องราว / ไอเดีย / ข้อมูล (ภาษาไทย)</label><textarea id="f-story" placeholder="เล่าเรื่องที่อยากทำเป็นคลิป ใส่ข้อเท็จจริงที่ต้องการให้ถูกต้อง">${esc(P.story)}</textarea>
     <label>คำสั่งเพิ่มเติมถึงผู้กำกับ (ไม่บังคับ)</label><input id="f-notes" value="${esc(P.notes)}" placeholder="เช่น โทนอบอุ่น สีส้ม-มิ้นต์ มีส้มเป็นตัวเดินเรื่อง">
     <label>ไฟล์เสียงพากย์ (ไม่บังคับ: path ของไฟล์ .wav)</label><input id="f-narr" value="${esc(P.narration?.file)}" placeholder="D:\\voice\\narration.wav">
+    <label>เพลงประกอบ (ไม่บังคับ: path ของไฟล์ .wav / .mp3 · เสียงเพลงจะหรี่ลงเองตอนมีเสียงพากย์)</label><input id="f-music" value="${esc(P.music?.file)}" placeholder="D:\\music\\bed.mp3">
+    <div class="bar"><label><input type="checkbox" id="f-subs" ${P.subtitles === false ? '' : 'checked'}> ซับไตเติลไฮไลต์ตามเสียง</label>
+      <label><input type="checkbox" id="f-sfx" ${P.sfx === false ? '' : 'checked'}> เสียงประกอบ (SFX) อัตโนมัติ</label>
+      <label><input type="checkbox" id="f-polish" ${P.polish === false ? '' : 'checked'}> ขัดเกลาอัตโนมัติ</label></div>
     <label>ฟุตเทจวิดีโอจริง (ไม่บังคับ: สำหรับการ์ตูนบนฟุตเทจ) · path · ชื่อ · คำอธิบาย · เริ่ม · จบ (วินาที)</label>
     <div id="clips">${(P.footage || []).map(clipRow).join('')}</div>
     <div class="bar"><button class="b" onclick="addClip()">+ เพิ่มคลิป</button><span style="flex:1"></span><button class="b dark" onclick="save()">บันทึก</button></div>
@@ -153,7 +157,8 @@ const clipRow = (c = {}) => `<div class="clip"><input class="c-path" value="${es
 function addClip() { $('#clips').insertAdjacentHTML('beforeend', clipRow()); }
 function form() {
   return { id: CUR || $('#f-id').value.trim(), title: $('#f-title').value, story: $('#f-story').value, aspect: $('#f-asp').value, seconds: +$('#f-sec').value, style: $('#f-style').value,
-    notes: $('#f-notes').value, narration: { file: $('#f-narr').value.trim() || undefined },
+    notes: $('#f-notes').value, narration: { file: $('#f-narr').value.trim() || undefined }, music: { file: $('#f-music').value.trim() || undefined },
+    subtitles: $('#f-subs').checked, sfx: $('#f-sfx').checked, polish: $('#f-polish').checked,
     footage: [...document.querySelectorAll('.clip')].map(r => ({ path: r.querySelector('.c-path').value.trim(), name: r.querySelector('.c-name').value.trim(), description: r.querySelector('.c-desc').value,
       start: +r.querySelector('.c-start').value || 0, end: +r.querySelector('.c-end').value || undefined })).filter(c => c.path && c.name) };
 }
