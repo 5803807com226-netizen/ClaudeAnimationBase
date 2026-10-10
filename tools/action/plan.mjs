@@ -31,7 +31,7 @@ export const MOTION_PLAN_SCHEMA = {
     characters: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'rig'], properties: { id: { type: 'string' }, rig: { type: 'string' }, image: { type: 'string' },
       x: { type: 'number', minimum: -.5, maximum: 1.5 }, height: { type: 'number', minimum: .05, maximum: .95 }, facing: { enum: ['left', 'right'] } } } },
     props: { type: 'array', items: { type: 'object', required: ['id', 'spec'], properties: { id: { type: 'string' }, spec: { type: 'string' }, image: { type: 'string' },
-      x: { type: 'number' }, y: { type: 'number' }, rest_on: { type: 'number', minimum: 0, maximum: 1 }, angle: { type: 'number' }, scale: { type: 'number', minimum: .05, maximum: 5 } } } },
+      x: { type: 'number' }, y: { type: 'number' }, rest_on: { type: 'number', minimum: 0, maximum: 1 }, angle: { type: 'number' }, scale: { type: 'number', minimum: .05, maximum: 5 }, held_by: { type: 'object', properties: { character: { type: 'string' }, hand: { enum: ['f', 'b'] } } } } } },
     actions: { type: 'array', items: { type: 'object', required: ['type', 'start', 'duration'], properties: { type: { type: 'string' }, start: { type: 'number', minimum: 0 },
       duration: { type: 'number', exclusiveMinimum: 0 }, character: { type: 'string' }, layer: { enum: null }, mask: { type: 'array' }, target: {}, effects: { type: 'array' }, params: { type: 'object' } } } },
   },
@@ -134,6 +134,7 @@ export function validatePlan(P0, { substitute = false, base = ROOT } = {}) {
     a.params = prm;
   }
   // a prop must be in hand to aim, fire, hold or carry it
+  for (const p of P.props || []) if (p.held_by) held.push([-1, p.id, true]);   // in hand from the start
   held.sort((x, y) => x[0] - y[0]);
   const inHand = t => { let h = null; for (const [tt, id, on] of held) { if (tt > t) break; h = on ? id : (h === id ? null : h); } return h; };
   for (const [i, a] of (P.actions || []).entries()) if (['fire', 'hold', 'carry'].includes(a.type) || (a.type === 'aim' && (P.props || []).length)) {

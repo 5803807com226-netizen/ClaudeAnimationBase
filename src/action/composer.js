@@ -39,6 +39,7 @@ function buildComposer(plan, chars, props) {
     // carry action on the upper body, from the moment the hand closes until it lets go)
     for (const pr of plan.props || []) {
       let at = null, hand = 'f';
+      if (pr.held_by && (pr.held_by.character || plan.characters[0].id) === ch.id) { at = -1; hand = pr.held_by.hand || 'f'; }   // in hand from the start
       for (const a of [...plan.actions].sort((x, y) => x.start - y.start)) {
         const ty = ACTION_ALIASES[a.type] || a.type, tgt = a.target ?? a.params?.target; if (tgt !== pr.id || (a.character && a.character !== ch.id)) continue;
         if (ty === 'pick_up') { at = a.start + a.duration * .45; hand = a.hand || a.params?.hand || 'f'; }
@@ -410,6 +411,7 @@ function buildProps(plan, CH, props) {
       if (ty === 'drop') ev.push({ t: a.start + a.duration * .35, kind: 'release' });
       if (ty === 'transfer') ev.push({ t: a.start + a.duration * .5, kind: 'swap', hand: a.to || a.params?.to || 'b' });
     }
+    if (pr.held_by) ev.push({ t: -1, kind: 'attach', hand: pr.held_by.hand || 'f', char: pr.held_by.character || plan.characters[0].id });
     ev.sort((a, b) => a.t - b.t);
     out[pr.id] = { pr, A, scale, anchor, rest, restGrip: [rest.x + g[0], rest.y + g[1]], ev, holdAngle: A.spec.hold_angle ?? .6 };
   }

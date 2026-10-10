@@ -68,7 +68,10 @@ async function loadCharacter(spec, url, opt = {}) {
     return Math.hypot(x - b.a[0] - vx * t, y - b.a[1] - vy * t);
   };
   // the body's root bone (the spine) does not claim pixels beyond its own root: below the hips they belong to the legs
-  const claimD = (x, y, b) => { const d = segD(x, y, b); return !b.parent && b.chain === 'body' && segT(x, y, b) < 0 ? d * 2.2 : d; };
+  // a bone with clip: ['start'] / ['end'] does not claim pixels past that end either (a big round head must not claim
+  // the trunk under its neck joint; a trunk must not claim the chin above its chest joint)
+  const claimD = (x, y, b) => { const d = segD(x, y, b), t = segT(x, y, b);
+    return (t < 0 && ((!b.parent && b.chain === 'body') || b.clip?.includes('start'))) || (t > 1 && b.clip?.includes('end')) ? d * 2.2 : d; };
   const margin = opt.capsule ?? 1.3, marginOf = b => b.chain === 'body' ? Math.min(margin, 1.1) : margin;   // the trunk's capsule is drawn tight
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (px[(y * W + x) * 4 + 3] < 8) continue;
@@ -94,15 +97,41 @@ async function loadCharacter(spec, url, opt = {}) {
   };
   // ---- Mode A: a mesh per chain over the pixels its region owns ----
   const g = opt.grid ?? Math.max(6, Math.round(Math.max(W, H) / 110));
+  // hidden areas: where a chain drawn in FRONT covers this chain inside this chain's own capsules (the trunk under an
+  // arm), the reference has no pixels for it; they are filled by spreading this chain's own colours inward, so a limb
+  // that swings away uncovers more trunk instead of a hole (opt.backfill: false turns it off)
+  const fillOf = ci => {
+    const ch = chains[ci], mask = new Uint8Array(W * H); let n = 0;
+    if (opt.backfill === false) return mask;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, l = lab[i]; if (l < 0 || chainOf[l] === ci || chains[chainOf[l]].z <= ch.z) continue;
+      if (ch.bones.some(b => claimD(x, y, b) <= (b.radius || 20) * .8)) { mask[i] = 1; n++; }
+    }
+    return n ? mask : mask;
+  };
   for (const [ci, ch] of chains.entries()) {
     const [tc, tx] = cpuCanvas(W, H), out = tx.createImageData(W, H);
     let own = 0;
     for (let i = 0; i < W * H; i++) if (lab[i] >= 0 && chainOf[lab[i]] === ci) { for (let k = 0; k < 4; k++) out.data[i * 4 + k] = px[i * 4 + k]; own++; }
+    const fill = fillOf(ci), D = out.data;
+    for (let pass = 0, left = fill.reduce((a, v) => a + v, 0); pass < 80 && left > 0; pass++) {   // grow inward from the chain's own pixels
+      const add = [];
+      for (let i = 0; i < W * H; i++) {
+        if (!fill[i] || D[i * 4 + 3]) continue;
+        let r = 0, g = 0, b = 0, c = 0;
+        for (const j of [i - 1, i + 1, i - W, i + W]) if (j >= 0 && j < W * H && D[j * 4 + 3] > 200) { r += D[j * 4]; g += D[j * 4 + 1]; b += D[j * 4 + 2]; c++; }
+        if (c) add.push([i, r / c, g / c, b / c]);
+      }
+      if (!add.length) break;
+      for (const [i, r, g, b] of add) { D[i * 4] = r; D[i * 4 + 1] = g; D[i * 4 + 2] = b; D[i * 4 + 3] = 255; lab[i] = lab[i]; left--; }
+      for (const [i] of add) fill[i] = 2;
+    }
+    ch.fill = fill;
     tx.putImageData(out, 0, 0); ch.pixels = own;
     const tex = createImage(W, H); tex.drawingContext.drawImage(tc, 0, 0); tex.setModified?.(true); ch.tex = tex;
     // grid cells that hold any of this chain's pixels (a one-cell margin keeps anti-aliased edges)
     const gw = Math.ceil(W / g), gh = Math.ceil(H / g), cell = new Uint8Array(gw * gh);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (lab[i] >= 0 && chainOf[lab[i]] === ci) cell[Math.floor(y / g) * gw + Math.floor(x / g)] = 1; }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if ((lab[i] >= 0 && chainOf[lab[i]] === ci) || ch.fill[i] === 2) cell[Math.floor(y / g) * gw + Math.floor(x / g)] = 1; }
     const vid = new Map(), verts = [], tris = [];
     const V = (gx, gy) => { const k = gy * (gw + 1) + gx; if (!vid.has(k)) { const x = Math.min(W, gx * g), y = Math.min(H, gy * g); vid.set(k, verts.length); verts.push({ x, y, u: x / W, v: y / H, w: weights(x, y, ch) }); } return vid.get(k); };
     for (let gy = 0; gy < gh; gy++) for (let gx = 0; gx < gw; gx++) {
