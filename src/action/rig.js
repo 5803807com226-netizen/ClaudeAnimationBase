@@ -45,6 +45,22 @@ async function loadCharacter(spec, url, opt = {}) {
   // the neutral pose re-poses the parent frames; keep each child's attachment where the bind image has it, relative
   // to the parent's direction (a shoulder stays at the side of the chest whichever way the spine points)
   const order = []; const visit = b => { order.push(b); b.kids.forEach(visit); }; bones.filter(b => !b.parent).forEach(visit);
+  const ys0 = Object.values(J).map(j => j[1]), bbox0 = spec.bbox || [0, 0, W, H];
+  const groundY = Math.max(...['toe_f', 'toe_b', 'ankle_f', 'ankle_b'].filter(k => J[k]).map(k => J[k][1]), bbox0[3]);
+  // ---- CUT-OUT (puppet) rig: one image per bone, moved RIGIDLY with its bone, rounded ends overlapping at the joints
+  // (tools/action/split_parts.py). Nothing is bent or stretched: the classic 2D cut-out look. ----
+  if (Array.isArray(spec.parts) && spec.parts.length && opt.parts?.length) {
+    const parts = [];
+    for (const [k, q] of spec.parts.entries()) {
+      const pim = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('could not load part ' + opt.parts[k])); i.src = opt.parts[k]; });
+      const tex = createImage(pim.width, pim.height); tex.drawingContext.drawImage(pim, 0, 0); tex.setModified?.(true);
+      const at = q.at || [0, 0];
+      parts.push({ bone: q.bone, bi: bones.findIndex(b => b.name === q.bone), tex, at: [mirror ? W - at[0] - pim.width : at[0], at[1]], w: pim.width, h: pim.height, z: q.z ?? byName[q.bone]?.z ?? 50, mirror });
+    }
+    parts.sort((a, b) => a.z - b.z);
+    return { spec, url, W, H, J, root, bones, byName, order, parts, cutout: true, chains: parts.map(p => ({ name: p.bone, z: p.z })), points: {}, mirror,
+      height: bbox0[3] - bbox0[1], groundY, makePoints: () => [] };
+  }
   // ---- regions: each opaque pixel → the bone whose capsule claims it (front chains win overlaps) ----
   const zOf = Object.fromEntries(bones.map(b => [b.name, b.z ?? 50]));
   const lab = new Int16Array(W * H).fill(-1), nearLab = new Int16Array(W * H).fill(-1), segT = (x, y, b) => ((x - b.a[0]) * (b.b[0] - b.a[0]) + (y - b.a[1]) * (b.b[1] - b.a[1])) / (b.len * b.len), segD = (x, y, b) => {
@@ -105,9 +121,53 @@ async function loadCharacter(spec, url, opt = {}) {
     }
     return pts;
   };
+  // ---- Mode B 'illustration': the picture re-drawn as an ILLUSTRATION of dots ----
+  //   blue-noise fill dots in a few flat tones (k-means palette, cel look), sized by shade (halftone: bigger in the dark),
+  //   ink lines and outlines as small dark dots laid close together on top, a few small light dots on highlights.
+  //   Every dot keeps its region and bone weights, so it follows the skeleton like the mesh does.
+  const makeStipple = (step) => {
+    const N = W * H, lum = new Float32Array(N), ink = new Uint8Array(N), op = i => px[i * 4 + 3] > 60 && lab[i] >= 0;
+    for (let i = 0; i < N; i++) lum[i] = (.299 * px[i * 4] + .587 * px[i * 4 + 1] + .114 * px[i * 4 + 2]) / 255;
+    // ink: dark line-art pixels, and the silhouette's edge
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x; if (!op(i)) continue;
+      const edge = !op(i - 1) || !op(i + 1) || !op(i - W) || !op(i + W);
+      const loc = (lum[i - 1] + lum[i + 1] + lum[i - W] + lum[i + W]) / 4;
+      if (edge || lum[i] < .3 || (lum[i] < .45 && loc - lum[i] > .12)) ink[i] = 1;
+    }
+    // palette: k-means (8 tones) over a sample of the non-ink colours
+    const sample = []; for (let i = 0; i < N; i += 7) if (op(i) && !ink[i]) sample.push([px[i * 4], px[i * 4 + 1], px[i * 4 + 2]]);
+    let cent = sample.filter((_, k) => k % Math.max(1, Math.floor(sample.length / 8)) === 0).slice(0, 8).map(c => c.slice());
+    for (let it = 0; it < 8 && cent.length; it++) {
+      const acc = cent.map(() => [0, 0, 0, 0]);
+      for (const c of sample) { let b = 0, bd = 1e9; cent.forEach((m, k) => { const d = (c[0] - m[0]) ** 2 + (c[1] - m[1]) ** 2 + (c[2] - m[2]) ** 2; if (d < bd) { bd = d; b = k; } }); const A = acc[b]; A[0] += c[0]; A[1] += c[1]; A[2] += c[2]; A[3]++; }
+      cent = cent.map((m, k) => acc[k][3] ? [acc[k][0] / acc[k][3], acc[k][1] / acc[k][3], acc[k][2] / acc[k][3]] : m);
+    }
+    const tone = (r, g, b) => { let best = cent[0] || [r, g, b], bd = 1e9; for (const m of cent) { const d = (r - m[0]) ** 2 + (g - m[1]) ** 2 + (b - m[2]) ** 2; if (d < bd) { bd = d; best = m; } } return best; };
+    const rnd = (() => { let a = 1234567; return () => ((a = (a * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff); })();
+    const fill = [], lines = [], hi = [];
+    const push = (arr, x, y, c, r) => { const xi = Math.min(W - 1, Math.max(0, Math.round(x))), yi = Math.min(H - 1, Math.max(0, Math.round(y))), i = yi * W + xi; if (lab[i] < 0) return; const ci = chainOf[lab[i]]; arr.push({ x, y, c, r, chain: ci, w: weights(x, y, chains[ci]), j: rnd() * TAU }); };
+    // fill: one jittered sample per cell (blue-noise-like), radius by darkness
+    for (let gy = 0; gy < H; gy += step) for (let gx = 0; gx < W; gx += step) {
+      const x = gx + rnd() * step, y = gy + rnd() * step, i = Math.min(H - 1, Math.floor(y)) * W + Math.min(W - 1, Math.floor(x));
+      if (!op(i) || ink[i]) continue;
+      const m = tone(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]), l = (.299 * m[0] + .587 * m[1] + .114 * m[2]) / 255;
+      push(fill, x, y, [m[0], m[1], m[2], 255], step * (.62 + .22 * (1 - l)));
+      if (l > .8 && rnd() < .07) push(hi, x + step * .25, y - step * .25, [255, 255, 255, 210], step * .16);
+    }
+    // ink: dense small dark dots on the line art
+    const is = Math.max(1.5, step * .42);
+    for (let gy = 0; gy < H; gy += is) for (let gx = 0; gx < W; gx += is) {
+      const x = gx + rnd() * is * .6, y = gy + rnd() * is * .6, i = Math.min(H - 1, Math.floor(y)) * W + Math.min(W - 1, Math.floor(x));
+      if (!ink[i]) continue;
+      const r0 = px[i * 4], g0 = px[i * 4 + 1], b0 = px[i * 4 + 2], k = .45;
+      push(lines, x, y, [Math.round(r0 * k + 30 * (1 - k)), Math.round(g0 * k + 24 * (1 - k)), Math.round(b0 * k + 40 * (1 - k)), 255], Math.max(1, step * .3));
+    }
+    return [...fill, ...hi, ...lines];
+  };
   const ys = []; for (const k of Object.keys(J)) ys.push(J[k][1]);
   const bbox = spec.bbox || [0, 0, W, H];
-  return { spec, url, W, H, J, root, bones, byName, order, chains, lab, g, makePoints, points: {}, mirror, height: bbox[3] - bbox[1],
+  return { spec, url, W, H, J, root, bones, byName, order, chains, lab, g, makePoints, makeStipple, points: {}, mirror, height: bbox[3] - bbox[1],
     groundY: Math.max(...['toe_f', 'toe_b', 'ankle_f', 'ankle_b'].filter(k => J[k]).map(k => J[k][1]), bbox[3]) };
 }
 
@@ -229,6 +289,7 @@ function skinPoint(C, S, x, y, w) {
 function drawActor(C, S, o = {}) {
   const mode = o.mode || 'texture', slots = (o.between || []).slice().sort((a, b) => a.z - b.z); let si = 0;
   const flushSlots = z => { while (si < slots.length && slots[si].z <= z) slots[si++].draw(); };
+  if (C.cutout) return drawCutout(C, S, o, flushSlots);
   if (mode === 'points') return drawPoints(C, S, o, flushSlots, slots, () => si);
   flushBrush(); push(); noStroke(); textureMode(NORMAL);
   if (o.alpha != null && o.alpha < 1) tint(255, 255 * o.alpha);
@@ -242,10 +303,28 @@ function drawActor(C, S, o = {}) {
   }
   pop(); flushSlots(1e9);
 }
+// cut-out: each part rides its bone rigidly: canonical p -> start + R(angle - bind)(p - bindStart), then toWorld
+function drawCutout(C, S, o, flushSlots) {
+  const r = S.root;
+  flushBrush(); push(); noStroke();
+  if (o.alpha != null && o.alpha < 1) tint(255, 255 * o.alpha);
+  for (const p of C.parts) {
+    flushSlots(p.z - .5);
+    const b = C.bones[p.bi]; if (!b) continue;
+    const st = S.P[b.name], d = S.A[b.name] - b.bind;
+    push(); translate(r.x, r.y); scale(r.flip * r.s * (r.sx ?? 1), r.s * (r.sy ?? 1));
+    translate(st[0], st[1]); rotate(d); translate(-b.a[0], -b.a[1]);
+    if (o.regions) tint(...[[255, 90, 90], [70, 160, 255], [40, 200, 120], [250, 200, 40], [190, 90, 230]][p.bi % 5], 255);
+    if (p.mirror) { translate(p.at[0] + p.w, p.at[1]); scale(-1, 1); image(p.tex, 0, 0, p.w, p.h); } else image(p.tex, p.at[0], p.at[1], p.w, p.h);
+    pop();
+  }
+  pop(); flushSlots(1e9);
+}
 let ACT_PT = null;
 function drawPoints(C, S, o, flushSlots) {
-  const step = Math.max(2, Math.round(o.density ?? 6)), key = 's' + step;
-  const pts = C.points[key] ??= C.makePoints(step);
+  const step = Math.max(2, Math.round(o.density ?? 6)), ill = (o.style || 'illustration') === 'illustration' && C.makeStipple, key = (ill ? 'i' : 's') + step;
+  const pts = C.points[key] ??= ill ? C.makeStipple(step) : C.makePoints(step);
+  const boil = ill ? (o.boil ?? 1) * step * .12 : 0, bf = Math.floor((o.t ?? 0) * 12);   // dots wobble a little, on twos (12 per s)
   if (!ACT_PT || ACT_PT[0].width !== W || ACT_PT[0].height !== H) ACT_PT = cpuCanvas(W, H);
   const [cv, c] = ACT_PT, r = Math.max(1, (o.size ?? 1) * step * S.s * .62), sh = o.shape || 'circle';
   for (const ch of C.chains.map((_, i) => i)) {
@@ -253,9 +332,10 @@ function drawPoints(C, S, o, flushSlots) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H); c.globalAlpha = o.alpha ?? 1; c.translate(-(o.camX || 0), 0);   // the points layer is screen space: apply the camera
     for (const p of pts) {
       if (p.chain !== ch) continue;
-      const q = skinPoint(C, S, p.x, p.y, p.w);
+      const q = skinPoint(C, S, p.x + (boil ? Math.cos(p.j + bf * 2.1) * boil : 0), p.y + (boil ? Math.sin(p.j * 1.7 + bf * 1.3) * boil : 0), p.w);
+      const rr = p.r ? Math.max(.6, p.r * S.s * (o.size ?? 1)) : r;
       c.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${p.c[3] / 255})`;
-      if (sh === 'square') c.fillRect(q[0] - r, q[1] - r, 2 * r, 2 * r); else { c.beginPath(); c.arc(q[0], q[1], r, 0, TAU); c.fill(); }
+      if (sh === 'square') c.fillRect(q[0] - rr, q[1] - rr, 2 * rr, 2 * rr); else { c.beginPath(); c.arc(q[0], q[1], rr, 0, TAU); c.fill(); }
     }
     const im = createImage(W, H); im.drawingContext.drawImage(cv, 0, 0); im.setModified?.(true);
     flushBrush(); push(); resetMatrix(); translate(-W / 2, -H / 2); image(im, 0, 0); pop();

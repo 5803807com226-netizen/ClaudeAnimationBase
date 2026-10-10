@@ -48,7 +48,7 @@ const ACTION_CATALOG = {
   dust:   { layer: 'effects', mask: ['fx'], th: 'ฝุ่น', about: 'a dust puff at the feet', params: { amount: ACT_P(1, 0, 3, 'size') } },
   impact: { layer: 'effects', mask: ['fx'], th: 'แรงกระแทก', about: 'an impact ring and speed lines at a point', params: { target: { type: 'point', default: null } } },
 };
-const ACTION_EFFECTS = ['muzzle_flash', 'bolt', 'recoil', 'dust', 'impact', 'smoke', 'trail'];
+const ACTION_EFFECTS = ['muzzle_flash', 'bolt', 'recoil', 'dust', 'impact', 'smoke', 'trail', 'speed_lines', 'impact_frame'];   // the last two: anime (speed lines behind a fast move; a 2-frame impact flash)
 for (const k of Object.keys(ACTION_CATALOG)) ACTION_CATALOG[k].params = { ...ACT_COMMON, ...ACTION_CATALOG[k].params };
 // aliases a director may write
 const ACTION_ALIASES = { pickup: 'pick_up', 'pick-up': 'pick_up', grab: 'pick_up', shoot: 'fire', stand: 'idle', recover: 'idle', leap: 'jump', hop: 'jump', squat: 'crouch',

@@ -27,7 +27,7 @@ export const MOTION_PLAN_SCHEMA = {
     ground_y: { type: 'number', minimum: .4, maximum: .98 },
     backdrop: { type: 'object', properties: { sky: { type: 'string' }, ground: { type: 'string' }, obstacles: { type: 'array' } } },
     camera: { type: 'object', properties: { follow: { type: 'string' }, frame_x: { type: 'number' }, amount: { type: 'number' } } },
-    render: { type: 'object', properties: { mode: { enum: ['texture', 'points'] }, overlay: { type: 'boolean' }, points: { type: 'object' } } },
+    render: { type: 'object', properties: { mode: { enum: ['texture', 'points'] }, overlay: { type: 'boolean' }, points: { type: 'object' }, style: { enum: ['smooth', 'anime'] }, stepping: { enum: [1, 2, 3] } } },
     characters: { type: 'array', minItems: 1, items: { type: 'object', required: ['id', 'rig'], properties: { id: { type: 'string' }, rig: { type: 'string' }, image: { type: 'string' },
       x: { type: 'number', minimum: -.5, maximum: 1.5 }, height: { type: 'number', minimum: .05, maximum: .95 }, facing: { enum: ['left', 'right'] } } } },
     props: { type: 'array', items: { type: 'object', required: ['id', 'spec'], properties: { id: { type: 'string' }, spec: { type: 'string' }, image: { type: 'string' },
@@ -83,6 +83,13 @@ export function validatePlan(P0, { substitute = false, base = ROOT } = {}) {
     for (const b of rig.bones) { if (!rig.joints[b.from] || !rig.joints[b.to]) errors.push(`${c.id} rig: bone ${b.name} uses a missing joint`); if (b.parent && !names.has(b.parent)) errors.push(`${c.id} rig: bone ${b.name} has a missing parent ${b.parent}`); }
     for (const b of rig.bones) { let p = b, n = 0; while (p && p.parent && n < 64) { p = rig.bones.find(x => x.name === p.parent); n++; } if (n >= 64) errors.push(`${c.id} rig: a parent cycle at ${b.name}`); }
     if (rig.uncertain?.length) warnings.push(`${c.id}: rig joints still uncertain (check them in the rig editor): ${rig.uncertain.join(', ')}`);
+    // a cut-out (puppet) rig: one image per bone (tools/action/split_parts.py); each must exist and name a bone
+    const parts = Array.isArray(rig.parts) ? rig.parts : [];
+    for (const [k, q] of parts.entries()) {
+      if (!names.has(q.bone)) errors.push(`${c.id} rig: parts[${k}] names a missing bone "${q.bone}"`);
+      if (!q.image || !existsSync(resolve(dirname(rp), q.image))) errors.push(`${c.id} rig: parts[${k}] image not found (${q.image})`);
+    }
+    c._parts = parts.map(q => resolve(dirname(rp), q.image || ''));
     c._rig = rig; c._rigPath = rp; c._imagePath = ip;
   }
   const propIds = new Set();
@@ -160,7 +167,10 @@ export function buildScene(P, { story, type } = {}) {   // type: text items draw
   mkdirSync(dir, { recursive: true }); mkdirSync(adir, { recursive: true });
   const rel = f => relative(ROOT, f).split('\\').join('/');
   const characters = {}, props = {};
-  for (const c of P.characters) { const dst = `${adir}/${c.id}_${basename(c._imagePath)}`; copyFileSync(c._imagePath, dst); characters[c.id] = { rig: c._rig, image: rel(dst) }; }
+  for (const c of P.characters) {
+    const dst = `${adir}/${c.id}_${basename(c._imagePath)}`; copyFileSync(c._imagePath, dst); characters[c.id] = { rig: c._rig, image: rel(dst) };
+    if (c._parts?.length) characters[c.id].parts = c._parts.map(f => { const d = `${adir}/${c.id}_${basename(f)}`; copyFileSync(f, d); return rel(d); });   // cut-out parts, in rig.parts order
+  }
   for (const p of P.props || []) { const dst = `${adir}/${p.id}_${basename(p._imagePath)}`; copyFileSync(p._imagePath, dst); props[p.id] = { spec: p._spec, image: rel(dst) }; }
   const clean = JSON.parse(JSON.stringify(P, (k, v) => k.startsWith('_') ? undefined : v));
   const [w, h] = { '9:16': [1080, 1920], '16:9': [1920, 1080], '4:5': [1080, 1350] }[P.aspect];

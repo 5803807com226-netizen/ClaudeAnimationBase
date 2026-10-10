@@ -10,30 +10,38 @@ function playAction(SC) {
   const plan = SC.plan, CH = {}, PR = {};
   let CP = null;
   (window.PRELOAD = window.PRELOAD || []).push(async () => {
-    for (const [id, c] of Object.entries(SC.characters)) CH[id] = await loadCharacter(c.rig, c.image, { grid: c.grid });
+    for (const [id, c] of Object.entries(SC.characters)) CH[id] = await loadCharacter(c.rig, c.image, { grid: c.grid, parts: c.parts });
     for (const [id, p] of Object.entries(SC.props || {})) PR[id] = await loadProp(p.spec, p.image);
     CP = buildComposer(plan, CH, PR);
   });
   const opt = { mode: ACT_Q.get('mode') || plan.render?.mode || 'texture', overlay: ACT_Q.has('overlay') || !!plan.render?.overlay, regions: ACT_Q.has('regions'),
-    density: +(ACT_Q.get('density') || plan.render?.points?.density || 6), size: +(ACT_Q.get('psize') || plan.render?.points?.size || 1) };
+    density: +(ACT_Q.get('density') || plan.render?.points?.density || 6), size: +(ACT_Q.get('psize') || plan.render?.points?.size || 1),
+    pstyle: ACT_Q.get('pstyle') || plan.render?.points?.style || 'illustration', boil: plan.render?.points?.boil ?? 1 };
   const memo = new Map();
   const frameAt = t => { const k = Math.round(t * 2400); if (!memo.has(k)) { if (memo.size > 4000) memo.clear(); memo.set(k, solveFrame(CP, plan, t)); } return memo.get(k); };
   window.ACTION_DEBUG = { frame: t => CP && summarize(frameAt(t)), plan, ready: () => !!CP, chars: CH, composer: () => CP };
-  const fxList = () => CP.fx ??= scheduleFx(CP, plan, frameAt);
+  // anime (render.style 'anime'): the characters move ON TWOS (a new pose every 2nd frame, the camera stays smooth), fast
+  // moves get speed lines and a shot gets a 2-frame impact flash, unless the plan lists effects itself
+  const anime = plan.render?.style === 'anime', step = plan.render?.stepping ?? (anime ? 2 : 1), fps = plan.fps || 24;
+  const onStep = t => step > 1 ? Math.floor(t * fps / step + 1e-6) * step / fps : t;
+  const fxList = () => CP.fx ??= scheduleFx(CP, plan, frameAt, anime);
   const overlay = SC.type?.length ? typeOverlay({ items: SC.type }) : null;   // text on top (a film's subtitle, labels)
   shots([[0, (t) => {
     if (!CP) return;
-    const F = frameAt(t), cam = cameraAt(plan, t, frameAt);
+    const cam = cameraAt(plan, t, frameAt); t = onStep(t);
+    const F = frameAt(t);
     drawBackdrop(plan, cam);
     push(); translate(-cam.x, 0);
+    drawSpeedLines(fxList(), t, frameAt, cam);
     // motion trails (ghosts of the last moments, faded)
     const trail = plan.actions.find(a => (a.type === 'motion_trail') && t >= a.start && t <= a.start + a.duration);
     if (trail) for (let i = (trail.ghosts ?? trail.params?.ghosts ?? 3); i >= 1; i--) drawFrame(frameAt(Math.max(0, t - i * (trail.gap ?? .035))), { ...opt, camX: cam.x, alpha: .22 / i, overlay: false, ghost: true });
     drawShadows(F, plan);
-    drawFrame(F, { ...opt, camX: cam.x });
+    drawFrame(F, { ...opt, camX: cam.x, t });
     drawFx(fxList(), t, frameAt, plan);
     if (opt.overlay) for (const c of Object.values(F.chars)) drawRigOverlay(c.C, c.S);
     pop();
+    drawImpactFrames(fxList(), t, frameAt, cam);
     if (overlay) overlay.draw(t);
   }]]);
 }
@@ -174,7 +182,7 @@ function drawFrame(F, opt) {
     const slots = Object.values(F.props).filter(p => p.char === id && p.pose.held).map(p => ({ z: p.pose.z, draw: () => drawProp(p, opt) }));
     push();
     if (c.c.root.vsx != null && c.c.root.vsx !== 1) { translate(c.c.root.x, 0); scale(c.c.root.vsx, 1); translate(-c.c.root.x, 0); }   // a turn's squash
-    drawActor(c.C, c.S, { mode: opt.mode, alpha: opt.alpha, density: opt.density, size: opt.size, between: slots, camX: opt.camX, regions: opt.regions });
+    drawActor(c.C, c.S, { mode: opt.mode, alpha: opt.alpha, density: opt.density, size: opt.size, style: opt.pstyle, boil: opt.boil, t: opt.t, between: slots, camX: opt.camX, regions: opt.regions });
     pop();
   }
   for (const p of Object.values(F.props)) if (!p.pose.held) { push(); drawProp(p, opt); pop(); }
@@ -189,10 +197,12 @@ function drawProp(p, opt) {
 // ---------- effects ----------
 // scheduled once from the plan: shots (muzzle flash + bolt from the muzzle anchor, at the prop's pose at that instant),
 // landing / jump dust at the feet, impacts
-function scheduleFx(CP, plan, frameAt) {
+function scheduleFx(CP, plan, frameAt, anime = false) {
   const fx = [];
   for (const a of plan.actions) {
-    const ty = ACTION_ALIASES[a.type] || a.type, eff = a.effects || ACTION_CATALOG[ty]?.effects || [];
+    const ty = ACTION_ALIASES[a.type] || a.type, eff = a.effects || (anime ? ANIME_FX[ty] : null) || ACTION_CATALOG[ty]?.effects || [];
+    if (eff.includes('speed_lines')) fx.push({ kind: 'speedlines', t: a.start, t1: a.start + a.duration, ch: a.character || plan.characters[0].id, seed: plan.actions.indexOf(a) });
+    if (eff.includes('impact_frame')) fx.push({ kind: 'impactframe', t: ty === 'land' ? a.start : a.start + .01, ch: a.character || plan.characters[0].id });
     if (ty === 'fire') {
       const n = a.shots ?? a.params?.shots ?? 1, iv = a.interval ?? a.params?.interval ?? .18;
       for (let i = 0; i < n; i++) {
@@ -211,6 +221,36 @@ function scheduleFx(CP, plan, frameAt) {
     if (ty === 'impact' && (a.target || a.params?.target)) fx.push({ kind: 'impact', t: a.start, x: (a.target || a.params.target)[0], y: (a.target || a.params.target)[1] });
   }
   return fx;
+}
+const ANIME_FX = { run: ['speed_lines'], sprint: ['speed_lines'], dodge: ['speed_lines'], jump: ['speed_lines'],
+  fire: ['muzzle_flash', 'bolt', 'recoil', 'impact_frame'], land: ['dust'] };
+// anime speed lines: streaks behind the character, scrolling against its motion (world space, drawn behind it)
+function drawSpeedLines(list, t, frameAt, cam) {
+  for (const e of list) {
+    if (e.kind !== 'speedlines' || t < e.t || t > e.t1) continue;
+    const F = frameAt(t), c = F.chars[e.ch]; if (!c) continue;
+    const env = Math.min(1, (t - e.t) / .12, (e.t1 - t) / .15), f = c.c.root.flip ?? 1, s = c.K.s, x0 = c.c.root.x, y0 = c.c.root.y;
+    flushBrush(); push(); strokeCap(ROUND);
+    for (let i = 0; i < 14; i++) {
+      const r = k => { const v = Math.sin((i + 1) * 12.9898 * (k + 1) + e.seed * 78.233) * 43758.5453; return v - Math.floor(v); };
+      const y = y0 + (r(1) - .62) * 900 * s, L = (160 + 360 * r(2)) * s, ph = (r(3) * 1400 + (t - e.t) * 2600 * s) % 1400, x = x0 - f * (ph - 300 * s);
+      stroke(40, 44, 70, 110 * env * (.5 + .5 * r(4))); strokeWeight((3 + 5 * r(5)) * Math.max(.6, s));
+      line(x, y, x - f * L, y);
+    }
+    pop();
+  }
+}
+// anime impact frame: two frames of a hard white flash with dark radial lines from the character (screen space)
+function drawImpactFrames(list, t, frameAt, cam) {
+  for (const e of list) {
+    if (e.kind !== 'impactframe') continue;
+    const a = t - e.t; if (a < 0 || a > 2 / 24 + 1e-4) continue;
+    const F = frameAt(e.t), c = F.chars[e.ch]; if (!c) continue;
+    const cx = c.c.root.x - cam.x, cy = c.c.root.y - 200 * c.K.s;
+    flushBrush(); push(); noStroke(); fill(255, 255, 255, 120); rect(0, 0, W, H); stroke(20, 18, 30, 150);
+    for (let i = 0; i < 40; i++) { const q = i / 40 * TAU + (i % 3) * .05, r0 = 260 + (i * 97 % 160); strokeWeight(3 + (i * 31 % 7)); line(cx + Math.cos(q) * r0, cy + Math.sin(q) * r0, cx + Math.cos(q) * 2400, cy + Math.sin(q) * 2400); }
+    pop();
+  }
 }
 function drawFx(list, t, frameAt, plan) {
   flushBrush(); push(); noStroke();
