@@ -1,6 +1,9 @@
 """rig_analyze.py: REFERENCE IMAGE ANALYSIS → an editable 2D rig spec (char_rig/1) for the Action Composer.
 
     python tools/action/rig_analyze.py --image=<png> [--template=human|quadruped|object] [--id=<name>] [--out=<rig.json>]
+    python tools/action/rig_analyze.py --image=<png> --joints=<edited rig.json> [--out=<rig.json>]
+        keep the joints of an edited rig (placed by hand in the rig editor) and re-measure every bone's capsule radius
+        on the silhouette from THOSE joints (the radii decide which pixels move with which bone)
 
 Reads the silhouette (alpha) of ONE flat character image and proposes joints. It does not pretend to see anatomy:
 colours and pixels do not reveal where an elbow is. Every joint carries a confidence:
@@ -192,8 +195,15 @@ def main():
     if not M.any(): sys.exit('rig_analyze: the image is fully transparent (a cut-out with a transparent background is required)')
     if (A > 0).mean() > .97: print('warning: the image has no transparent background; the silhouette is the whole frame (cut the character out first)')
     warnings = []
-    if tpl == 'human': joints, facing, extra = analyze_human(M, warnings); bones = HUMAN_BONES
-    else: joints, facing, extra = template(tpl, M, warnings); bones = QUAD_BONES if tpl == 'quadruped' else OBJECT_BONES
+    if args.get('joints'):   # re-measure an edited rig: its joints are kept as they are, nothing is detected again
+        with open(args['joints'], encoding='utf-8') as f: old = json.load(f)
+        tpl = old.get('template', tpl); joints, facing = old['joints'], old.get('facing', 'right')
+        extra = {k: old[k] for k in old if k not in ('schema', 'id', 'image', 'size', 'template', 'facing', 'bbox', 'joints', 'bones', 'uncertain', 'estimated', 'warnings', 'limits')}
+        cid = args.get('id') or old.get('id') or cid
+        warnings = [w for w in old.get('warnings', []) if 'could not be traced' not in w and 'not separated' not in w] if not any(j['confidence'] == 'uncertain' for j in joints.values()) else old.get('warnings', [])
+    elif tpl == 'human': joints, facing, extra = analyze_human(M, warnings)
+    else: joints, facing, extra = template(tpl, M, warnings)
+    bones = HUMAN_BONES if tpl == 'human' else QUAD_BONES if tpl == 'quadruped' else OBJECT_BONES
     out_bones = []
     for name, parent, a, b, chain, z in bones:
         pa, pb = (joints[a]['x'], joints[a]['y']), (joints[b]['x'], joints[b]['y'])

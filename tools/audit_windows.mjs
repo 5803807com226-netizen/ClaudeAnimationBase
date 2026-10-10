@@ -214,10 +214,20 @@ if (step('patches', 'AutoCinematic integration patches')) {
   if (!existsSync(AC)) check('patches', 'AutoCinematic folder', 'FAIL', `not found: ${AC} (pass --autocinematic=<folder>)`);
   else {
     check('patches', 'AutoCinematic folder', 'PASS', AC);
-    for (const p of readdirSync('patches').filter(f => f.endsWith('.patch')).sort()) {
-      const abs = resolve('patches', p), rev = sh('git', ['apply', '--check', '--reverse', abs], { cwd: AC, timeout: 60 }), fwd = rev.code === 0 ? null : sh('git', ['apply', '--check', abs], { cwd: AC, timeout: 60 });
-      check('patches', p, rev.code === 0 ? 'PASS' : 'FAIL', rev.code === 0 ? 'installed' : fwd.code === 0 ? 'NOT installed (it would apply cleanly)' : `not installed and does not apply: ${last(fwd.out)}`);
+    // the patches stack (v2, v3 and v5 edit the same files), so each is checked against the state it was made for:
+    // newest first, on a COPY of the files they touch; an installed patch is reversed on the copy before the next one
+    const P = readdirSync('patches').filter(f => f.endsWith('.patch')).map(f => ({ f, v: +(f.match(/_v(\d+)\.patch$/) || [0, 0])[1] })).sort((a, b) => b.v - a.v);
+    const TMP = DIR + 'patch_check/'; mkdirSync(TMP, { recursive: true });
+    const touched = [...new Set(P.flatMap(({ f }) => [...readFileSync('patches/' + f, 'utf8').matchAll(/^\+\+\+ b\/(.+)$/gm)].map(m => m[1].trim())))];
+    for (const t of touched) if (existsSync(join(AC, t))) { mkdirSync(join(TMP, t, '..'), { recursive: true }); copyFileSync(join(AC, t), join(TMP, t)); }
+    const res = {};
+    for (const { f } of P) {
+      const abs = resolve('patches', f), rev = sh('git', ['apply', '--check', '--reverse', abs], { cwd: TMP, timeout: 60 });
+      if (rev.code === 0) { sh('git', ['apply', '--reverse', abs], { cwd: TMP, timeout: 60 }); res[f] = ['PASS', 'installed']; continue; }
+      const fwd = sh('git', ['apply', '--check', abs], { cwd: TMP, timeout: 60 });
+      res[f] = ['FAIL', fwd.code === 0 ? 'NOT installed (it would apply cleanly on top of the earlier ones)' : `not installed, or installed with local edits: ${last(fwd.out)}`];
     }
+    for (const { f } of [...P].reverse()) check('patches', f, ...res[f]);
     const app = join(AC, 'app.py'); if (existsSync(app)) { const s = readFileSync(app, 'utf8'); check('patches', 'Action Composer button in app.py', /Action Composer/.test(s) ? 'PASS' : 'FAIL', /Action Composer/.test(s) ? 'found' : 'not found'); }
     const py = sh(PY, ['-m', 'py_compile', app], { timeout: 60 }); if (existsSync(app)) check('patches', 'app.py compiles', py.code === 0 ? 'PASS' : 'FAIL', py.code === 0 ? '' : last(py.out));
   }

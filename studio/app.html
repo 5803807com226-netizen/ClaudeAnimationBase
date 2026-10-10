@@ -286,7 +286,8 @@ VIEWS.artwork = async () => {
 // ---------- characters (Action Composer) ----------
 let RIGS = [], RIG = null, DRAG = null, IMG = null, SCALE = 1, EDITED = {};
 const CONFCOL = { detected: '#1EAA3C', estimated: '#F08C14', uncertain: '#DC1E1E', manual: '#286EE6' };
-const PRESETS_QUICK = { 'เดินแล้วโบกมือ': [['idle', 0, .6], ['walk', .6, 1.8], ['wave', 2.5, 1.3]], 'วิ่งแล้วกระโดด': [['idle', 0, .4], ['run', .4, 1.4], ['jump', 1.8, 1.0], ['land', 2.8, .5]], 'ยืนหายใจ มองไปมา': [['idle', 0, 3], ['look', .8, 1.2]], 'ดีใจกระโดด': [['crouch', 0, .5], ['jump', .5, 1], ['land', 1.5, .5], ['wave', 2.1, 1.2]] };
+// every set keeps a leg action until the end: when nothing drives the lower body the character drifts off the ground
+const PRESETS_QUICK = { 'เดินแล้วโบกมือ': [['idle', 0, .6], ['walk', .6, 1.8], ['idle', 2.4, 1.6], ['wave', 2.5, 1.3]], 'วิ่งแล้วกระโดด': [['idle', 0, .4], ['run', .4, 1.4], ['jump', 1.8, 1.0], ['land', 2.8, .5], ['idle', 3.3, .8]], 'ยืนหายใจ มองไปมา': [['idle', 0, 3], ['look', .8, 1.2]], 'ดีใจกระโดด': [['crouch', 0, .5], ['jump', .5, 1], ['land', 1.5, .5], ['idle', 2, 1.4], ['wave', 2.1, 1.2]] };
 VIEWS.characters = async (sel) => {
   [RIGS, CATALOG] = await Promise.all([api('/api/ws/rigs'), CATALOG || api('/api/ws/catalog')]);
   RIG = RIGS.find(r => r.id === sel) || null; EDITED = {};
@@ -322,6 +323,7 @@ function rigEditor() {
     ${R.sheet ? `<img class="sheet" src="${R.sheet}">` : ''}
     ${V ? `<div class="bar"><b>คุณภาพการเคลื่อนไหว: ผ่าน ${V.passed}/${V.total}</b>${V.passed === V.total ? '<span class="tag ok">ใช้งานได้</span>' : '<span class="tag bad">ยังไม่พร้อมใช้ในงานจริง</span>'}</div>
       <table>${V.checks.map(c => `<tr><td style="width:70px"><span class="tag ${c.pass ? 'ok' : 'bad'}">${c.pass ? 'ผ่าน' : 'ไม่ผ่าน'}</span></td><td>${esc(c.name)}</td><td class="muted small">${esc(c.detail)}</td></tr>`).join('')}</table>
+      <div class="alert info">ตัวเลขวัดเฉพาะการเคลื่อนไหวของโครงกระดูก ไม่ได้วัดว่าภาพสวยหรือไม่ · ต้องดูภาพตัวอย่างด้วยทุกครั้ง (ภาพแตก แขนขาเป็นเศษ หัวขาด = ใช้งานจริงไม่ได้)</div>
       ${V.passed < V.total ? '<div class="alert warn">ถ้าเท้าลอย ขาไถล หรือภาพแตก: ลากจุดข้อต่อ (โดยเฉพาะสะโพก เข่า ข้อเท้า) ให้ตรง แล้วกดบันทึก จากนั้นดูตัวอย่างใหม่ · ภาพที่ขาชิดกันหรือมีชุดคลุมขาจะทำโครงกระดูกยาก</div>' : ''}` : ''}
     ${R.clip ? `<div style="max-width:420px;margin-top:12px"><video src="${R.clip}" controls></video></div>` : ''}</div>` : ''}`;
 }

@@ -193,7 +193,10 @@ export async function handleWorkspace(p, req, res, ctx) {
     const b = await body(req);
     for (const [n, j] of Object.entries(b.joints || {})) if (rig.joints[n] && Number.isFinite(+j.x) && Number.isFinite(+j.y)) rig.joints[n] = { ...rig.joints[n], x: +(+j.x).toFixed(1), y: +(+j.y).toFixed(1), confidence: 'manual' };
     rig.uncertain = Object.entries(rig.joints).filter(([, j]) => j.confidence === 'uncertain').map(([n]) => n);
-    writeFileSync(f, JSON.stringify(rig, null, 1)); send(res, 200, { ok: true }); return true;
+    writeFileSync(f, JSON.stringify(rig, null, 1));
+    // re-measure every bone's capsule on the silhouette from the moved joints (stale radii cut the art into wrong regions)
+    const m = spawnSync(ctx.PY(), ['tools/action/rig_analyze.py', `--image=out/studio/rigs/${rm[1]}/${rig.image}`, `--joints=${f}`, `--out=${f}`], { encoding: 'utf8', timeout: 60000 });
+    send(res, m.status === 0 ? 200 : 500, m.status === 0 ? { ok: true } : { error: 'วัดขนาดชิ้นส่วนใหม่ไม่สำเร็จ: ' + ((m.stderr || m.stdout || '').trim().split('\n').pop() || m.error?.message) }); return true;
   }
   if (r === 'run' && req.method === 'POST') { const b = await body(req); startJob(`${b.tool}${b.id || b.story ? ' · ' + (b.id || b.story) : ''}`, toolSteps(b, ctx)); send(res, 200, { ok: true }); return true; }
   if (r === 'shutdown' && req.method === 'POST') { send(res, 200, { ok: true }); setTimeout(() => process.exit(0), 300); return true; }
