@@ -1,0 +1,386 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "motion_promo_demo",
+ "aspect": "9:16",
+ "fps": 30,
+ "target_seconds": 15,
+ "tolerance_seconds": 1,
+ "mode": "motion_only",
+ "_comment": "A product-promo style like the reference clip (a Claude + Remotion demo), rebuilt from this engine's own presets; fictional brand PAO.",
+ "strategy": {
+  "name": "product_promo",
+  "look": "product",
+  "background": "#0E0E14",
+  "ai_video": "forbidden"
+ },
+ "shots": [
+  {
+   "id": "P1",
+   "start": 0,
+   "end": 3,
+   "treatment": "kinetic_typography",
+   "backend": "javascript_motion",
+   "purpose": "hook: the product, light burst, headline",
+   "background": "#1A0F33",
+   "layers": [
+    {
+     "id": "burst",
+     "cap": "particleBurst",
+     "params": {
+      "x": 540,
+      "y": 806,
+      "at": 0.15,
+      "count": 30,
+      "shape": "star",
+      "colors": [
+       "#FFD166",
+       "#FF7AD9",
+       "#8EC5FF",
+       "#FFFFFF"
+      ],
+      "glow": "#FF9F43"
+     }
+    },
+    {
+     "id": "phone",
+     "cap": "objectReveal",
+     "params": {
+      "x": 540,
+      "y": 806,
+      "at": 0.1,
+      "icon": "mobile-phone",
+      "color": "#F2F2F7",
+      "glow": "#B36BFF",
+      "size": 200,
+      "from": "below"
+     }
+    },
+    {
+     "id": "head",
+     "cap": "type.impact",
+     "params": {
+      "text": "ซื้อได้ทุกที่",
+      "at": 0.55,
+      "y": 0.72,
+      "style": {
+       "color": "#F7F5FF"
+      }
+     }
+    }
+   ],
+   "transition_in": "cut",
+   "camera": {
+    "cap": "cameraMove",
+    "params": {
+     "from": [
+      540,
+      960,
+      1
+     ],
+     "to": [
+      540,
+      960,
+      1.12
+     ],
+     "at": 0,
+     "dur": 3
+    }
+   }
+  },
+  {
+   "id": "P2",
+   "start": 3,
+   "end": 6,
+   "treatment": "kinetic_typography",
+   "backend": "javascript_motion",
+   "purpose": "icons float in around the product",
+   "background": "#0E0E14",
+   "layers": [
+    {
+     "id": "coin",
+     "cap": "popBounce",
+     "params": {
+      "x": 302,
+      "y": 768,
+      "at": 0.15,
+      "icon": "flat-coin",
+      "color": "#F2B33D",
+      "size": 70,
+      "hops": 1
+     }
+    },
+    {
+     "id": "cash",
+     "cap": "popBounce",
+     "params": {
+      "x": 799,
+      "y": 960,
+      "at": 0.4,
+      "icon": "money-hand",
+      "color": "#3FC28A",
+      "size": 70,
+      "hops": 1
+     }
+    },
+    {
+     "id": "globe",
+     "cap": "objectReveal",
+     "params": {
+      "x": 540,
+      "y": 922,
+      "at": 0.7,
+      "icon": "globe",
+      "color": "#5BA3C9",
+      "glow": "#5BA3C9",
+      "size": 150,
+      "from": "center"
+     }
+    },
+    {
+     "id": "t2",
+     "cap": "type.slide",
+     "params": {
+      "text": "ไม่ต้องสลับแอป",
+      "at": 1.1,
+      "y": 0.78,
+      "style": {
+       "color": "#F7F5FF"
+      }
+     }
+    }
+   ],
+   "transition_in": "fade",
+   "camera": {
+    "cap": "cameraMove",
+    "params": {
+     "from": [
+      540,
+      960,
+      1.08
+     ],
+     "to": [
+      560,
+      940,
+      1.0
+     ],
+     "at": 0,
+     "dur": 3
+    }
+   }
+  },
+  {
+   "id": "P3",
+   "start": 6,
+   "end": 9,
+   "treatment": "kinetic_typography",
+   "backend": "javascript_motion",
+   "purpose": "the amount counts up, success",
+   "background": "#F4F3F8",
+   "layers": [
+    {
+     "id": "amount",
+     "cap": "type.counter",
+     "params": {
+      "to": 100,
+      "prefix": "฿",
+      "at": 0.3,
+      "dur": 1.3,
+      "y": 0.4,
+      "from": 70
+     }
+    },
+    {
+     "id": "ok",
+     "cap": "type.pop",
+     "params": {
+      "text": "จ่ายสำเร็จ",
+      "at": 1.8,
+      "y": 0.56
+     }
+    },
+    {
+     "id": "spark",
+     "cap": "particleBurst",
+     "params": {
+      "x": 540,
+      "y": 768,
+      "at": 1.6,
+      "count": 18,
+      "shape": "circle",
+      "colors": [
+       "#3FC28A",
+       "#8EC5FF",
+       "#FFD166"
+      ],
+      "glow": "#3FC28A"
+     }
+    }
+   ],
+   "transition_in": "slide",
+   "camera": {
+    "cap": "cameraMove",
+    "params": {
+     "from": [
+      540,
+      960,
+      1.15
+     ],
+     "to": [
+      540,
+      960,
+      1.0
+     ],
+     "at": 0,
+     "dur": 3
+    }
+   }
+  },
+  {
+   "id": "P4",
+   "start": 9,
+   "end": 12,
+   "treatment": "kinetic_typography",
+   "backend": "javascript_motion",
+   "purpose": "coffee, shopping, flights",
+   "background": "#FFFFFF",
+   "layers": [
+    {
+     "id": "cup",
+     "cap": "popBounce",
+     "params": {
+      "x": 270,
+      "y": 960,
+      "at": 0.2,
+      "icon": "coffee",
+      "color": "#C46A3B",
+      "size": 70,
+      "hops": 1
+     }
+    },
+    {
+     "id": "cart",
+     "cap": "popBounce",
+     "params": {
+      "x": 540,
+      "y": 960,
+      "at": 0.45,
+      "icon": "shopping-cart",
+      "color": "#3D5A99",
+      "size": 70,
+      "hops": 1
+     }
+    },
+    {
+     "id": "plane",
+     "cap": "popBounce",
+     "params": {
+      "x": 810,
+      "y": 960,
+      "at": 0.7,
+      "icon": "plane-ascending",
+      "color": "#E8541E",
+      "size": 70,
+      "hops": 1
+     }
+    },
+    {
+     "id": "t4",
+     "cap": "type.highlight",
+     "params": {
+      "text": "ไม่ต้องรอ",
+      "at": 1.0,
+      "y": 0.24
+     }
+    }
+   ],
+   "transition_in": "wipe",
+   "camera": {
+    "cap": "cameraMove",
+    "params": {
+     "from": [
+      540,
+      960,
+      1
+     ],
+     "to": [
+      540,
+      960,
+      1.08
+     ],
+     "at": 0,
+     "dur": 3
+    }
+   }
+  },
+  {
+   "id": "P5",
+   "start": 12,
+   "end": 15,
+   "treatment": "kinetic_typography",
+   "backend": "javascript_motion",
+   "purpose": "logo end card",
+   "background": "#0E0E14",
+   "layers": [
+    {
+     "id": "logo",
+     "cap": "type.pop",
+     "params": {
+      "text": "PAO",
+      "at": 0.3,
+      "y": 0.45,
+      "style": {
+       "color": "#F7F5FF",
+       "size": 260
+      }
+     }
+    },
+    {
+     "id": "stars",
+     "cap": "particleBurst",
+     "params": {
+      "x": 540,
+      "y": 864,
+      "at": 0.35,
+      "count": 24,
+      "shape": "star",
+      "colors": [
+       "#FFFFFF",
+       "#FFD166"
+      ],
+      "glow": "#FFFFFF"
+     }
+    },
+    {
+     "id": "tag",
+     "cap": "type.slide",
+     "params": {
+      "text": "ซื้ออะไรก็ได้ ด้วยอะไรก็ได้",
+      "at": 1.1,
+      "y": 0.6,
+      "style": {
+       "color": "#F7F5FF"
+      }
+     }
+    }
+   ],
+   "transition_in": "fade",
+   "camera": {
+    "cap": "cameraMove",
+    "params": {
+     "from": [
+      540,
+      960,
+      1.1
+     ],
+     "to": [
+      540,
+      960,
+      1.0
+     ],
+     "at": 0,
+     "dur": 3
+    }
+   }
+  }
+ ]
+}
