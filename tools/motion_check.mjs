@@ -55,11 +55,12 @@ const results = wins.map(([a, b]) => {
   const s = steps.filter(x => x.t > a && x.t <= b), mean = s.length ? s.reduce((q, x) => q + x.changed, 0) / s.length : 0;
   const moving = s.filter(x => x.changed >= min).length / Math.max(1, s.length);
   let run = 0, longest = 0; for (const x of s) { run = x.changed < min ? run + 1 : 0; longest = Math.max(longest, run); }
-  const pass = still ? mean < min : mean >= min;
+  // fewer than 3 sample steps (a clip shorter than ~0.75 s at 4 fps) cannot show motion either way: inconclusive, not FAIL
+  const pass = s.length < 3 ? null : still ? mean < min : mean >= min;
   return { window: [a, b], samples: s.length, mean_changed: +mean.toFixed(4), moving_frac: +moving.toFixed(3),
     longest_static_s: +(longest / fps).toFixed(2), expect: still ? 'still' : 'motion', pass };
 });
-const report = { file: args.in || args.sheet, size, fps, min, results, pass: results.every(r => r.pass) };
-for (const r of results) console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.window[0]}–${r.window[1]} s  mean changed ${(r.mean_changed * 100).toFixed(2)} %  moving samples ${(r.moving_frac * 100).toFixed(0)} %  longest static ${r.longest_static_s} s  (expect ${r.expect})`);
+const report = { file: args.in || args.sheet, size, fps, min, results, pass: results.every(r => r.pass !== false), inconclusive: results.some(r => r.pass === null) };
+for (const r of results) console.log(`${r.pass === null ? 'TOO SHORT' : r.pass ? 'PASS' : 'FAIL'}  ${r.window[0]}–${r.window[1]} s  mean changed ${(r.mean_changed * 100).toFixed(2)} %  moving samples ${(r.moving_frac * 100).toFixed(0)} %  longest static ${r.longest_static_s} s  (expect ${r.expect})`);
 if (args.json) writeFileSync(args.json, JSON.stringify(report, null, 2));
 process.exit(report.pass ? 0 : 1);

@@ -267,6 +267,9 @@ const job = { id: M.project_id, fps: M.fps || 24, size: [w, h], aspect: M.aspect
 // sound: automatic SFX cues where the picture moves, and the music bed (ducked under the narration by tools/pipeline.mjs)
 const sfx = sfxCues(compiled, { off: args['no-sfx'] || M.audio?.sfx === false });
 if (sfx.cues.length) job.sfx = sfx.cues;
+// collage shots need their artwork BEFORE rendering: the pipeline generates what has a gen block (ComfyUI, cached) and
+// validates every layer, so missing art stops the run with a list instead of rendering blank shots
+if (compiled.some(s => s.collage)) job.assets = [{ story }];
 sfx.warnings.forEach(w => console.log('warning: ' + w));
 const music = M.audio?.music;
 if (music?.file) { job.music = { gain: .22, duck: .7, ...music, file: resolve(base, music.file) }; if (!existsSync(job.music.file)) console.log(`warning: music file missing: ${job.music.file} (the video will have no music)`); }

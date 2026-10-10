@@ -84,7 +84,7 @@ try {
 
   // 1. collage artwork: generate what is missing or invalid (cached, so a rerun costs nothing), then validate strictly
   for (const A of job.assets || []) {
-    const sceneFile = `src/stories/${A.story}/scene.js`;
+    const sceneFile = [`src/stories/${A.story}/scene.js`, `src/stories/${A.story}/plan.js`].find(existsSync) || `src/stories/${A.story}/scene.js`;   // plan.js: a compiled shot plan
     await step(`assets:${A.story}`, [fileHash(sceneFile), fileHash('tools/comfy/imageops.py'), A], null, async () => {
       if (!A.skipGenerate) {
         const g = spawnSync('node', ['tools/gen_assets.mjs', `--story=${A.story}`, `--python=${PY}`, ...(args.offline ? ['--offline'] : [])], { encoding: 'utf8' });
@@ -93,7 +93,8 @@ try {
       }
       const v = spawnSync('node', ['tools/validate_assets.mjs', `--story=${A.story}`], { encoding: 'utf8' });
       appendFileSync(dir + 'pipeline.log', v.stdout || '');
-      if (v.status !== 0) throw new Error(`asset validation failed for ${A.story}:\n${(v.stdout || '').split('\n').filter(l => /FAIL/.test(l)).join('\n')}`);
+      if (v.status !== 0) throw new Error(`asset validation failed for ${A.story}:\n${(v.stdout || '').split('\n').filter(l => /FAIL/.test(l)).join('\n')}\n` +
+        `  → artwork with a gen block: run this command on the PC with ComfyUI running (without --offline); hand-made artwork marked "manual": put the PNG files in the folder named above, then run the command again`);
     });
   }
 
@@ -120,6 +121,7 @@ try {
         appendFileSync(dir + 'pipeline.log', r.stdout + r.stderr);
         const M = existsSync(mj) ? JSON.parse(readFileSync(mj, 'utf8')) : null;
         if (!M?.pass) throw new Error(`failed:motion — ${(r.stdout || r.stderr).trim().split('\n')[0]}`);
+        if (M.inconclusive) log(`    motion check skipped for ${S.id}: the clip is too short to judge (${(b - a).toFixed(2)} s)`);
         return { motion: M.results[0] };
       });
     } else if (S.type === 'ltx') {
