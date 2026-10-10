@@ -1,4 +1,4 @@
-# Action Composer: test report (phases 1–5)
+# Action Composer: test report (phases 1–6)
 
 These are the results that were actually produced, in the cloud test container (Linux, Chromium with software GL). Nothing was run on Windows yet, and Opus was not called for real (see Phase 5).
 
@@ -71,6 +71,33 @@ The first version failed the snapping check (143 rad/s at 3.4 s). The aim target
 - the validator's position estimate now carries run momentum through a jump, and checks targets at the action's end.
 
 **Opus mode** goes through Claude Code headless on your plan (`studio/director.mjs` `ask`) and was tested with a **stand-in `claude` command** (`--claude=<cmd>`). The stand-in's first answer used an unsupported preset (`backflip_shot`). The validator rejected it with alternatives, and the director sent exactly one repair request containing the error. The second answer validated and was saved. **Real Opus was not called in this test.**
+
+## Phase 6: Thai UI inside AutoCinematic ONE (`patches/autocinematic_action_composer_v4.patch`)
+
+The dialog was tested under Xvfb on Linux (Python 3.12, Tk 8.6). It was driven through real widget events: clicks, drags and button `invoke`. Screenshots are in [ui/](ui/).
+
+| check | result |
+|---|---|
+| patch applies on AutoCinematic V12.9.36.x + v1 + v2 + v3, compiles, reverses cleanly (rollback) | ✓ |
+| the real `app.py` starts, the new button exists and opens the dialog ([real_dialog.jpg](ui/real_dialog.jpg), dark app theme) | ✓ |
+| an existing project still loads; all 45 of its files are byte-identical after opening the dialog (SHA-1) | ✓ |
+| upload a character and a prop: copied into `<project>/action/refs/`, auto-rig and auto-anchors run, the plan is updated | ✓ |
+| rig editor: dragging a joint moves it and marks it `manual` ([s_rig.jpg](ui/s_rig.jpg)) | ✓ |
+| Texture / Points toggle (Mode B preview, [t1_points.jpg](ui/t1_points.jpg)); attachment editor ([prop_labels.jpg](ui/prop_labels.jpg)) | ✓ |
+| timeline: preset browser, add at the playhead, drag a bar (2.15 → 2.25 s and back), delete, parameter / mask / IK target / effects editor ([s_timeline.jpg](ui/s_timeline.jpg)) | ✓ |
+| validate from the UI: "✓ แผนถูกต้องตาม motion_plan/1" | ✓ |
+| director (rules mode) from the UI: 7 actions put on the timeline, plan saved | ✓ |
+| preview: 21 low-res frames, play / scrub synced with the playhead ([t5_preview.jpg](ui/t5_preview.jpg)) | ✓ |
+| motion QA from the UI: 12/12 | ✓ |
+| Render MP4 from the UI: `exports/action/demo_blaster_<time>.mp4`, ffprobe 1080×1920, 24 fps, 120 frames, 5.00 s; frames inspected ([ui_render_mp4_sheet.jpg](ui/ui_render_mp4_sheet.jpg)) | ✓ |
+| reopening the dialog restores the last plan | ✓ |
+| responsive: at 1360×860 and at 980×620, side panels scroll, nothing is cut off | ✓ (after fixing a cut-off top bar and panel) |
+| engine regression: `node tools/test_engine.mjs` | all passed |
+
+**Not tested here:**
+- the dialog on Windows;
+- Opus mode with a real `claude` login (only with a stand-in command);
+- AutoCinematic's own production pipelines, which this patch does not change.
 
 ## Known limitations (seen in the frames)
 

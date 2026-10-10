@@ -1,5 +1,6 @@
 // tools/action/plan.mjs: MOTION PLAN validator + scene builder for the Action Composer.
 //   node tools/action/plan.mjs --plan=<motion_plan.json> [--check] [--substitute] [--out-story=_act_<id>]
+//   node tools/action/plan.mjs --catalog      (presets, layers, joint groups, effects and the schema as JSON)
 // Validates a Motion Plan (schema motion_plan/1, below) against the preset catalog (src/action/catalog.js): unknown
 // actions are rejected with the closest supported ones as alternatives (--substitute takes the closest instead and
 // says so), parameters are checked against their limits, props and targets must exist, a prop must be held to aim or
@@ -174,7 +175,9 @@ export function buildScene(P, { story } = {}) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
-  if (!args.plan) { console.error('usage: node tools/action/plan.mjs --plan=<motion_plan.json> [--check] [--substitute]'); process.exit(2); }
+  // --catalog: the presets, layers, joint groups, effects and the plan schema as JSON (AutoCinematic's Action Composer reads it)
+  if (args.catalog) { process.stdout.write(JSON.stringify({ catalog: ACTION_CATALOG, layers: ACTION_LAYERS, groups: ACTION_GROUPS, effects: ACTION_EFFECTS, aliases: ACTION_ALIASES, schema: MOTION_PLAN_SCHEMA })); process.exit(0); }
+  if (!args.plan) { console.error('usage: node tools/action/plan.mjs --plan=<motion_plan.json> [--check] [--substitute] | --catalog'); process.exit(2); }
   let P; try { P = JSON.parse(readFileSync(args.plan, 'utf8')); } catch (e) { console.error('plan.mjs: ' + e.message); process.exit(2); }
   const r = validatePlan(P, { substitute: !!args.substitute, base: dirname(resolve(args.plan)) });
   const id = /^[a-z0-9_]{1,40}$/.test(P.id || '') ? P.id : 'invalid';

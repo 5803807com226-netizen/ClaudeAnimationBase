@@ -1,0 +1,1769 @@
+diff --git a/app.py b/app.py
+index d0193a7..09096de 100644
+--- a/app.py
++++ b/app.py
+@@ -1292,6 +1292,8 @@ class App(tk.Tk):
+         hybrid_row.pack(fill="x", pady=(6,0))
+         ttk.Button(hybrid_row, text="🎞 Hybrid Plan / Export (No AI)",
+                    style="Mint.TButton", command=self.open_hybrid_export).pack(side="left", padx=(0,8))
++        ttk.Button(hybrid_row, text="🤸 Action Composer (ท่าทางตัวละคร)",
++                   command=self.open_action_composer).pack(side="left", padx=(0,8))
+         ttk.Label(hybrid_row, text="Use existing LTX MP4 / optional Code Motion per shot",
+                   style="Muted.TLabel").pack(side="left")
+ 
+@@ -5137,6 +5139,11 @@ class App(tk.Tk):
+         from autocinematic.hybrid_ui import open_hybrid_dialog
+         open_hybrid_dialog(self)
+ 
++    def open_action_composer(self):
++        # Reference image -> rig -> layered actions -> MP4 (ClaudeAnimationBase engine via its CLI tools; no server)
++        from autocinematic.action_composer import open_action_composer
++        open_action_composer(self)
++
+     def open_exports_folder(self):
+         p = self._project_dir() / "exports"
+         p.mkdir(parents=True, exist_ok=True)
+diff --git a/autocinematic/action_composer.py b/autocinematic/action_composer.py
+new file mode 100644
+index 0000000..20987f0
+--- /dev/null
++++ b/autocinematic/action_composer.py
+@@ -0,0 +1,1738 @@
++"""Action Composer (ท่าทางตัวละคร): reference image -> rig -> layered actions -> preview -> MP4, inside AutoCinematic ONE.
++
++Opened from the main window (next to "Hybrid Plan / Export"). No new server or backend: the ClaudeAnimationBase engine
++is driven through its command-line tools, like the Motion Plan dialog does:
++  tools/action/rig_analyze.py   character image -> editable rig (char_rig/1), joints marked detected/estimated/uncertain
++  tools/action/prop_analyze.py  prop image -> anchors (grip, grip2, muzzle, origin)
++  tools/action/plan.mjs         --catalog (presets) · --check (validate a Motion Plan) · build the engine scene
++  tools/action/direct.mjs       story text -> Motion Plan (Opus through Claude Code on your plan, or rules without AI)
++  tools/action/verify.mjs       motion QA (feet on the ground, grips, no joint pops)
++  render.mjs                    low-res preview sheet · MP4
++Everything the user makes lives in <project>/action/ (uploads are copied in; an existing file is never overwritten):
++  refs/      the character / prop images, their .rig.json / .prop.json
++  plans/     Motion Plans (motion_plan/1 JSON): the source of truth, editable and re-renderable without AI
++  previews/  low-res preview sheets
++MP4s go to <project>/exports/action/<plan>_<time>.mp4 (a new file each time).
++"""
++from __future__ import annotations
++
++import json
++import os
++import re
++import shutil
++import subprocess
++import sys
++import threading
++import time
++from pathlib import Path
++from tkinter import ttk, filedialog, messagebox
++import tkinter as tk
++
++try:
++    from PIL import Image, ImageDraw, ImageTk
++except ImportError:          # Pillow is in requirements.txt; without it the editors show no picture
++    Image = ImageDraw = ImageTk = None
++
++TITLE = "Action Composer"
++ASPECTS = ("9:16", "16:9", "4:5")
++FRAME = {"9:16": (1080, 1920), "16:9": (1920, 1080), "4:5": (1080, 1350)}
++ID_RE = re.compile(r"^[a-z0-9_]{1,40}$")
++LAYER_TH = {"root": "ตำแหน่งตัว (root)", "lower_body": "ช่วงล่าง / ขา", "upper_body": "ช่วงบน / ลำตัว-แขน", "hands": "มือ / หยิบจับ",
++            "head": "ศีรษะ / สายตา", "secondary": "การเคลื่อนไหวรอง", "effects": "เอฟเฟกต์", "camera": "กล้อง"}
++LAYER_COL = {"root": "#8d6e63", "lower_body": "#2e7d32", "upper_body": "#1565c0", "hands": "#6a1b9a", "head": "#00838f",
++             "secondary": "#9e9d24", "effects": "#e65100", "camera": "#455a64"}
++GROUP_TH = {"root": "ตำแหน่งตัว", "spine": "ลำตัว", "head": "ศีรษะ", "arm_f": "แขนหน้า", "arm_b": "แขนหลัง", "hand_f": "มือหน้า",
++            "hand_b": "มือหลัง", "leg_f": "ขาหน้า", "leg_b": "ขาหลัง", "prop": "พร็อพ", "fx": "เอฟเฟกต์"}
++EFFECT_TH = {"muzzle_flash": "แสงปากกระบอก", "bolt": "ลำแสง", "recoil": "แรงถีบ", "dust": "ฝุ่น", "impact": "แรงกระแทก",
++             "smoke": "ควัน", "trail": "เส้นความเร็ว"}
++CONF_COL = {"detected": "#1eaa3c", "estimated": "#f08c14", "uncertain": "#dc1e1e", "manual": "#286ee6"}
++CONF_TH = {"detected": "ตรวจพบ", "estimated": "ประมาณ", "uncertain": "ไม่แน่ใจ (ควรวางเอง)", "manual": "วางเอง"}
++DEFAULT_DUR = {"pick_up": .8, "drop": .6, "fire": .3, "land": .4, "jump": 1.2, "run": 1.2, "sprint": 1.1, "walk": 1.4, "idle": 1.0,
++               "aim": 1.0, "turn": .4, "dodge": .5, "react": .6, "recoil": .3, "fall": .6, "dust": .4, "impact": .3}
++COMMON = ("strength", "weight", "blend_in", "blend_out", "ease")
++NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
++THEME = {"hint": "#666", "warn": "#b71c1c", "bg": None}   # set from the app's ttk theme (AutoCinematic is dark)
++
++
++def _read(p: Path, default=None):
++    try:
++        return json.loads(Path(p).read_text(encoding="utf-8"))
++    except (OSError, ValueError):
++        return default
++
++
++def _write(p: Path, data) -> None:
++    p.parent.mkdir(parents=True, exist_ok=True)
++    tmp = p.with_suffix(p.suffix + ".tmp")
++    tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
++    os.replace(tmp, p)
++
++
++def _slug(s: str, n: int = 30) -> str:
++    return (re.sub(r"[^a-z0-9_]+", "_", s.lower()).strip("_") or "item")[:n]
++
++
++def _copy_in(src: Path, folder: Path) -> Path:
++    """Copy an upload into the project; the same file already there is reused, a different one is never overwritten."""
++    folder.mkdir(parents=True, exist_ok=True)
++    name = src.name.lower()
++    ext = next((e for e in (".rig.json", ".prop.json") if name.endswith(e)), src.suffix.lower())
++    stem = _slug(src.name[: -len(ext)])
++    dst, n = folder / f"{stem}{ext}", 2
++    while dst.exists():
++        if dst.read_bytes() == src.read_bytes():
++            return dst
++        dst, n = folder / f"{stem}_{n}{ext}", n + 1
++    shutil.copy2(src, dst)
++    return dst
++
++
++def _open(path, parent) -> None:
++    try:
++        if sys.platform == "win32":
++            os.startfile(str(path))
++        else:
++            subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)])
++    except OSError as ex:
++        messagebox.showerror(TITLE, f"เปิดไม่ได้: {path}\n{ex}", parent=parent)
++
++
++# ----------------------------------------------------------------------------------------------- engine (CLI only)
++class ActionEngine:
++    NEED = ["render.mjs", "tools/action/plan.mjs", "tools/action/direct.mjs", "tools/action/verify.mjs",
++            "tools/action/rig_analyze.py", "tools/action/prop_analyze.py", "src/action/composer.js", "src/action/play.js"]
++
++    def __init__(self, root: Path, log, node: str = "node", python: str | None = None):
++        self.root, self.log, self.node, self.python = Path(root).expanduser().resolve(), log, node, python or sys.executable
++
++    def check(self) -> list[str]:
++        out = [f"ClaudeAnimationBase ไม่มี {n} (โฟลเดอร์ผิด หรือ branch เก่า: git pull แล้ว npm install)" for n in self.NEED
++               if not (self.root / n).exists()]
++        if not (self.root / "node_modules").is_dir():
++            out.append("ClaudeAnimationBase ยังไม่ได้ npm install")
++        if not shutil.which(self.node):
++            out.append(f"ไม่พบ {self.node} (Node.js) ใน PATH")
++        return out
++
++    def run(self, args: list[str], tag: str, py: bool = False, quiet: bool = False) -> tuple[int, str]:
++        cmd = [self.python if py else self.node, *[str(a) for a in args]]
++        self.log(f"[{tag}] $ {subprocess.list2cmdline(cmd)}")
++        p = subprocess.Popen(cmd, cwd=str(self.root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
++                             encoding="utf-8", errors="replace", bufsize=1, creationflags=NO_WINDOW)
++        lines = []
++        assert p.stdout is not None
++        for line in p.stdout:
++            lines.append(line.rstrip("\n"))
++            if not quiet:
++                self.log(f"[{tag}] {line.rstrip()}")
++        return p.wait(), "\n".join(lines)
++
++    def catalog(self) -> dict:
++        code, out = self.run(["tools/action/plan.mjs", "--catalog"], "Action catalog", quiet=True)
++        if code:
++            raise RuntimeError("โหลดรายการท่าทางไม่ได้:\n" + out[-800:])
++        return json.loads(out)
++
++
++# ----------------------------------------------------------------------------------------------- point editor (rig / anchors)
++class PointEditor(tk.Canvas):
++    """An image with draggable named points and links: the rig editor (joints, bones) and the attachment editor (anchors)."""
++
++    def __init__(self, master, on_change=None, on_select=None, **kw):
++        super().__init__(master, background="#f4f4f2", highlightthickness=0, **kw)
++        self.on_change, self.on_select = on_change, on_select
++        self.img_path, self.pil, self.points, self.conf, self.links, self.radius = None, None, {}, {}, [], {}
++        self.mode, self.density, self.psize, self.names, self.sel = "texture", 6, 1.0, True, None
++        self._tk, self._key, self._fit, self._drag = None, None, (1.0, 0, 0), None
++        self.bind("<Configure>", lambda e: self.redraw())
++        self.bind("<ButtonPress-1>", self._press)
++        self.bind("<B1-Motion>", self._move)
++        self.bind("<ButtonRelease-1>", self._release)
++
++    def set(self, img_path, points, conf=None, links=(), radius=None):
++        if img_path != self.img_path:
++            self.img_path, self._key = img_path, None
++            self.pil = Image.open(img_path).convert("RGBA") if (Image and img_path and Path(img_path).is_file()) else None
++        self.points, self.conf, self.links, self.radius = points, conf or {}, list(links), radius or {}
++        self.redraw()
++
++    def _render(self, w, h):
++        """The picture at this size: the artwork (texture) or Mode B's coloured points."""
++        iw, ih = self.pil.size
++        s = min(w / iw, h / ih) * .94
++        key = (w, h, self.mode, self.density, self.psize)
++        if key != self._key:
++            if self.mode == "points":
++                d = max(2, int(self.density))
++                small = self.pil.resize((max(1, iw // d), max(1, ih // d)), Image.NEAREST)
++                out = Image.new("RGBA", (max(1, int(iw * s)), max(1, int(ih * s))), (0, 0, 0, 0))
++                dr, r = ImageDraw.Draw(out), max(1.0, d * s * .42 * self.psize)
++                px = small.load()
++                for y in range(small.size[1]):
++                    for x in range(small.size[0]):
++                        c = px[x, y]
++                        if c[3] > 40:
++                            cx, cy = (x + .5) * d * s, (y + .5) * d * s
++                            dr.ellipse((cx - r, cy - r, cx + r, cy + r), fill=c[:3] + (255,))
++                img = out
++            else:
++                img = self.pil.resize((max(1, int(iw * s)), max(1, int(ih * s))), Image.LANCZOS)
++            self._tk, self._key = ImageTk.PhotoImage(img), key
++        return s
++
++    def redraw(self):
++        self.delete("all")
++        w, h = max(10, self.winfo_width()), max(10, self.winfo_height())
++        if self.pil is None:
++            self.create_text(w / 2, h / 2, text="ยังไม่มีรูป: อัปโหลดรูปก่อน", fill="#777")
++            return
++        s = self._render(w, h)
++        iw, ih = self.pil.size
++        ox, oy = (w - iw * s) / 2, (h - ih * s) / 2
++        self._fit = (s, ox, oy)
++        self.create_image(ox, oy, anchor="nw", image=self._tk)
++        P = lambda n: (ox + self.points[n][0] * s, oy + self.points[n][1] * s)
++        for a, b in self.links:
++            if a in self.points and b in self.points:
++                (x0, y0), (x1, y1) = P(a), P(b)
++                r = self.radius.get((a, b))
++                if r and self.sel in (a, b):    # the capsule that claims the artwork for this bone
++                    self.create_line(x0, y0, x1, y1, fill="#9ab4ff", width=max(2, 2 * r * s), capstyle="round", stipple="gray25")
++                self.create_line(x0, y0, x1, y1, fill="#2846dc", width=3, capstyle="round")
++        placed = []
++        for n in self.points:
++            x, y = P(n)
++            k = sum(1 for (px, py) in placed if abs(px - x) < 4 and abs(py - y) < 4)   # points on the same spot: stack labels
++            placed.append((x, y))
++            c = CONF_COL.get(self.conf.get(n, "estimated"), "#888")
++            r = 8 if n == self.sel else 6
++            self.create_oval(x - r - 2, y - r - 2, x + r + 2, y + r + 2, fill="white", outline="")
++            self.create_oval(x - r, y - r, x + r, y + r, fill=c, outline="#111" if n == self.sel else "")
++            if self.names or n == self.sel:
++                right = x > w - 90
++                self.create_text(x - 10 if right else x + 10, y - 9 + 13 * k, text=n, anchor="e" if right else "w", fill="#222", font=("Segoe UI", 8))
++
++    def _img_xy(self, ex, ey):
++        s, ox, oy = self._fit
++        return (ex - ox) / s, (ey - oy) / s
++
++    def _press(self, e):
++        if self.pil is None or not self.points:
++            return
++        s, ox, oy = self._fit
++        best = min(self.points, key=lambda n: (ox + self.points[n][0] * s - e.x) ** 2 + (oy + self.points[n][1] * s - e.y) ** 2)
++        d = ((ox + self.points[best][0] * s - e.x) ** 2 + (oy + self.points[best][1] * s - e.y) ** 2) ** .5
++        self.sel, self._drag = (best, best) if d < 14 else (None, None)
++        if self.on_select:
++            self.on_select(self.sel)
++        self.redraw()
++
++    def _move(self, e):
++        if not self._drag:
++            return
++        iw, ih = self.pil.size
++        x, y = self._img_xy(e.x, e.y)
++        self.points[self._drag] = [round(min(max(x, 0), iw - 1), 1), round(min(max(y, 0), ih - 1), 1)]
++        self.conf[self._drag] = "manual"
++        self.redraw()
++
++    def _release(self, e):
++        if self._drag and self.on_change:
++            self.on_change(self._drag, *self.points[self._drag])
++        self._drag = None
++
++
++# ----------------------------------------------------------------------------------------------- timeline
++class Timeline(tk.Canvas):
++    """Layer rows x time: action bars (blend ramps at their ends), drag to move, drag the right edge to resize,
++    click the ruler to move the playhead. Overlapping actions on one layer share the row in lanes."""
++    GUT, RUL = 150, 26
++
++    def __init__(self, master, ui, **kw):
++        super().__init__(master, background="#fbfbfa", highlightthickness=0, **kw)
++        self.ui, self.drag, self.bars = ui, None, {}
++        self.bind("<Configure>", lambda e: self.redraw())
++        self.bind("<ButtonPress-1>", self._press)
++        self.bind("<B1-Motion>", self._move)
++        self.bind("<ButtonRelease-1>", self._release)
++
++    def geom(self):
++        w, h = max(200, self.winfo_width()), max(120, self.winfo_height())
++        layers = self.ui.layers
++        rh = max(26, (h - self.RUL - 4) / len(layers))
++        pps = (w - self.GUT - 14) / max(.5, float(self.ui.plan.get("duration", 5)))
++        return w, h, rh, pps
++
++    def tx(self, t):
++        return self.GUT + t * self.geom()[3]
++
++    def redraw(self):
++        self.delete("all")
++        plan, ui = self.ui.plan, self.ui
++        w, h, rh, pps = self.geom()
++        dur = float(plan.get("duration", 5))
++        self.create_rectangle(0, 0, w, self.RUL, fill="#eceae4", outline="")
++        step = .5 if pps * .5 > 38 else 1
++        t = 0.0
++        while t <= dur + 1e-6:
++            x = self.GUT + t * pps
++            self.create_line(x, self.RUL - 8, x, h, fill="#e2e0da")
++            self.create_text(x + 2, 4, text=f"{t:g}s", anchor="nw", fill="#555", font=("Segoe UI", 8))
++            t += step
++        for i, L in enumerate(ui.layers):
++            y = self.RUL + i * rh
++            self.create_rectangle(0, y, self.GUT, y + rh, fill="#f2f1ed", outline="#e2e0da")
++            self.create_rectangle(4, y + 5, 10, y + rh - 5, fill=LAYER_COL.get(L, "#777"), outline="")
++            self.create_text(15, y + rh / 2, text=LAYER_TH.get(L, L), anchor="w", fill="#333", font=("Segoe UI", 9))
++            self.create_line(self.GUT, y + rh, w, y + rh, fill="#e8e6e0")
++        self.bars = {}
++        for L, items in ui.lanes().items():
++            row = ui.layers.index(L)
++            n = max(1, max((ln for _, ln in items), default=0) + 1)
++            for i, lane in items:
++                a = plan["actions"][i]
++                x0, x1 = self.GUT + a["start"] * pps, self.GUT + (a["start"] + a["duration"]) * pps
++                y0 = self.RUL + row * rh + 3 + lane * (rh - 6) / n
++                y1 = y0 + (rh - 6) / n - 2
++                col, sel = LAYER_COL.get(L, "#777"), i == ui.sel
++                self.create_rectangle(x0, y0, max(x1, x0 + 4), y1, fill=col, outline="#111" if sel else "white", width=2 if sel else 1)
++                p = a.get("params") or {}
++                for k, side in (("blend_in", 0), ("blend_out", 1)):     # blend ramps
++                    b = float(a.get(k, p.get(k, ui.param_default(a["type"], k) or 0)) or 0) * pps
++                    if b > 2:
++                        bx = x0 if side == 0 else x1
++                        self.create_polygon(bx, y1, bx + (b if side == 0 else 0), y0, bx + (0 if side == 0 else b), y1,
++                                            fill="white", stipple="gray50", outline="")
++                label = ui.cat.get(a["type"], {}).get("th", a["type"])
++                if x1 - x0 > 30:
++                    self.create_text(x0 + 4, (y0 + y1) / 2, text=f"{label}", anchor="w", fill="white", font=("Segoe UI", 8, "bold"))
++                if a.get("effects"):
++                    self.create_text(x1 - 3, y0 + 1, text="✦", anchor="ne", fill="#ffe082", font=("Segoe UI", 8))
++                self.bars[i] = (x0, y0, x1, y1)
++        x = self.GUT + ui.playhead * pps
++        self.create_line(x, 0, x, h, fill="#d32f2f", width=2)
++        self.create_polygon(x - 6, 0, x + 6, 0, x, 9, fill="#d32f2f")
++
++    def _hit(self, ex, ey):
++        for i, (x0, y0, x1, y1) in sorted(self.bars.items(), key=lambda kv: -kv[0]):
++            if x0 - 2 <= ex <= x1 + 4 and y0 <= ey <= y1:
++                return i, abs(ex - x1) < 7 and x1 - x0 > 10
++        return None, False
++
++    def _press(self, e):
++        w, h, rh, pps = self.geom()
++        if e.y < self.RUL or e.x < self.GUT:
++            if e.x >= self.GUT:
++                self.ui.set_playhead((e.x - self.GUT) / pps)
++            self.drag = ("play", None, 0, 0, 0)
++            return
++        i, edge = self._hit(e.x, e.y)
++        if i is None:
++            self.ui.set_playhead((e.x - self.GUT) / pps)
++            self.drag = ("play", None, 0, 0, 0)
++            return
++        a = self.ui.plan["actions"][i]
++        self.drag = ("resize" if edge else "move", i, e.x, a["start"], a["duration"])
++        self.ui.select(i)
++
++    def _move(self, e):
++        if not self.drag:
++            return
++        kind, i, x0, s0, d0 = self.drag
++        w, h, rh, pps = self.geom()
++        dur = float(self.ui.plan.get("duration", 5))
++        if kind == "play":
++            self.ui.set_playhead(min(max((e.x - self.GUT) / pps, 0), dur))
++            return
++        a, dt = self.ui.plan["actions"][i], (e.x - x0) / pps
++        snap = lambda v: round(v * 20) / 20     # 0.05 s
++        if kind == "move":
++            a["start"] = snap(min(max(0, s0 + dt), max(0, dur - a["duration"])))
++        else:
++            a["duration"] = snap(min(max(.05, d0 + dt), dur - a["start"]))
++        self.ui.changed(redraw_params=False)
++        self.ui.sync_param_fields()
++
++    def _release(self, e):
++        self.drag = None
++
++
++# ----------------------------------------------------------------------------------------------- the dialog
++class ActionComposer:
++    def __init__(self, app, animation_root: str | None = None):
++        self.app = app
++        self.ac_root = Path(__file__).resolve().parent.parent
++        self.settings_path = self.ac_root / "hybrid_settings.local.json"
++        self.settings = _read(self.settings_path, {}) or {}
++        self.project = Path(app._project_dir())
++        self.home = self.project / "action"
++        self.busy = False
++        self.cat, self.layers, self.groups, self.effects = {}, list(LAYER_TH), list(GROUP_TH), list(EFFECT_TH)
++        self.plan, self.plan_path, self.sel, self.playhead = None, None, None, 0.0
++        self.frames, self.frame_times, self.playing = [], [], False
++        self.last_mp4 = None
++
++        try:     # follow the app's ttk theme: hints and warnings must stay readable on a dark background
++            bg = ttk.Style(app).lookup("TFrame", "background") or "#d9d9d9"
++            r, g, b = (v / 65535 for v in app.winfo_rgb(bg))
++            dark = .2126 * r + .7152 * g + .0722 * b < .5
++            THEME.update(hint="#a8adb3" if dark else "#666", warn="#ff7b72" if dark else "#b71c1c", bg=bg)
++        except tk.TclError:
++            pass
++        self.win = win = tk.Toplevel(app)
++        win.title(f"{TITLE} — ท่าทางตัวละคร · {self.project.name}")
++        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
++        win.geometry(f"{min(1360, int(sw * .92))}x{min(860, int(sh * .88))}")
++        win.minsize(960, 600)
++        win.transient(app)
++        self.enginevar = tk.StringVar(value=animation_root or self.settings.get("animation_root") or str(Path.home() / "ClaudeAnimationBase"))
++        self.status = tk.StringVar(value="")
++        self._build()
++        self.load_catalog()
++        last = self.settings.get("action_last_plan")
++        if last and Path(last).is_file() and Path(last).resolve().is_relative_to(self.home.resolve()):
++            self.open_plan(Path(last))
++        else:
++            self.new_plan(ask=False)
++
++    # ---------------------------------------------------------------- helpers
++    def log(self, msg):
++        try:
++            self.app.log(msg)
++        except Exception:
++            print(msg)
++
++    def engine(self) -> ActionEngine:
++        return ActionEngine(Path(self.enginevar.get()), self.log, node=self.settings.get("node") or "node")
++
++    def remember(self):
++        s = _read(self.settings_path, {}) or {}
++        s["animation_root"] = self.enginevar.get()
++        if self.plan_path:
++            s["action_last_plan"] = str(self.plan_path)
++        try:
++            _write(self.settings_path, s)
++        except OSError as ex:
++            self.log(f"[Action] cannot save settings: {ex}")
++
++    def background(self, label: str, fn, done=None):
++        """Run fn() off the UI thread (one job at a time); done(result) runs on the UI thread, errors are shown in Thai."""
++        if self.busy:
++            messagebox.showinfo(TITLE, "กำลังทำงานอื่นอยู่ รอให้เสร็จก่อน", parent=self.win)
++            return
++        self.busy = True
++        self.status.set(f"⏳ {label}…")
++        self._set_buttons("disabled")
++
++        def work():
++            res, err = None, None
++            try:
++                res = fn()
++            except Exception as ex:          # shown to the user, never swallowed
++                err = ex
++                self.log(f"[Action] {label}: ERROR {ex}")
++
++            def finish():
++                self.busy = False
++                if not self.win.winfo_exists():
++                    return
++                self._set_buttons("normal")
++                if err:
++                    self.status.set(f"✗ {label}: {err}")
++                    messagebox.showerror(TITLE, f"{label} ไม่สำเร็จ:\n{err}", parent=self.win)
++                else:
++                    self.status.set(f"✓ {label}")
++                    if done:
++                        done(res)
++            self.app.after(0, finish)
++        threading.Thread(target=work, daemon=True).start()
++
++    def _set_buttons(self, state):
++        for b in self.job_buttons:
++            try:
++                b.configure(state=state)
++            except tk.TclError:
++                pass
++
++    def param_default(self, typ, k):
++        d = self.cat.get(typ, {}).get("params", {}).get(k)
++        return d.get("default") if d else None
++
++    def layer_of(self, a):
++        return a.get("layer") or self.cat.get(a["type"], {}).get("layer", "upper_body")
++
++    def lanes(self):
++        """{layer: [(action index, lane)]}: overlapping actions of one layer get separate lanes."""
++        out = {}
++        for L in self.layers:
++            idx = sorted([i for i, a in enumerate(self.plan["actions"]) if self.layer_of(a) == L],
++                         key=lambda i: self.plan["actions"][i]["start"])
++            ends, items = [], []
++            for i in idx:
++                a = self.plan["actions"][i]
++                lane = next((k for k, e in enumerate(ends) if e <= a["start"] + 1e-6), len(ends))
++                if lane == len(ends):
++                    ends.append(0)
++                ends[lane] = a["start"] + a["duration"]
++                items.append((i, lane))
++            if items:
++                out[L] = items
++        return out
++
++    # ---------------------------------------------------------------- layout
++    def _build(self):
++        win = self.win
++        top = ttk.Frame(win, padding=(10, 8, 10, 4))
++        top.pack(fill="x")
++        ttk.Label(top, text="ACTION COMPOSER · ท่าทางตัวละครจากรูปอ้างอิง (Rig + IK + เลเยอร์) · ไม่ใช้ LTX / ไม่ใช้ AI วิดีโอ",
++                  font=("Segoe UI", 11, "bold")).pack(side="left")
++        bar = ttk.Frame(win, padding=(10, 0, 10, 4))
++        bar.pack(fill="x")
++        ttk.Label(bar, text="แผน:").pack(side="left")
++        self.planvar = tk.StringVar()
++        self.plan_box = ttk.Combobox(bar, textvariable=self.planvar, width=26, state="readonly")
++        self.plan_box.pack(side="left", padx=4)
++        self.plan_box.bind("<<ComboboxSelected>>", lambda e: self.open_plan(self.home / "plans" / f"{self.planvar.get()}.json"))
++        ttk.Button(bar, text="ใหม่", command=self.new_plan).pack(side="left", padx=2)
++        ttk.Button(bar, text="เปิด…", command=self._open_dialog).pack(side="left", padx=2)
++        ttk.Button(bar, text="💾 บันทึก", command=self.save_plan).pack(side="left", padx=2)
++        bar = ttk.Frame(win, padding=(10, 0, 10, 4))   # the plan's format on its own row (fits narrow windows)
++        bar.pack(fill="x")
++        self.aspectvar, self.durvar, self.fpsvar = tk.StringVar(value="9:16"), tk.DoubleVar(value=5.0), tk.IntVar(value=24)
++        ttk.Label(bar, text="สัดส่วน").pack(side="left")
++        ab = ttk.Combobox(bar, textvariable=self.aspectvar, values=ASPECTS, width=5, state="readonly")
++        ab.pack(side="left", padx=3)
++        ab.bind("<<ComboboxSelected>>", lambda e: self._plan_settings())
++        ttk.Label(bar, text="ยาว (วิ)").pack(side="left", padx=(6, 0))
++        ds = ttk.Spinbox(bar, textvariable=self.durvar, from_=.5, to=120, increment=.5, width=5, command=self._plan_settings)
++        ds.pack(side="left", padx=3)
++        ds.bind("<FocusOut>", lambda e: self._plan_settings())
++        ds.bind("<Return>", lambda e: self._plan_settings())
++        ttk.Label(bar, text="FPS").pack(side="left", padx=(6, 0))
++        fs = ttk.Combobox(bar, textvariable=self.fpsvar, values=(24, 25, 30), width=3, state="readonly")
++        fs.pack(side="left", padx=3)
++        fs.bind("<<ComboboxSelected>>", lambda e: self._plan_settings())
++        ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=8)
++        ttk.Label(bar, text="ClaudeAnimationBase:").pack(side="left")
++        ttk.Entry(bar, textvariable=self.enginevar, width=20).pack(side="left", padx=4, fill="x", expand=True)
++        ttk.Button(bar, text="…", width=3, command=self._browse_engine).pack(side="left")
++
++        self.nb = ttk.Notebook(win)
++        self.nb.pack(fill="both", expand=True, padx=10, pady=4)
++        self.job_buttons = []
++        self._tab_rig()
++        self._tab_props()
++        self._tab_timeline()
++        self._tab_director()
++        self._tab_preview()
++        st = ttk.Frame(win, padding=(10, 2, 10, 8))
++        st.pack(fill="x")
++        ttk.Label(st, textvariable=self.status).pack(side="left", fill="x", expand=True)
++        win.bind("<Delete>", lambda e: self.delete_action() if self.nb.index("current") == 2 and not isinstance(e.widget, (tk.Entry, ttk.Entry, ttk.Spinbox, tk.Text)) else None)
++
++    @staticmethod
++    def _scrollable(pw, weight=1):
++        """A side panel that scrolls vertically when the window is short (its controls stay reachable)."""
++        outer = ttk.Frame(pw)
++        pw.add(outer, weight=weight)
++        cv = tk.Canvas(outer, highlightthickness=0, width=340, **({"background": THEME["bg"]} if THEME["bg"] else {}))
++        sb = ttk.Scrollbar(outer, orient="vertical", command=cv.yview)
++        inner = ttk.Frame(cv, padding=(0, 0, 8, 0))
++        inner.bind("<Configure>", lambda e: cv.configure(scrollregion=cv.bbox("all")))
++        wid = cv.create_window((0, 0), window=inner, anchor="nw")
++        cv.bind("<Configure>", lambda e: cv.itemconfigure(wid, width=e.width))
++        cv.configure(yscrollcommand=sb.set)
++        cv.pack(side="left", fill="both", expand=True)
++        sb.pack(side="right", fill="y")
++        wheel = lambda e: cv.yview_scroll(-1 if (getattr(e, "delta", 0) > 0 or e.num == 4) else 1, "units")
++        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
++            inner.bind_all(seq, lambda e: wheel(e) if str(e.widget).startswith(str(outer)) else None, add="+")
++        return inner
++
++    def _browse_engine(self):
++        p = filedialog.askdirectory(title="โฟลเดอร์ ClaudeAnimationBase", parent=self.win, initialdir=self.enginevar.get())
++        if p:
++            self.enginevar.set(p)
++            self.remember()
++            self.load_catalog()
++
++    # ---- tab 1: characters & rig
++    def _tab_rig(self):
++        tab = ttk.Frame(self.nb, padding=6)
++        self.nb.add(tab, text=" 1 · ตัวละคร & Rig ")
++        pw = ttk.PanedWindow(tab, orient="horizontal")
++        pw.pack(fill="both", expand=True)
++        left = self._scrollable(pw)
++        self.char_tree = ttk.Treeview(left, columns=("rig", "x", "h"), show="tree headings", height=5, selectmode="browse")
++        self.char_tree.heading("#0", text="ตัวละคร")
++        self.char_tree.heading("rig", text="Rig")
++        self.char_tree.heading("x", text="x")
++        self.char_tree.heading("h", text="สูง")
++        self.char_tree.column("#0", width=90)
++        self.char_tree.column("rig", width=150)
++        self.char_tree.column("x", width=44, anchor="e")
++        self.char_tree.column("h", width=44, anchor="e")
++        self.char_tree.pack(fill="x")
++        self.char_tree.bind("<<TreeviewSelect>>", lambda e: self._show_char())
++        b = ttk.Frame(left)
++        b.pack(fill="x", pady=4)
++        ttk.Button(b, text="＋ อัปโหลดรูปตัวละคร…", command=self.add_character).pack(side="left")
++        ttk.Button(b, text="ลบ", command=self.remove_character).pack(side="left", padx=4)
++        g = ttk.LabelFrame(left, text="Rig อัตโนมัติ", padding=6)
++        g.pack(fill="x", pady=4)
++        self.templatevar = tk.StringVar(value="human")
++        ttk.Label(g, text="แม่แบบ").grid(row=0, column=0, sticky="w")
++        ttk.Combobox(g, textvariable=self.templatevar, values=("human", "quadruped", "object"), width=11, state="readonly").grid(row=0, column=1, sticky="w", padx=4)
++        bt = ttk.Button(g, text="🔍 วิเคราะห์ Rig ใหม่", command=self.analyze_rig)
++        bt.grid(row=0, column=2, padx=4)
++        self.job_buttons.append(bt)
++        ttk.Label(g, text="ลากจุดเพื่อแก้ตำแหน่งข้อต่อ · สีแดง = ไม่แน่ใจ ควรวางเอง", foreground=THEME["hint"]).grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
++        legend = ttk.Frame(g)
++        legend.grid(row=2, column=0, columnspan=3, sticky="w", pady=2)
++        for k in ("detected", "estimated", "uncertain", "manual"):
++            c = tk.Canvas(legend, width=12, height=12, highlightthickness=0, **({"background": THEME["bg"]} if THEME["bg"] else {}))
++            c.create_oval(1, 1, 11, 11, fill=CONF_COL[k], outline="")
++            c.pack(side="left")
++            ttk.Label(legend, text=CONF_TH[k]).pack(side="left", padx=(2, 8))
++
++        f = ttk.LabelFrame(left, text="ตำแหน่งในฉาก", padding=6)
++        f.pack(fill="x", pady=4)
++        self.cxvar, self.chvar, self.cfacevar = tk.DoubleVar(value=.2), tk.DoubleVar(value=.34), tk.StringVar(value="right")
++        for r, (lab, var, lo, hi, inc) in enumerate((("x (สัดส่วนความกว้าง)", self.cxvar, -.5, 1.5, .01), ("ความสูง (สัดส่วนเฟรม)", self.chvar, .05, .95, .01))):
++            ttk.Label(f, text=lab).grid(row=r, column=0, sticky="w")
++            sp = ttk.Spinbox(f, textvariable=var, from_=lo, to=hi, increment=inc, width=7, command=self._char_fields)
++            sp.grid(row=r, column=1, sticky="w", padx=4, pady=1)
++            sp.bind("<FocusOut>", lambda e: self._char_fields())
++            sp.bind("<Return>", lambda e: self._char_fields())
++        ttk.Label(f, text="หันหน้า").grid(row=2, column=0, sticky="w")
++        cf = ttk.Combobox(f, textvariable=self.cfacevar, values=("right", "left"), width=6, state="readonly")
++        cf.grid(row=2, column=1, sticky="w", padx=4)
++        cf.bind("<<ComboboxSelected>>", lambda e: self._char_fields())
++
++        m = ttk.LabelFrame(left, text="โหมดการวาด", padding=6)
++        m.pack(fill="x", pady=4)
++        self.modevar, self.densvar, self.psizevar = tk.StringVar(value="texture"), tk.IntVar(value=6), tk.DoubleVar(value=1.0)
++        ttk.Radiobutton(m, text="A · Texture/Mesh (ภาพจริงบน mesh)", variable=self.modevar, value="texture", command=self._mode).grid(row=0, column=0, columnspan=2, sticky="w")
++        ttk.Radiobutton(m, text="B · Colored Points (จุดสีจากภาพ)", variable=self.modevar, value="points", command=self._mode).grid(row=1, column=0, columnspan=2, sticky="w")
++        ttk.Label(m, text="ความถี่จุด (px)").grid(row=2, column=0, sticky="w")
++        ttk.Spinbox(m, textvariable=self.densvar, from_=2, to=20, increment=1, width=5, command=self._mode).grid(row=2, column=1, sticky="w")
++        ttk.Label(m, text="ขนาดจุด").grid(row=3, column=0, sticky="w")
++        ttk.Spinbox(m, textvariable=self.psizevar, from_=.3, to=3, increment=.1, width=5, command=self._mode).grid(row=3, column=1, sticky="w")
++
++        j = ttk.LabelFrame(left, text="ข้อต่อที่เลือก", padding=6)
++        j.pack(fill="x", pady=4)
++        self.jointinfo = tk.StringVar(value="คลิกจุดบนรูป")
++        ttk.Label(j, textvariable=self.jointinfo, wraplength=300).pack(anchor="w")
++        rr = ttk.Frame(j)
++        rr.pack(fill="x", pady=(4, 0))
++        ttk.Label(rr, text="รัศมีกระดูก").pack(side="left")
++        self.bonevar, self.radvar = tk.StringVar(), tk.DoubleVar(value=0)
++        self.bone_box = ttk.Combobox(rr, textvariable=self.bonevar, width=12, state="readonly")
++        self.bone_box.pack(side="left", padx=4)
++        self.bone_box.bind("<<ComboboxSelected>>", lambda e: self._bone_sel())
++        rs = ttk.Spinbox(rr, textvariable=self.radvar, from_=2, to=400, increment=2, width=6, command=self._bone_radius)
++        rs.pack(side="left")
++        rs.bind("<Return>", lambda e: self._bone_radius())
++        self.rigwarn = tk.StringVar(value="")
++        ttk.Label(left, textvariable=self.rigwarn, foreground=THEME["warn"], wraplength=330, justify="left").pack(anchor="w", pady=4)
++        sv = ttk.Button(left, text="💾 บันทึก Rig", command=self.save_rig)
++        sv.pack(anchor="w")
++        right = ttk.Frame(pw)
++        pw.add(right, weight=3)
++        self.rig_ed = PointEditor(right, on_change=self._joint_moved, on_select=self._joint_sel)
++        self.rig_ed.pack(fill="both", expand=True)
++        self.rig = None
++
++    # ---- tab 2: props & attachments
++    def _tab_props(self):
++        tab = ttk.Frame(self.nb, padding=6)
++        self.nb.add(tab, text=" 2 · พร็อพ & จุดยึด ")
++        pw = ttk.PanedWindow(tab, orient="horizontal")
++        pw.pack(fill="both", expand=True)
++        left = self._scrollable(pw)
++        self.prop_tree = ttk.Treeview(left, columns=("spec", "x", "s"), show="tree headings", height=5, selectmode="browse")
++        for c, t, w in (("#0", "พร็อพ", 110), ("spec", "ไฟล์", 150), ("x", "x", 44), ("s", "ขนาด", 44)):
++            self.prop_tree.heading(c, text=t)
++            self.prop_tree.column(c, width=w)
++        self.prop_tree.pack(fill="x")
++        self.prop_tree.bind("<<TreeviewSelect>>", lambda e: self._show_prop())
++        b = ttk.Frame(left)
++        b.pack(fill="x", pady=4)
++        ttk.Button(b, text="＋ อัปโหลดรูปพร็อพ…", command=self.add_prop).pack(side="left")
++        ttk.Button(b, text="ลบ", command=self.remove_prop).pack(side="left", padx=4)
++        g = ttk.LabelFrame(left, text="วิเคราะห์จุดยึด", padding=6)
++        g.pack(fill="x", pady=4)
++        self.pkindvar, self.pfwdvar = tk.StringVar(value="handheld"), tk.StringVar(value="right")
++        ttk.Label(g, text="ชนิด").grid(row=0, column=0, sticky="w")
++        ttk.Combobox(g, textvariable=self.pkindvar, values=("handheld", "object"), width=10, state="readonly").grid(row=0, column=1, sticky="w", padx=4)
++        ttk.Label(g, text="ปลายชี้ไป").grid(row=1, column=0, sticky="w")
++        ttk.Combobox(g, textvariable=self.pfwdvar, values=("right", "left"), width=10, state="readonly").grid(row=1, column=1, sticky="w", padx=4)
++        bt = ttk.Button(g, text="🔍 หาจุดยึดอัตโนมัติ", command=self.analyze_prop)
++        bt.grid(row=0, column=2, rowspan=2, padx=6)
++        self.job_buttons.append(bt)
++        a = ttk.LabelFrame(left, text="การยึดกับมือ", padding=6)
++        a.pack(fill="x", pady=4)
++        self.holdvar, self.pxvar, self.pscalevar = tk.DoubleVar(value=.6), tk.DoubleVar(value=.31), tk.DoubleVar(value=.72)
++        rows = (("มุมจับ (เรเดียน)", self.holdvar, 0, 3.2, .05), ("x บนพื้น (สัดส่วน)", self.pxvar, -.5, 1.5, .01), ("ขนาด", self.pscalevar, .05, 5, .02))
++        for r, (lab, var, lo, hi, inc) in enumerate(rows):
++            ttk.Label(a, text=lab).grid(row=r, column=0, sticky="w")
++            sp = ttk.Spinbox(a, textvariable=var, from_=lo, to=hi, increment=inc, width=7, command=self._prop_fields)
++            sp.grid(row=r, column=1, sticky="w", padx=4, pady=1)
++            sp.bind("<FocusOut>", lambda e: self._prop_fields())
++            sp.bind("<Return>", lambda e: self._prop_fields())
++        ttk.Label(left, text="จุด: origin = จุดหมุน · grip = มือหลัก · grip2 = มือที่สอง (เล็งสองมือ) · muzzle = ปลาย (เอฟเฟกต์ออกตรงนี้)\n"
++                             "ลากจุดบนรูปเพื่อแก้ แล้วกดบันทึก", foreground=THEME["hint"], wraplength=330, justify="left").pack(anchor="w", pady=4)
++        self.propwarn = tk.StringVar(value="")
++        ttk.Label(left, textvariable=self.propwarn, foreground=THEME["warn"], wraplength=330).pack(anchor="w")
++        ttk.Button(left, text="💾 บันทึกจุดยึด", command=self.save_prop).pack(anchor="w", pady=4)
++        right = ttk.Frame(pw)
++        pw.add(right, weight=3)
++        self.prop_ed = PointEditor(right)
++        self.prop_ed.pack(fill="both", expand=True)
++        self.prop = None
++
++    # ---- tab 3: timeline
++    def _tab_timeline(self):
++        tab = ttk.Frame(self.nb, padding=6)
++        self.nb.add(tab, text=" 3 · ไทม์ไลน์ท่าทาง ")
++        pw = ttk.PanedWindow(tab, orient="horizontal")
++        pw.pack(fill="both", expand=True)
++        left = ttk.Frame(pw, padding=(0, 0, 6, 0))
++        pw.add(left, weight=1)
++        ttk.Label(left, text="คลังท่าทาง (Preset)", font=("Segoe UI", 10, "bold")).pack(anchor="w")
++        self.searchvar = tk.StringVar()
++        se = ttk.Entry(left, textvariable=self.searchvar)
++        se.pack(fill="x", pady=3)
++        self.searchvar.trace_add("write", lambda *a: self._fill_presets())
++        self.preset_tree = ttk.Treeview(left, show="tree", selectmode="browse")
++        self.preset_tree.pack(fill="both", expand=True)
++        self.preset_tree.bind("<Double-1>", lambda e: self.add_action())
++        self.preset_tree.bind("<<TreeviewSelect>>", lambda e: self._preset_about())
++        self.aboutvar = tk.StringVar(value="")
++        ttk.Label(left, textvariable=self.aboutvar, wraplength=250, foreground=THEME["hint"], justify="left").pack(anchor="w", pady=3)
++        ttk.Button(left, text="＋ เพิ่มท่าที่ตำแหน่งหัวเล่น", command=self.add_action).pack(fill="x")
++
++        mid = ttk.Frame(pw)
++        pw.add(mid, weight=4)
++        tb = ttk.Frame(mid)
++        tb.pack(fill="x")
++        ttk.Button(tb, text="ทำซ้ำ", command=self.duplicate_action).pack(side="left")
++        ttk.Button(tb, text="ลบท่า", command=self.delete_action).pack(side="left", padx=4)
++        ttk.Button(tb, text="✓ ตรวจแผน", command=self.validate).pack(side="left", padx=4)
++        self.phvar = tk.StringVar(value="0.00 s")
++        ttk.Label(tb, textvariable=self.phvar).pack(side="right")
++        self.timeline = Timeline(mid, self)
++        self.timeline.pack(fill="both", expand=True, pady=4)
++        self.valtext = tk.Text(mid, height=5, wrap="word", font=("Segoe UI", 9), background="#f7f7f5", relief="flat")
++        self.valtext.pack(fill="x")
++
++        right = ttk.Frame(pw, padding=(6, 0, 0, 0))
++        pw.add(right, weight=2)
++        ttk.Label(right, text="พารามิเตอร์ของท่าที่เลือก", font=("Segoe UI", 10, "bold")).pack(anchor="w")
++        holder = ttk.Frame(right)
++        holder.pack(fill="both", expand=True)
++        cv = tk.Canvas(holder, highlightthickness=0, width=300)
++        sb = ttk.Scrollbar(holder, orient="vertical", command=cv.yview)
++        self.param_frame = ttk.Frame(cv)
++        self.param_frame.bind("<Configure>", lambda e: cv.configure(scrollregion=cv.bbox("all")))
++        pid = cv.create_window((0, 0), window=self.param_frame, anchor="nw")
++        cv.bind("<Configure>", lambda e: cv.itemconfigure(pid, width=e.width))
++        cv.configure(yscrollcommand=sb.set)
++        cv.pack(side="left", fill="both", expand=True)
++        sb.pack(side="right", fill="y")
++        self.param_vars = {}
++
++    # ---- tab 4: director
++    def _tab_director(self):
++        tab = ttk.Frame(self.nb, padding=8)
++        self.nb.add(tab, text=" 4 · ผู้กำกับท่าทาง (Opus) ")
++        ttk.Label(tab, text="เล่าฉากเป็นภาษาไทยหรืออังกฤษ แล้วให้ผู้กำกับเลือกท่าจากคลัง วางเวลา และซ้อนเลเยอร์ให้ (ได้ Motion Plan ที่แก้ต่อได้)",
++                  wraplength=900).pack(anchor="w")
++        self.storytext = tk.Text(tab, height=6, wrap="word", font=("Segoe UI", 10))
++        self.storytext.pack(fill="x", pady=6)
++        self.storytext.insert("1.0", "ตัวละครหยิบปืนเลเซอร์ แล้ววิ่งไปข้างหน้า กระโดดข้ามกล่อง เล็งและยิงกลางอากาศ แล้วลงพื้น")
++        r = ttk.Frame(tab)
++        r.pack(fill="x")
++        self.dmodevar = tk.StringVar(value="rules")
++        ttk.Radiobutton(r, text="Opus (Claude Code บนแพลนของคุณ · ใช้โควตา)", variable=self.dmodevar, value="opus").pack(side="left")
++        ttk.Radiobutton(r, text="กฎภายใน (ไม่ใช้ AI · ทันที)", variable=self.dmodevar, value="rules").pack(side="left", padx=12)
++        bt = ttk.Button(r, text="🎬 สร้าง Motion Plan", command=self.direct)
++        bt.pack(side="left", padx=12)
++        self.job_buttons.append(bt)
++        ttk.Label(tab, text="ผลลัพธ์จะแทนที่ท่าทางในไทม์ไลน์ (ตัวละคร/พร็อพเดิมคงไว้) · ท่าที่ไม่มีในคลังจะถูกปฏิเสธพร้อมเสนอท่าที่ใกล้เคียง\n"
++                       "แผนที่บันทึกแล้วเรนเดอร์ซ้ำได้โดยไม่เรียก Opus อีก", foreground=THEME["hint"]).pack(anchor="w", pady=6)
++        self.dirtext = tk.Text(tab, height=14, wrap="word", font=("Consolas", 9), background="#f7f7f5", relief="flat")
++        self.dirtext.pack(fill="both", expand=True)
++
++    # ---- tab 5: preview & render
++    def _tab_preview(self):
++        tab = ttk.Frame(self.nb, padding=6)
++        self.nb.add(tab, text=" 5 · พรีวิว & เรนเดอร์ ")
++        pw = ttk.PanedWindow(tab, orient="horizontal")
++        pw.pack(fill="both", expand=True)
++        left = ttk.Frame(pw, padding=(0, 0, 8, 0))
++        pw.add(left, weight=1)
++        self.overlayvar, self.followvar = tk.BooleanVar(value=False), tk.BooleanVar(value=True)
++        self.prevstep = tk.DoubleVar(value=.125)
++        ttk.Checkbutton(left, text="กล้องติดตามตัวละคร", variable=self.followvar, command=self._plan_settings).pack(anchor="w")
++        ttk.Checkbutton(left, text="แสดงโครงกระดูก (rig overlay) ในพรีวิว", variable=self.overlayvar).pack(anchor="w")
++        rr = ttk.Frame(left)
++        rr.pack(anchor="w", pady=3)
++        ttk.Label(rr, text="พรีวิวทุก").pack(side="left")
++        ttk.Combobox(rr, textvariable=self.prevstep, values=(.0417, .0833, .125, .25), width=7, state="readonly").pack(side="left", padx=3)
++        ttk.Label(rr, text="วินาที").pack(side="left")
++        for text, cmd in (("▶ พรีวิว (ความละเอียดต่ำ)", self.preview), ("🧪 ตรวจคุณภาพการเคลื่อนไหว", self.verify),
++                          ("🎬 Render MP4", self.render_mp4)):
++            bt = ttk.Button(left, text=text, command=cmd)
++            bt.pack(fill="x", pady=3)
++            self.job_buttons.append(bt)
++        self.open_btn = ttk.Button(left, text="📂 เปิดไฟล์ MP4 ล่าสุด", command=lambda: self.last_mp4 and _open(self.last_mp4, self.win), state="disabled")
++        self.open_btn.pack(fill="x", pady=3)
++        ttk.Button(left, text="📁 เปิดโฟลเดอร์ผลงาน", command=lambda: (self.project / "exports" / "action").mkdir(parents=True, exist_ok=True) or _open(self.project / "exports" / "action", self.win)).pack(fill="x", pady=3)
++        self.qatext = tk.Text(left, height=16, width=40, wrap="word", font=("Segoe UI", 9), background="#f7f7f5", relief="flat")
++        self.qatext.pack(fill="both", expand=True, pady=4)
++        right = ttk.Frame(pw)
++        pw.add(right, weight=3)
++        self.pcanvas = tk.Canvas(right, background="#20201e", highlightthickness=0)
++        self.pcanvas.pack(fill="both", expand=True)
++        self.pcanvas.bind("<Configure>", lambda e: self._show_frame())
++        ctl = ttk.Frame(right)
++        ctl.pack(fill="x", pady=4)
++        self.play_btn = ttk.Button(ctl, text="▶ เล่น", width=8, command=self.toggle_play)
++        self.play_btn.pack(side="left")
++        self.scrub = tk.DoubleVar(value=0)
++        self.scale = ttk.Scale(ctl, from_=0, to=5, variable=self.scrub, command=lambda v: self.set_playhead(float(v), from_scrub=True))
++        self.scale.pack(side="left", fill="x", expand=True, padx=8)
++        self.ptime = tk.StringVar(value="0.00 s")
++        ttk.Label(ctl, textvariable=self.ptime, width=9).pack(side="left")
++
++    # ---------------------------------------------------------------- catalogue
++    def load_catalog(self):
++        eng = self.engine()
++        problems = eng.check()
++        if problems:
++            self.status.set("⚠ " + problems[0])
++            self.log("[Action] " + " | ".join(problems))
++            return
++        try:
++            d = eng.catalog()
++        except Exception as ex:
++            self.status.set(f"⚠ {ex}")
++            return
++        self.cat, self.layers, self.groups, self.effects = d["catalog"], d["layers"], d["groups"], d["effects"]
++        self._fill_presets()
++        self.status.set(f"พร้อม · คลังท่าทาง {len(self.cat)} ท่า · {len(self.layers)} เลเยอร์")
++        if self.plan:
++            self.timeline.redraw()
++
++    def _fill_presets(self):
++        t = self.preset_tree
++        t.delete(*t.get_children())
++        q = self.searchvar.get().strip().lower()
++        for L in self.layers:
++            names = [n for n, c in self.cat.items() if c["layer"] == L and (not q or q in n or q in c.get("th", "") or q in c.get("about", "").lower())]
++            if not names:
++                continue
++            node = t.insert("", "end", iid=f"L:{L}", text=LAYER_TH.get(L, L), open=True)
++            for n in names:
++                t.insert(node, "end", iid=f"P:{n}", text=f"{self.cat[n].get('th', n)}  ·  {n}")
++
++    def _preset_about(self):
++        s = self.preset_tree.selection()
++        if s and s[0].startswith("P:"):
++            c = self.cat[s[0][2:]]
++            self.aboutvar.set(f"{c.get('about', '')}\nเลเยอร์: {LAYER_TH.get(c['layer'], c['layer'])}\nควบคุม: " + ", ".join(GROUP_TH.get(g, g) for g in c["mask"]))
++
++    # ---------------------------------------------------------------- plan files
++    def plans_dir(self) -> Path:
++        return self.home / "plans"
++
++    def _refresh_plan_list(self):
++        names = sorted(p.stem for p in self.plans_dir().glob("*.json") if not p.stem.endswith(".directed")) if self.plans_dir().is_dir() else []
++        self.plan_box.configure(values=names)
++        if self.plan:
++            self.planvar.set(self.plan["id"])
++
++    def new_plan(self, ask=True):
++        base = _slug(self.project.name, 24)
++        n = 1
++        while (self.plans_dir() / f"{base}_act{n}.json").exists():
++            n += 1
++        pid = f"{base}_act{n}"
++        self.plan = {"schema": "motion_plan/1", "id": pid, "title": "", "duration": 5.0, "fps": 24, "aspect": "9:16", "ground_y": .8,
++                     "backdrop": {"sky": "#E6EFF3", "ground": "#D6C6A8", "obstacles": []},
++                     "render": {"mode": "texture", "points": {"density": 6, "size": 1}}, "characters": [], "props": [], "actions": []}
++        self.plan_path = self.plans_dir() / f"{pid}.json"
++        self.sel, self.frames = None, []
++        self._load_plan_ui()
++        self.status.set(f"แผนใหม่ {pid}: อัปโหลดรูปตัวละครในแท็บ 1")
++
++    def _open_dialog(self):
++        p = filedialog.askopenfilename(title="Motion Plan (JSON)", parent=self.win, filetypes=[("Motion Plan", "*.json")],
++                                       initialdir=str(self.plans_dir() if self.plans_dir().is_dir() else self.project))
++        if p:
++            self.open_plan(Path(p))
++
++    def open_plan(self, path: Path):
++        P = _read(path)
++        if not isinstance(P, dict) or P.get("schema") != "motion_plan/1":
++            messagebox.showerror(TITLE, f"ไม่ใช่ Motion Plan (motion_plan/1):\n{path}", parent=self.win)
++            return
++        if Path(path).resolve().parent != self.plans_dir().resolve():
++            # a plan from elsewhere (e.g. the engine's examples) is imported as a copy: the original is never edited
++            src_dir = Path(path).resolve().parent
++            for coll, key in (("characters", "rig"), ("props", "spec")):
++                for c in P.get(coll, []):
++                    sp = (src_dir / c[key]).resolve()
++                    spec = _read(sp, {}) or {}
++                    if spec.get("image"):
++                        _copy_in(sp.parent / spec["image"], self.home / "refs")
++                    c[key] = os.path.relpath(_copy_in(sp, self.home / "refs"), self.plans_dir()).replace("\\", "/")
++            if not ID_RE.fullmatch(str(P.get("id", ""))):
++                P["id"] = _slug(Path(path).stem, 40)
++            path = self.plans_dir() / f"{P['id']}.json"
++            n = 2
++            while path.exists():
++                path = self.plans_dir() / f"{P['id']}_{n}.json"
++                n += 1
++            P["id"] = path.stem
++            _write(path, P)
++            self.log(f"[Action] imported a copy of the plan as {path}")
++        self.plan, self.plan_path, self.sel, self.frames = P, Path(path), None, []
++        P.setdefault("render", {"mode": "texture", "points": {"density": 6, "size": 1}})
++        P.setdefault("props", [])
++        self._load_plan_ui()
++        self.remember()
++        self.status.set(f"เปิดแผน {P['id']} · {len(P.get('actions', []))} ท่า")
++
++    def _load_plan_ui(self):
++        P = self.plan
++        self.aspectvar.set(P.get("aspect", "9:16"))
++        self.durvar.set(P.get("duration", 5))
++        self.fpsvar.set(P.get("fps", 24))
++        self.followvar.set(bool(P.get("camera")))
++        r = P.get("render") or {}
++        self.modevar.set(r.get("mode", "texture"))
++        self.densvar.set((r.get("points") or {}).get("density", 6))
++        self.psizevar.set((r.get("points") or {}).get("size", 1))
++        self._refresh_plan_list()
++        self._fill_chars()
++        self._fill_props()
++        self.scale.configure(to=float(P.get("duration", 5)))
++        self.set_playhead(0)
++        self.select(None)
++        self._mode(save=False)
++
++    def _plan_settings(self):
++        if not self.plan:
++            return
++        try:
++            self.plan["duration"] = round(min(max(float(self.durvar.get()), .5), 120), 2)
++        except (tk.TclError, ValueError):
++            pass
++        self.plan["aspect"], self.plan["fps"] = self.aspectvar.get(), int(self.fpsvar.get())
++        chars = self.plan.get("characters") or []
++        if self.followvar.get() and chars:
++            self.plan["camera"] = {**(self.plan.get("camera") or {"frame_x": .38, "amount": .9}), "follow": chars[0]["id"]}
++        else:
++            self.plan.pop("camera", None)
++        self.scale.configure(to=self.plan["duration"])
++        self.timeline.redraw()
++
++    def save_plan(self, quiet=False) -> Path | None:
++        if not self.plan:
++            return None
++        self._plan_settings()
++        _write(self.plan_path, self.plan)
++        self._refresh_plan_list()
++        self.remember()
++        if not quiet:
++            self.status.set(f"บันทึกแล้ว: {self.plan_path}")
++        return self.plan_path
++
++    def rel(self, p: Path) -> str:
++        return os.path.relpath(p, self.plans_dir()).replace("\\", "/")
++
++    def absf(self, rel: str) -> Path:
++        return (self.plans_dir() / rel).resolve()
++
++    # ---------------------------------------------------------------- characters
++    def _fill_chars(self, select=None):
++        t = self.char_tree
++        t.delete(*t.get_children())
++        for c in self.plan.get("characters", []):
++            t.insert("", "end", iid=c["id"], text=c["id"], values=(Path(c["rig"]).name, c.get("x", .2), c.get("height", .34)))
++        ids = [c["id"] for c in self.plan.get("characters", [])]
++        if ids:
++            t.selection_set(select if select in ids else ids[0])
++        else:
++            self.rig = None
++            self.rig_ed.set(None, {})
++            self.rigwarn.set("")
++
++    def cur_char(self):
++        s = self.char_tree.selection()
++        return next((c for c in self.plan.get("characters", []) if s and c["id"] == s[0]), None)
++
++    def add_character(self):
++        p = filedialog.askopenfilename(title="รูปตัวละคร (PNG พื้นใส, ยืนเต็มตัว, เห็นแขนขาแยกกัน)", parent=self.win,
++                                       filetypes=[("PNG", "*.png"), ("รูปภาพ", "*.png *.webp *.jpg *.jpeg")])
++        if not p:
++            return
++        img = _copy_in(Path(p), self.home / "refs")
++        n = len(self.plan["characters"]) + 1
++        cid = f"CHAR_{n:03d}"
++        while any(c["id"] == cid for c in self.plan["characters"]):
++            n += 1
++            cid = f"CHAR_{n:03d}"
++        self._analyze(img, cid, new=True)
++
++    def analyze_rig(self):
++        c = self.cur_char()
++        if not c:
++            messagebox.showinfo(TITLE, "ยังไม่มีตัวละคร: อัปโหลดรูปก่อน", parent=self.win)
++            return
++        if not messagebox.askyesno(TITLE, "วิเคราะห์ใหม่จะแทนที่ตำแหน่งข้อต่อที่แก้ไว้ของตัวละครนี้ ทำต่อไหม?", parent=self.win):
++            return
++        rig = _read(self.absf(c["rig"]), {}) or {}
++        self._analyze(self.absf(c["rig"]).parent / rig.get("image", ""), c["id"], new=False)
++
++    def _analyze(self, img: Path, cid: str, new: bool):
++        out = img.with_suffix(".rig.json")
++        tmpl = self.templatevar.get()
++
++        def job():
++            code, txt = self.engine().run(["tools/action/rig_analyze.py", f"--image={img}", f"--template={tmpl}", f"--id={_slug(img.stem)}", f"--out={out}"], "Rig", py=True)
++            if code or not out.is_file():
++                raise RuntimeError("วิเคราะห์ rig ไม่สำเร็จ (ดู log): " + txt[-400:])
++            return out
++
++        def done(rig_path):
++            if new:
++                self.plan["characters"].append({"id": cid, "rig": self.rel(rig_path), "x": .2 + .25 * len(self.plan["characters"]), "height": .34, "facing": "right"})
++                if self.followvar.get():
++                    self._plan_settings()
++            self.save_plan(quiet=True)
++            self._fill_chars(select=cid)
++        self.background("วิเคราะห์ Rig", job, done)
++
++    def remove_character(self):
++        c = self.cur_char()
++        if c and messagebox.askyesno(TITLE, f"เอา {c['id']} ออกจากแผน? (ไฟล์รูปและ rig ยังอยู่)", parent=self.win):
++            self.plan["characters"].remove(c)
++            self.plan["actions"] = [a for a in self.plan["actions"] if a.get("character", c["id"]) != c["id"] or self.plan["characters"]]
++            self._plan_settings()
++            self._fill_chars()
++            self.timeline.redraw()
++
++    def _show_char(self):
++        c = self.cur_char()
++        if not c:
++            return
++        self.cxvar.set(c.get("x", .2))
++        self.chvar.set(c.get("height", .34))
++        self.cfacevar.set(c.get("facing", "right"))
++        rp = self.absf(c["rig"])
++        self.rig = _read(rp)
++        if not self.rig:
++            self.rigwarn.set(f"อ่าน rig ไม่ได้: {rp}")
++            self.rig_ed.set(None, {})
++            return
++        self.templatevar.set(self.rig.get("template", "human"))
++        J = self.rig["joints"]
++        pts = {n: [j["x"], j["y"]] for n, j in J.items()}
++        conf = {n: j.get("confidence", "estimated") for n, j in J.items()}
++        links = [(b["from"], b["to"]) for b in self.rig["bones"]]
++        radius = {(b["from"], b["to"]): b.get("radius", 0) for b in self.rig["bones"]}
++        self.rig_ed.set(rp.parent / self.rig.get("image", ""), pts, conf, links, radius)
++        self.bone_box.configure(values=[b["name"] for b in self.rig["bones"]])
++        self._rig_warnings()
++
++    def _rig_warnings(self):
++        unc = [n for n, c in self.rig_ed.conf.items() if c == "uncertain"]
++        w = list(self.rig.get("warnings") or [])
++        self.rigwarn.set(("ข้อต่อที่ไม่แน่ใจ: " + ", ".join(unc) + " — ลากไปวางให้ถูกตำแหน่ง\n" if unc else "") + "\n".join(w))
++
++    def _char_fields(self):
++        c = self.cur_char()
++        if not c:
++            return
++        try:
++            c["x"], c["height"] = round(float(self.cxvar.get()), 3), round(float(self.chvar.get()), 3)
++        except (tk.TclError, ValueError):
++            return
++        c["facing"] = self.cfacevar.get()
++        self.char_tree.item(c["id"], values=(Path(c["rig"]).name, c["x"], c["height"]))
++
++    def _joint_sel(self, name):
++        if not name or not self.rig:
++            self.jointinfo.set("คลิกจุดบนรูป")
++            self.rig_ed.redraw()
++            return
++        x, y = self.rig_ed.points[name]
++        self.jointinfo.set(f"{name} · ({x:.0f}, {y:.0f}) · {CONF_TH.get(self.rig_ed.conf.get(name), '')}")
++        bones = [b for b in self.rig["bones"] if name in (b["from"], b["to"])]
++        if bones:
++            self.bonevar.set(bones[0]["name"])
++            self.radvar.set(bones[0].get("radius", 0))
++
++    def _joint_moved(self, name, x, y):
++        self._joint_sel(name)
++        self._rig_warnings()
++
++    def _bone_sel(self):
++        b = next((b for b in (self.rig or {}).get("bones", []) if b["name"] == self.bonevar.get()), None)
++        if b:
++            self.radvar.set(b.get("radius", 0))
++            self.rig_ed.sel = b["to"]
++            self.rig_ed.redraw()
++
++    def _bone_radius(self):
++        b = next((b for b in (self.rig or {}).get("bones", []) if b["name"] == self.bonevar.get()), None)
++        if b:
++            try:
++                b["radius"] = round(float(self.radvar.get()), 1)
++            except (tk.TclError, ValueError):
++                return
++            self.rig_ed.radius[(b["from"], b["to"])] = b["radius"]
++            self.rig_ed.redraw()
++
++    def save_rig(self):
++        c = self.cur_char()
++        if not c or not self.rig:
++            return
++        for n, (x, y) in self.rig_ed.points.items():
++            j = self.rig["joints"][n]
++            j["x"], j["y"], j["confidence"] = x, y, self.rig_ed.conf.get(n, j.get("confidence"))
++        self.rig["uncertain"] = sorted(n for n, j in self.rig["joints"].items() if j.get("confidence") == "uncertain")
++        self.rig["estimated"] = sorted(n for n, j in self.rig["joints"].items() if j.get("confidence") == "estimated")
++        _write(self.absf(c["rig"]), self.rig)
++        self.frames = []
++        self.status.set(f"บันทึก rig แล้ว: {self.absf(c['rig']).name}" + (f" · ยังไม่แน่ใจ {len(self.rig['uncertain'])} จุด" if self.rig["uncertain"] else ""))
++
++    def _mode(self, save=True):
++        try:
++            mode, d, s = self.modevar.get(), int(self.densvar.get()), float(self.psizevar.get())
++        except (tk.TclError, ValueError):
++            return
++        self.rig_ed.mode, self.rig_ed.density, self.rig_ed.psize = mode, d, s
++        self.rig_ed.redraw()
++        if self.plan and save:
++            self.plan["render"] = {**(self.plan.get("render") or {}), "mode": mode, "points": {"density": d, "size": s}}
++
++    # ---------------------------------------------------------------- props
++    def _fill_props(self, select=None):
++        t = self.prop_tree
++        t.delete(*t.get_children())
++        for p in self.plan.get("props", []):
++            t.insert("", "end", iid=p["id"], text=p["id"], values=(Path(p["spec"]).name, p.get("x", ""), p.get("scale", 1)))
++        ids = [p["id"] for p in self.plan.get("props", [])]
++        if ids:
++            t.selection_set(select if select in ids else ids[0])
++        else:
++            self.prop = None
++            self.prop_ed.set(None, {})
++
++    def cur_prop(self):
++        s = self.prop_tree.selection()
++        return next((p for p in self.plan.get("props", []) if s and p["id"] == s[0]), None)
++
++    def add_prop(self):
++        p = filedialog.askopenfilename(title="รูปพร็อพ (PNG พื้นใส วางแนวนอน)", parent=self.win, filetypes=[("PNG", "*.png"), ("รูปภาพ", "*.png *.webp")])
++        if not p:
++            return
++        img = _copy_in(Path(p), self.home / "refs")
++        pid = "PROP_" + _slug(img.stem, 20).upper()
++        while any(q["id"] == pid for q in self.plan["props"]):
++            pid += "_2"
++        self._analyze_prop(img, pid, new=True)
++
++    def analyze_prop(self):
++        p = self.cur_prop()
++        if not p:
++            messagebox.showinfo(TITLE, "ยังไม่มีพร็อพ: อัปโหลดรูปก่อน", parent=self.win)
++            return
++        spec = _read(self.absf(p["spec"]), {}) or {}
++        self._analyze_prop(self.absf(p["spec"]).parent / spec.get("image", ""), p["id"], new=False)
++
++    def _analyze_prop(self, img: Path, pid: str, new: bool):
++        out = img.with_suffix(".prop.json")
++        kind, fwd = self.pkindvar.get(), self.pfwdvar.get()
++
++        def job():
++            code, txt = self.engine().run(["tools/action/prop_analyze.py", f"--image={img}", f"--id={_slug(img.stem)}", f"--kind={kind}",
++                                           f"--forward={fwd}", f"--out={out}"], "Prop", py=True)
++            if code or not out.is_file():
++                raise RuntimeError("หาจุดยึดไม่สำเร็จ (ดู log): " + txt[-400:])
++            return out
++
++        def done(spec_path):
++            if new:
++                cx = (self.plan["characters"][0].get("x", .2) + .11) if self.plan["characters"] else .3
++                self.plan["props"].append({"id": pid, "spec": self.rel(spec_path), "x": round(cx, 3), "scale": .72})
++            self.save_plan(quiet=True)
++            self._fill_props(select=pid)
++        self.background("หาจุดยึดพร็อพ", job, done)
++
++    def remove_prop(self):
++        p = self.cur_prop()
++        if p and messagebox.askyesno(TITLE, f"เอา {p['id']} ออกจากแผน? (ไฟล์ยังอยู่)", parent=self.win):
++            self.plan["props"].remove(p)
++            self._fill_props()
++
++    def _show_prop(self):
++        p = self.cur_prop()
++        if not p:
++            return
++        sp = self.absf(p["spec"])
++        self.prop = _read(sp)
++        if not self.prop:
++            self.propwarn.set(f"อ่านไฟล์พร็อพไม่ได้: {sp}")
++            return
++        self.pxvar.set(p.get("x", .3))
++        self.pscalevar.set(p.get("scale", 1))
++        self.holdvar.set(self.prop.get("hold_angle", .6))
++        self.pkindvar.set(self.prop.get("kind", "handheld"))
++        self.pfwdvar.set(self.prop.get("forward", "right"))
++        A = self.prop.get("anchors", {})
++        conf = {n: (c or {}).get("confidence", "estimated") for n, c in (self.prop.get("anchor_confidence") or {}).items()}
++        links = [(a, b) for a, b in (("grip", "muzzle"), ("grip", "grip2")) if a in A and b in A]
++        self.prop_ed.set(sp.parent / self.prop.get("image", ""), {n: list(v) for n, v in A.items()}, conf, links)
++        self.propwarn.set("\n".join(self.prop.get("warnings") or []))
++
++    def _prop_fields(self):
++        p = self.cur_prop()
++        if not p:
++            return
++        try:
++            p["x"], p["scale"] = round(float(self.pxvar.get()), 3), round(float(self.pscalevar.get()), 3)
++        except (tk.TclError, ValueError):
++            return
++        self.prop_tree.item(p["id"], values=(Path(p["spec"]).name, p["x"], p["scale"]))
++
++    def save_prop(self):
++        p = self.cur_prop()
++        if not p or not self.prop:
++            return
++        self.prop["anchors"] = {n: list(v) for n, v in self.prop_ed.points.items()}
++        ac = self.prop.setdefault("anchor_confidence", {})
++        for n, c in self.prop_ed.conf.items():
++            ac[n] = {**(ac.get(n) or {}), "confidence": c}
++        try:
++            self.prop["hold_angle"] = round(float(self.holdvar.get()), 3)
++        except (tk.TclError, ValueError):
++            pass
++        self.prop["uncertain"] = sorted(n for n, c in ac.items() if c.get("confidence") == "uncertain")
++        _write(self.absf(p["spec"]), self.prop)
++        self._prop_fields()
++        self.save_plan(quiet=True)
++        self.frames = []
++        self.status.set(f"บันทึกจุดยึดแล้ว: {self.absf(p['spec']).name}")
++
++    # ---------------------------------------------------------------- actions / timeline
++    def select(self, i):
++        self.sel = i
++        self.timeline.redraw()
++        self._build_params()
++
++    def set_playhead(self, t, from_scrub=False):
++        dur = float(self.plan.get("duration", 5)) if self.plan else 5
++        self.playhead = min(max(float(t), 0), dur)
++        self.phvar.set(f"หัวเล่น {self.playhead:.2f} s")
++        self.ptime.set(f"{self.playhead:.2f} s")
++        if not from_scrub:
++            self.scrub.set(self.playhead)
++        self.timeline.redraw()
++        self._show_frame()
++
++    def changed(self, redraw_params=True):
++        self.timeline.redraw()
++        if redraw_params:
++            self._build_params()
++
++    def add_action(self):
++        s = self.preset_tree.selection()
++        if not s or not s[0].startswith("P:"):
++            messagebox.showinfo(TITLE, "เลือกท่าจากคลังทางซ้ายก่อน", parent=self.win)
++            return
++        typ = s[0][2:]
++        if not self.plan.get("characters"):
++            messagebox.showinfo(TITLE, "ยังไม่มีตัวละคร: อัปโหลดรูปในแท็บ 1 ก่อน", parent=self.win)
++            return
++        dur = float(self.plan["duration"])
++        d = min(DEFAULT_DUR.get(typ, 1.0), dur)
++        a = {"type": typ, "start": round(min(self.playhead, dur - d), 2), "duration": d}
++        ptype = (self.cat[typ]["params"].get("target") or {}).get("type")
++        if ptype in ("prop", "point_or_prop") and self.plan.get("props"):
++            a["target"] = self.plan["props"][0]["id"]
++        elif ptype in ("point", "point_or_prop"):
++            W, H = FRAME.get(self.plan.get("aspect", "9:16"), (1080, 1920))
++            a["target"] = [int(W * .9), int(H * .5)]
++        if typ == "fire":
++            a["effects"] = ["muzzle_flash", "bolt", "recoil"]
++        if typ == "land":
++            a["effects"] = ["dust"]
++        cur = self.cur_char()
++        if len(self.plan["characters"]) > 1 and cur:
++            a["character"] = cur["id"]
++        self.plan["actions"].append(a)
++        self.select(len(self.plan["actions"]) - 1)
++
++    def duplicate_action(self):
++        if self.sel is None:
++            return
++        a = json.loads(json.dumps(self.plan["actions"][self.sel]))
++        a["start"] = round(min(a["start"] + a["duration"], max(0, float(self.plan["duration"]) - a["duration"])), 2)
++        self.plan["actions"].append(a)
++        self.select(len(self.plan["actions"]) - 1)
++
++    def delete_action(self):
++        if self.sel is None:
++            return
++        del self.plan["actions"][self.sel]
++        self.select(None)
++
++    def _build_params(self):
++        f = self.param_frame
++        for w in f.winfo_children():
++            w.destroy()
++        self.param_vars = {}
++        if self.sel is None or self.sel >= len(self.plan["actions"]):
++            ttk.Label(f, text="คลิกแถบท่าในไทม์ไลน์เพื่อแก้ค่า\nดับเบิลคลิกท่าในคลังเพื่อเพิ่ม", foreground=THEME["hint"]).pack(anchor="w", pady=8)
++            return
++        a = self.plan["actions"][self.sel]
++        c = self.cat.get(a["type"], {"params": {}, "mask": [], "layer": "upper_body", "th": a["type"]})
++        prm = a.get("params") or {}
++        get = lambda k: a.get(k, prm.get(k, (c["params"].get(k) or {}).get("default")))
++        ttk.Label(f, text=f"{c.get('th', a['type'])}  ({a['type']})", font=("Segoe UI", 10, "bold")).pack(anchor="w")
++        ttk.Label(f, text=c.get("about", ""), wraplength=230, foreground=THEME["hint"], justify="left").pack(anchor="w", pady=(0, 4))
++        grid = ttk.Frame(f)
++        grid.pack(fill="x")
++        row = [0]
++
++        def field(label, key, var, widget):
++            ttk.Label(grid, text=label).grid(row=row[0], column=0, sticky="w", pady=1)
++            widget.grid(row=row[0], column=1, sticky="we", padx=4, pady=1)
++            grid.columnconfigure(1, weight=1)
++            self.param_vars[key] = var
++            row[0] += 1
++
++        def num(key, label, val, lo, hi, inc, setter):
++            v = tk.StringVar(value=f"{val:g}" if isinstance(val, (int, float)) else str(val))
++            sp = ttk.Spinbox(grid, textvariable=v, from_=lo, to=hi, increment=inc, width=8)
++            field(label, key, v, sp)
++
++            def apply(*_):
++                try:
++                    x = float(v.get())
++                except ValueError:
++                    return
++                setter(min(max(x, lo), hi))
++                self.timeline.redraw()
++            v.trace_add("write", apply)
++
++        dur = float(self.plan["duration"])
++        num("start", "เริ่ม (วิ)", a["start"], 0, dur, .05, lambda x: a.__setitem__("start", round(x, 3)))
++        num("duration", "ยาว (วิ)", a["duration"], .05, dur, .05, lambda x: a.__setitem__("duration", round(x, 3)))
++        if len(self.plan.get("characters", [])) > 1:
++            cv = tk.StringVar(value=a.get("character", self.plan["characters"][0]["id"]))
++            cb = ttk.Combobox(grid, textvariable=cv, values=[x["id"] for x in self.plan["characters"]], state="readonly", width=12)
++            field("ตัวละคร", "character", cv, cb)
++            cv.trace_add("write", lambda *_: a.__setitem__("character", cv.get()))
++        lv = tk.StringVar(value=self.layer_of(a))
++        lb = ttk.Combobox(grid, textvariable=lv, values=self.layers, state="readonly", width=12)
++        field("เลเยอร์", "layer", lv, lb)
++
++        def set_layer(*_):
++            if lv.get() == c.get("layer"):
++                a.pop("layer", None)
++            else:
++                a["layer"] = lv.get()
++            self.timeline.redraw()
++        lv.trace_add("write", set_layer)
++
++        # target: a prop (attachment) or an IK target point
++        tp = (c["params"].get("target") or {}).get("type")
++        if tp:
++            ttk.Separator(f).pack(fill="x", pady=4)
++            tf = ttk.LabelFrame(f, text="เป้าหมาย (IK / การยึด)", padding=4)
++            tf.pack(fill="x")
++            cur = a.get("target", prm.get("target"))
++            props = [p["id"] for p in self.plan.get("props", [])]
++            if tp in ("prop", "point_or_prop") and props and (tp == "prop" or isinstance(cur, str)):
++                pv = tk.StringVar(value=cur if cur in props else props[0])
++                ttk.Label(tf, text="พร็อพ").pack(side="left")
++                ttk.Combobox(tf, textvariable=pv, values=props, state="readonly", width=16).pack(side="left", padx=4)
++                pv.trace_add("write", lambda *_: (a.__setitem__("target", pv.get()), self.timeline.redraw()))
++                if "target" not in a:
++                    a["target"] = pv.get()
++            elif tp in ("point", "point_or_prop"):
++                W, H = FRAME.get(self.plan.get("aspect", "9:16"), (1080, 1920))
++                xy = cur if isinstance(cur, list) and len(cur) == 2 else [int(W * .9), int(H * .5)]
++                xv, yv = tk.StringVar(value=str(xy[0])), tk.StringVar(value=str(xy[1]))
++                ttk.Label(tf, text="x").pack(side="left")
++                ttk.Spinbox(tf, textvariable=xv, from_=-4000, to=8000, increment=20, width=7).pack(side="left", padx=2)
++                ttk.Label(tf, text="y").pack(side="left", padx=(6, 0))
++                ttk.Spinbox(tf, textvariable=yv, from_=-2000, to=4000, increment=20, width=7).pack(side="left", padx=2)
++                ttk.Label(tf, text="px ในฉาก", foreground=THEME["hint"]).pack(side="left", padx=4)
++
++                def set_xy(*_):
++                    try:
++                        a["target"] = [round(float(xv.get())), round(float(yv.get()))]
++                    except ValueError:
++                        pass
++                xv.trace_add("write", set_xy)
++                yv.trace_add("write", set_xy)
++                if "target" not in a:
++                    set_xy()
++            else:
++                ttk.Label(tf, text="ยังไม่มีพร็อพในแผน (แท็บ 2)", foreground=THEME["warn"]).pack(anchor="w")
++
++        # the preset's own parameters
++        own = [(k, d) for k, d in c["params"].items() if k not in COMMON and k != "target"]
++        if own:
++            ttk.Separator(f).pack(fill="x", pady=4)
++            ttk.Label(f, text="พารามิเตอร์", font=("Segoe UI", 9, "bold")).pack(anchor="w")
++            grid = ttk.Frame(f)
++            grid.pack(fill="x")
++            row[0] = 0
++            for k, d in own:
++                self._param_widget(grid, row, a, k, d, get(k))
++        # effects, blending, mask
++        ttk.Separator(f).pack(fill="x", pady=4)
++        ef = ttk.LabelFrame(f, text="เอฟเฟกต์ตามเวลา", padding=4)
++        ef.pack(fill="x")
++        cur_fx = set(a.get("effects") or [])
++        for i, e in enumerate(self.effects):
++            v = tk.BooleanVar(value=e in cur_fx)
++
++            def tog(e=e, v=v):
++                s = set(a.get("effects") or [])
++                (s.add if v.get() else s.discard)(e)
++                if s:
++                    a["effects"] = [x for x in self.effects if x in s]
++                else:
++                    a.pop("effects", None)
++                self.timeline.redraw()
++            ttk.Checkbutton(ef, text=EFFECT_TH.get(e, e), variable=v, command=tog).grid(row=i // 2, column=i % 2, sticky="w")
++        bf = ttk.LabelFrame(f, text="การผสมท่า (blending)", padding=4)
++        bf.pack(fill="x", pady=4)
++        row2 = [0]
++        for k in ("blend_in", "blend_out", "weight", "strength"):
++            d = c["params"].get(k)
++            if d:
++                self._param_widget(bf, row2, a, k, d, get(k))
++        if c["params"].get("ease"):
++            self._param_widget(bf, row2, a, "ease", c["params"]["ease"], get("ease"))
++        mf = ttk.LabelFrame(f, text="ข้อต่อที่ท่านี้ควบคุม (joint mask)", padding=4)
++        mf.pack(fill="x")
++        mask = set(a.get("mask") or c.get("mask") or [])
++        for i, g in enumerate(self.groups):
++            v = tk.BooleanVar(value=g in mask)
++
++            def togm(g=g, v=v):
++                s = set(a.get("mask") or c.get("mask") or [])
++                (s.add if v.get() else s.discard)(g)
++                m = [x for x in self.groups if x in s]
++                if set(m) == set(c.get("mask") or []):
++                    a.pop("mask", None)
++                else:
++                    a["mask"] = m
++            ttk.Checkbutton(mf, text=GROUP_TH.get(g, g), variable=v, command=togm).grid(row=i // 3, column=i % 3, sticky="w")
++        ttk.Button(f, text="↺ คืนค่าเริ่มต้นของท่านี้", command=self._reset_action).pack(anchor="w", pady=6)
++
++    def _param_widget(self, grid, row, a, k, d, val):
++        t = d.get("type")
++        label = d.get("about") or k
++        ttk.Label(grid, text=k).grid(row=row[0], column=0, sticky="w", pady=1)
++        if t == "number":
++            lo, hi = d.get("min", -1e6), d.get("max", 1e6)
++            v = tk.StringVar(value=f"{val:g}" if isinstance(val, (int, float)) else str(val))
++            w = ttk.Spinbox(grid, textvariable=v, from_=lo, to=hi, increment=max((hi - lo) / 100, .01), width=8)
++
++            def apply(*_):
++                try:
++                    x = min(max(float(v.get()), lo), hi)
++                except ValueError:
++                    return
++                a[k] = round(x, 4)
++                if k.startswith("blend"):
++                    self.timeline.redraw()
++            v.trace_add("write", apply)
++        elif t == "enum":
++            v = tk.StringVar(value=str(val))
++            w = ttk.Combobox(grid, textvariable=v, values=d.get("values", []), state="readonly", width=10)
++            v.trace_add("write", lambda *_: a.__setitem__(k, v.get()))
++        elif t == "bool":
++            v = tk.BooleanVar(value=bool(val))
++            w = ttk.Checkbutton(grid, variable=v, command=lambda: a.__setitem__(k, bool(v.get())))
++        else:
++            v = tk.StringVar(value=json.dumps(val) if val is not None else "")
++            w = ttk.Entry(grid, textvariable=v, width=12)
++
++            def apply_json(*_):
++                try:
++                    a[k] = json.loads(v.get())
++                except ValueError:
++                    pass
++            v.trace_add("write", apply_json)
++        w.grid(row=row[0], column=1, sticky="we", padx=4, pady=1)
++        ttk.Label(grid, text=label, foreground=THEME["hint"], wraplength=150, font=("Segoe UI", 8)).grid(row=row[0], column=2, sticky="w")
++        grid.columnconfigure(1, weight=1)
++        self.param_vars[k] = v
++        row[0] += 1
++
++    def sync_param_fields(self):
++        if self.sel is None:
++            return
++        a = self.plan["actions"][self.sel]
++        for k in ("start", "duration"):
++            v = self.param_vars.get(k)
++            if v is not None and v.get() != f"{a[k]:g}":
++                v.set(f"{a[k]:g}")
++
++    def _reset_action(self):
++        if self.sel is None:
++            return
++        a = self.plan["actions"][self.sel]
++        keep = {k: a[k] for k in ("type", "start", "duration", "target", "character", "effects") if k in a}
++        self.plan["actions"][self.sel] = keep
++        self._build_params()
++        self.timeline.redraw()
++
++    # ---------------------------------------------------------------- validate / build
++    def _check_ready(self) -> bool:
++        problems = self.engine().check()
++        if problems:
++            messagebox.showerror(TITLE, "\n".join(problems), parent=self.win)
++            return False
++        if not self.plan.get("characters"):
++            messagebox.showinfo(TITLE, "ยังไม่มีตัวละคร: อัปโหลดรูปในแท็บ 1 ก่อน", parent=self.win)
++            return False
++        if not self.plan.get("actions"):
++            messagebox.showinfo(TITLE, "ยังไม่มีท่าในไทม์ไลน์ (แท็บ 3) หรือให้ผู้กำกับสร้าง (แท็บ 4)", parent=self.win)
++            return False
++        return True
++
++    def _show_validation(self, txt, widget=None):
++        widget = widget or self.valtext
++        widget.delete("1.0", "end")
++        errs = [l[8:] for l in txt.splitlines() if l.startswith("ERROR")]
++        warns = [l[8:] for l in txt.splitlines() if l.startswith("warning")]
++        if errs:
++            widget.insert("end", f"✗ แผนยังใช้ไม่ได้ ({len(errs)} ข้อ)\n" + "\n".join("• " + e for e in errs) + "\n")
++        else:
++            widget.insert("end", "✓ แผนถูกต้องตาม motion_plan/1\n")
++        if warns:
++            widget.insert("end", "\n".join("⚠ " + w for w in warns))
++        return not errs
++
++    def validate(self):
++        if not self._check_ready():
++            return
++        path = self.save_plan(quiet=True)
++        self.background("ตรวจแผน", lambda: self.engine().run(["tools/action/plan.mjs", f"--plan={path}", "--check"], "Plan check"),
++                        lambda r: self._show_validation(r[1]))
++
++    def _build_scene(self, path) -> tuple[bool, str]:
++        code, txt = self.engine().run(["tools/action/plan.mjs", f"--plan={path}"], "Plan")
++        return code == 0, txt
++
++    # ---------------------------------------------------------------- director
++    def direct(self):
++        text = " ".join(self.storytext.get("1.0", "end").split())
++        if not text:
++            return
++        if not self.plan.get("characters"):
++            messagebox.showinfo(TITLE, "ผู้กำกับต้องมีตัวละครอย่างน้อย 1 ตัว (แท็บ 1)", parent=self.win)
++            return
++        mode = self.dmodevar.get()
++        if mode == "opus" and not messagebox.askyesno(TITLE, "จะเรียก Opus ผ่าน Claude Code บนแพลนของคุณ (ใช้โควตาการใช้งาน ไม่มีค่า API) ทำต่อไหม?", parent=self.win):
++            return
++        self._plan_settings()
++        ch = self.plan["characters"][0]
++        out = self.plans_dir() / f"{self.plan['id']}.directed.json"
++        args = ["tools/action/direct.mjs", f"--text={text}", f"--rig={self.absf(ch['rig'])}", f"--duration={self.plan['duration']}",
++                f"--aspect={self.plan['aspect']}", f"--id={self.plan['id']}", f"--mode={mode}", f"--out={out}",
++                f"--char-id={ch['id']}", f"--x={ch.get('x', .2)}", f"--height={ch.get('height', .34)}"]
++        for p in self.plan.get("props", []):
++            args.append(f"--prop={p['id']}:{self.absf(p['spec'])}")
++        if self.settings.get("claude_command"):
++            args.append(f"--claude={self.settings['claude_command']}")
++
++        def job():
++            code, txt = self.engine().run(args, "Action Director")
++            res = _read(out)
++            if not isinstance(res, dict):
++                raise RuntimeError("ผู้กำกับไม่ได้ส่งแผนกลับมา:\n" + txt[-600:])
++            return code, txt, res
++
++        def done(r):
++            code, txt, res = r
++            self.dirtext.delete("1.0", "end")
++            self.dirtext.insert("end", txt)
++            if code:
++                self.dirtext.insert("end", "\n\n✗ แผนจากผู้กำกับยังไม่ผ่านการตรวจ: ไม่ได้นำมาใช้ (ดูข้อผิดพลาดด้านบน)")
++                return
++            self.plan["actions"] = res.get("actions", [])
++            if res.get("notes"):
++                self.plan["notes"] = res["notes"]
++            self.save_plan(quiet=True)
++            self.select(None)
++            self.dirtext.insert("end", f"\n\n✓ นำ {len(self.plan['actions'])} ท่ามาใส่ไทม์ไลน์แล้ว (แท็บ 3) · บันทึกแผนแล้ว")
++        self.background("ผู้กำกับท่าทาง", job, done)
++
++    # ---------------------------------------------------------------- preview / QA / render
++    def story_id(self):
++        return f"_act_{self.plan['id']}"
++
++    def preview(self):
++        if not self._check_ready():
++            return
++        path = self.save_plan(quiet=True)
++        dur, step = float(self.plan["duration"]), float(self.prevstep.get())
++        times = [round(i * step, 4) for i in range(int(dur / step + 1e-6) + 1) if i * step <= dur]
++        out = self.home / "previews" / f"{self.plan['id']}.jpg"
++        out.parent.mkdir(parents=True, exist_ok=True)
++        w = 160 if self.plan.get("aspect") == "9:16" else 240
++        extra = ["--query=overlay=1"] if self.overlayvar.get() else []
++        extra += self.settings.get("render_flags") or []
++
++        def job():
++            ok, txt = self._build_scene(path)
++            if not ok:
++                return False, txt, None
++            code, t2 = self.engine().run(["render.mjs", f"--story={self.story_id()}", f"--sheet={','.join(f'{t:g}' for t in times)}",
++                                          f"--cols={len(times)}", f"--w={w}", f"--out={out}", *extra], "Preview")
++            if code or not out.is_file():
++                raise RuntimeError("พรีวิวไม่สำเร็จ (ดู log)")
++            return True, txt, out
++
++        def done(r):
++            ok, txt, img = r
++            self._show_validation(txt)
++            self._show_validation(txt, self.qatext)
++            if not ok:
++                self.nb.select(2)
++                return
++            self._load_frames(img, times)
++            self.nb.select(4)
++        self.background("พรีวิว", job, done)
++
++    def _load_frames(self, img_path, times):
++        if Image is None:
++            return
++        im = Image.open(img_path).convert("RGB")
++        n = len(times)
++        tw = im.width // n
++        self.raw_frames = [im.crop((i * tw, 0, (i + 1) * tw, im.height)) for i in range(n)]
++        self.frame_times, self.frames, self._fkey = times, list(self.raw_frames), None
++        self._show_frame()
++
++    def _show_frame(self):
++        c = self.pcanvas
++        c.delete("all")
++        w, h = max(10, c.winfo_width()), max(10, c.winfo_height())
++        if not self.frames:
++            c.create_text(w / 2, h / 2, text="กด ▶ พรีวิว เพื่อดูการเคลื่อนไหว", fill="#bbb", font=("Segoe UI", 11))
++            return
++        i = min(range(len(self.frame_times)), key=lambda k: abs(self.frame_times[k] - self.playhead))
++        im = self.raw_frames[i]
++        s = min(w / im.width, h / im.height)
++        key = (i, w, h)
++        if getattr(self, "_fkey", None) != key:
++            self._ftk, self._fkey = ImageTk.PhotoImage(im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))), Image.BILINEAR)), key
++        c.create_image(w / 2, h / 2, image=self._ftk)
++
++    def toggle_play(self):
++        self.playing = not self.playing
++        self.play_btn.configure(text="⏸ หยุด" if self.playing else "▶ เล่น")
++        if self.playing:
++            if self.playhead >= float(self.plan["duration"]) - 1e-3:
++                self.set_playhead(0)
++            self._t0 = time.time() - self.playhead
++            self._tick()
++
++    def _tick(self):
++        if not self.playing or not self.win.winfo_exists():
++            return
++        t = time.time() - self._t0
++        if t > float(self.plan["duration"]):
++            self.playing = False
++            self.play_btn.configure(text="▶ เล่น")
++            t = float(self.plan["duration"])
++        self.set_playhead(t)
++        if self.playing:
++            self.win.after(40, self._tick)
++
++    def verify(self):
++        if not self._check_ready():
++            return
++        path = self.save_plan(quiet=True)
++        story = self.story_id()
++
++        def job():
++            ok, txt = self._build_scene(path)
++            if not ok:
++                return None, txt
++            code, t2 = self.engine().run(["tools/action/verify.mjs", f"--story={story}", *(self.settings.get("render_flags") or [])], "Motion QA")
++            return _read(Path(self.enginevar.get()) / "out" / "action" / self.plan["id"] / "verify.json"), txt
++
++        def done(r):
++            res, txt = r
++            self.qatext.delete("1.0", "end")
++            if res is None:
++                self._show_validation(txt, self.qatext)
++                return
++            checks = res.get("checks", [])
++            ok = sum(1 for c in checks if c.get("ok"))
++            self.qatext.insert("end", f"{'✓' if ok == len(checks) else '✗'} ผ่าน {ok}/{len(checks)} ข้อ\n\n")
++            for c in checks:
++                self.qatext.insert("end", f"{'✓' if c.get('ok') else '✗'} {c.get('name')}\n    {c.get('detail', '')}\n")
++        self.background("ตรวจคุณภาพการเคลื่อนไหว", job, done)
++
++    def render_mp4(self):
++        if not self._check_ready():
++            return
++        path = self.save_plan(quiet=True)
++        outdir = self.project / "exports" / "action"
++        outdir.mkdir(parents=True, exist_ok=True)
++        out = outdir / f"{self.plan['id']}_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
++        fps = int(self.plan.get("fps", 24))
++        story = self.story_id()
++
++        def job():
++            ok, txt = self._build_scene(path)
++            if not ok:
++                return None, txt
++            code, t2 = self.engine().run(["render.mjs", f"--story={story}", "--clip", f"--fps={fps}", f"--out={out}",
++                                          *(self.settings.get("render_flags") or [])], "Render MP4")
++            if code or not out.is_file():
++                raise RuntimeError("เรนเดอร์ไม่สำเร็จ (ดู log)")
++            info = ""
++            if shutil.which("ffprobe"):
++                p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=width,height,r_frame_rate,nb_frames",
++                                    "-show_entries", "format=duration", "-of", "json", str(out)], capture_output=True, text=True, creationflags=NO_WINDOW)
++                try:
++                    d = json.loads(p.stdout)
++                    s = d["streams"][0]
++                    info = f"{s['width']}×{s['height']} · {s['r_frame_rate'].split('/')[0]} fps · {s.get('nb_frames', '?')} เฟรม · {float(d['format']['duration']):.2f} วิ"
++                except (ValueError, KeyError, IndexError):
++                    info = "(ffprobe อ่านไม่ได้)"
++            return out, info
++
++        def done(r):
++            res, info = r
++            if res is None:
++                self._show_validation(info, self.qatext)
++                return
++            self.last_mp4 = res
++            self.open_btn.configure(state="normal")
++            self.qatext.insert("end", f"\n🎬 {res.name}\n{info}\n")
++            self.status.set(f"✓ Render MP4: {res} · {info}")
++            self.log(f"[Action] MP4: {res} ({info})")
++        self.background("Render MP4", job, done)
++
++
++def open_action_composer(app, animation_root: str | None = None):
++    return ActionComposer(app, animation_root)

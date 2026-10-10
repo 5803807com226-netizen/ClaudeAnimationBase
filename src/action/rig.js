@@ -262,11 +262,11 @@ function drawPoints(C, S, o, flushSlots) {
   }
   flushSlots(1e9);
 }
-// bones as lines, joints as dots coloured by confidence (green detected, orange estimated, red uncertain), names
+// bones as lines, joints as dots coloured by confidence (green detected, orange estimated, red uncertain, blue placed by hand)
 function drawRigOverlay(C, S, o = {}) {
   flushBrush(); push(); strokeCap(ROUND);
   for (const b of C.bones) { const w = S.world[b.name]; stroke(40, 70, 220, 220); strokeWeight(Math.max(2, 3 * S.s)); line(w.a[0], w.a[1], w.b[0], w.b[1]); }
-  const col = { detected: [30, 170, 60], estimated: [240, 140, 20], uncertain: [220, 30, 30] };
+  const col = { detected: [30, 170, 60], estimated: [240, 140, 20], uncertain: [220, 30, 30], manual: [40, 110, 230] };
   const seen = new Set();
   for (const b of C.bones) for (const [jn, p] of [[b.from, S.world[b.name].a], [b.to, S.world[b.name].b]]) {
     if (seen.has(jn)) continue; seen.add(jn);
