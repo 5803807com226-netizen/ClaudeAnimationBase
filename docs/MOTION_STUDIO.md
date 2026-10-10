@@ -88,17 +88,6 @@ ComfyUI uses the same `tools/comfy/engines.local.json` as the other guides. The 
 - Artwork: `assets/stories/<id>/`.
 - Final video: `out/pipeline/<id>/<id>.mp4`.
 
-## Watercolor characters without generated images
-
-The style **ตัวละครสีน้ำ (ไม่ต้องสร้างภาพ)** needs no ComfyUI:
-- Opus names the characters and objects in English nouns, and the compiler matches each to one of about 3,300 public-domain silhouettes (elephant, running horse, dog, lion, flying bird, walking person, sailing ship, car, fighter jet, castle …);
-- the engine paints them as watercolor;
-- Opus directs their acting: enter, walk, run, hop, jump, fly, swim, shake, spin, turn, exit.
-
-The no-AI test also uses them when a sentence names something the library knows in Thai (ช้าง, ม้า, เรือ, รถ, เครื่องบิน, ปราสาท …).
-
-The icons are public domain (CC0): no credit is needed anywhere. Some subjects are not in the library (mammoth, caveman, tank, dinosaur …); for those, use generated artwork (collage) or pick another subject.
-
 ## Automatic finishing and sound
 
 The project form has three switches, all on by default:

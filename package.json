@@ -11,9 +11,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
-    "@iconify-json/maki": "^1.2.5",
-    "@iconify-json/pinhead": "^1.2.34",
-    "@iconify-json/temaki": "^1.2.6",
     "d3-geo": "^3.1.1",
     "p5": "^2.3.3",
     "p5.brush": "^2.2.3",

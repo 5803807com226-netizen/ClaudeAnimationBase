@@ -20,9 +20,7 @@ const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16'
   mapRegion: ['9:16', '16:9'], mapSprite: ['9:16', '16:9'], captionBar: ['9:16', '16:9'],
   // infographic kit (src/presets/infographic.js; fixtures: their gallery demos)
   barChart: ['9:16', '16:9', '4:5'], lineChart: ['9:16', '16:9', '4:5'], donutChart: ['9:16', '16:9', '4:5'],
-  timeline: ['9:16', '16:9', '4:5'], iconGrid: ['9:16', '16:9', '4:5'], callout: ['9:16', '16:9', '4:5'],
-  // watercolor icon actors (src/presets/actor.js; fixture: its gallery demo)
-  iconActor: ['9:16', '16:9', '4:5'] };
+  timeline: ['9:16', '16:9', '4:5'], iconGrid: ['9:16', '16:9', '4:5'], callout: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
 const presetK = (t, o) => easeBy(o.ease)(seg(t, o.at, o.at + o.dur));   // eased 0..1 progress of the main move
@@ -33,7 +31,6 @@ function definePreset(name, spec) { PRESETS[name] = { name, ...spec }; }
 function preset(name, t, opts = {}, inner) {
   const P = PRESETS[name]; if (!P) throw new Error(`unknown preset "${name}" (have: ${Object.keys(PRESETS).join(', ')})`);
   boilSeed('preset|' + name + '|' + (opts.id ?? ''));          // stable linework while the preset's own marks move
-  if (typeof ICON_T !== 'undefined') ICON_T = t;                // watercolor icons (actor.js) boil with the preset's time
   return P.run(t, { at: 0, dur: 1, ease: 'ease', ...P.defaults, ...opts }, inner);
 }
 

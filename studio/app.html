@@ -90,7 +90,7 @@ function render() {
       <div><label>ชื่อเรื่อง</label><input id="f-title" value="${esc(P.title)}"></div>
       <div><label>ความยาว (วินาที)</label><select id="f-sec">${[15, 30, 45, 60, 90, 120].map(s => `<option ${+P.seconds === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
       <div><label>สัดส่วนภาพ</label><select id="f-asp">${['9:16', '16:9'].map(a => `<option ${P.aspect === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
-      <div><label>สไตล์</label><select id="f-style">${[['auto', 'ให้ Opus เลือก'], ['collage', 'Collage กระดาษตัดแปะ'], ['collage on footage', 'การ์ตูนบนฟุตเทจจริง'], ['animated_map', 'แผนที่สารคดี'], ['kinetic_typography', 'ตัวอักษรเคลื่อนไหว'], ['watercolor_icons', 'ตัวละครสีน้ำ (ไม่ต้องสร้างภาพ)']].map(([v, t]) => `<option value="${v}" ${P.style === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label>สไตล์</label><select id="f-style">${[['auto', 'ให้ Opus เลือก'], ['collage', 'Collage กระดาษตัดแปะ'], ['collage on footage', 'การ์ตูนบนฟุตเทจจริง'], ['animated_map', 'แผนที่สารคดี'], ['kinetic_typography', 'ตัวอักษรเคลื่อนไหว']].map(([v, t]) => `<option value="${v}" ${P.style === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
     </div>
     <label>เรื่องราว / ไอเดีย / ข้อมูล (ภาษาไทย)</label><textarea id="f-story" placeholder="เล่าเรื่องที่อยากทำเป็นคลิป ใส่ข้อเท็จจริงที่ต้องการให้ถูกต้อง">${esc(P.story)}</textarea>
     <label>คำสั่งเพิ่มเติมถึงผู้กำกับ (ไม่บังคับ)</label><input id="f-notes" value="${esc(P.notes)}" placeholder="เช่น โทนอบอุ่น สีส้ม-มิ้นต์ มีส้มเป็นตัวเดินเรื่อง">

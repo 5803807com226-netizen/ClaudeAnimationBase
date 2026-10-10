@@ -47,8 +47,6 @@ const TARGETS = [
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
-  // watercolor icon actors: entering, mid-walk / mid-jump / flying, after the turn
-  { name: 'preset_iconActor', loop: 'preset_iconActor', times: [.5, 1.75, 3.4] },
 ];
 const only = args.only ? String(args.only).split(',') : null;
 const browser = await launch();

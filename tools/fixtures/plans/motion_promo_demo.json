@@ -6,7 +6,7 @@
  "target_seconds": 15,
  "tolerance_seconds": 1,
  "mode": "motion_only",
- "_comment": "A product-promo style like the reference clip (a Claude + Remotion demo), rebuilt from this engine's own presets; fictional brand PAO.",
+ "_comment": "A product-promo style like the reference clip (a Claude + Remotion demo), rebuilt from this engine's own presets with painted shapes; fictional brand PAO.",
  "strategy": {
   "name": "product_promo",
   "look": "product",
@@ -48,11 +48,11 @@
       "x": 540,
       "y": 806,
       "at": 0.1,
-      "icon": "mobile-phone",
       "color": "#F2F2F7",
       "glow": "#B36BFF",
       "size": 200,
-      "from": "below"
+      "from": "below",
+      "shape": "square"
      }
     },
     {
@@ -103,10 +103,10 @@
       "x": 302,
       "y": 768,
       "at": 0.15,
-      "icon": "flat-coin",
       "color": "#F2B33D",
       "size": 70,
-      "hops": 1
+      "hops": 1,
+      "shape": "circle"
      }
     },
     {
@@ -116,10 +116,10 @@
       "x": 799,
       "y": 960,
       "at": 0.4,
-      "icon": "money-hand",
       "color": "#3FC28A",
       "size": 70,
-      "hops": 1
+      "hops": 1,
+      "shape": "square"
      }
     },
     {
@@ -129,11 +129,11 @@
       "x": 540,
       "y": 922,
       "at": 0.7,
-      "icon": "globe",
       "color": "#5BA3C9",
       "glow": "#5BA3C9",
       "size": 150,
-      "from": "center"
+      "from": "center",
+      "shape": "circle"
      }
     },
     {
@@ -251,10 +251,10 @@
       "x": 270,
       "y": 960,
       "at": 0.2,
-      "icon": "coffee",
       "color": "#C46A3B",
       "size": 70,
-      "hops": 1
+      "hops": 1,
+      "shape": "heart"
      }
     },
     {
@@ -264,10 +264,10 @@
       "x": 540,
       "y": 960,
       "at": 0.45,
-      "icon": "shopping-cart",
       "color": "#3D5A99",
       "size": 70,
-      "hops": 1
+      "hops": 1,
+      "shape": "star"
      }
     },
     {
@@ -277,10 +277,10 @@
       "x": 810,
       "y": 960,
       "at": 0.7,
-      "icon": "plane-ascending",
       "color": "#E8541E",
       "size": 70,
-      "hops": 1
+      "hops": 1,
+      "shape": "star"
      }
     },
     {

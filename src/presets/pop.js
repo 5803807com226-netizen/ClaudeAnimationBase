@@ -5,7 +5,7 @@
 definePreset('popBounce', {
   label: 'Pop & Bounce', about: 'backOut pop-in, spring wobble, then jump() hops with squash and stretch',
   meta: { version: '1.0.0', category: 'object', tags: ['pop', 'bounce', 'entrance', 'emphasis', 'hop'], params: { shape: { enum: ['star', 'circle', 'heart', 'square'] } } },
-  defaults: { x: W / 2, y: ny(700 / 1080), size: 110 * US(), color: PAL.ochre, shape: 'star', icon: null, hops: 2, hopH: 1.2, hopGap: .75, wobble: .12, beat: false, ease: 'backOut', dur: .55 },
+  defaults: { x: W / 2, y: ny(700 / 1080), size: 110 * US(), color: PAL.ochre, shape: 'star', hops: 2, hopH: 1.2, hopGap: .75, wobble: .12, beat: false, ease: 'backOut', dur: .55 },
   run(t, o) {
     if (t < o.at) return;
     const end = o.at + o.dur;
