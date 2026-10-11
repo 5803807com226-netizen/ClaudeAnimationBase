@@ -3,6 +3,7 @@
 // @requires src/geo/land_50m.js
 // @requires src/geo/countries_50m.js
 // @requires src/geo/countries_10m.js
+// @requires src/geo/rivers_10m.js
 // @requires src/geo/relief_mercator.js
 // @requires src/geo/tiles_satellite.js
 // @requires src/geo/tiles_physical.js
@@ -113,6 +114,7 @@ definePreset('mapView', {
     MAP.obst = []; MAP.labels = [];
     if (inner) inner();
     mapPlaceLabels();
+    MAP.ctx.getImageData(0, 0, 1, 1);   // settle the layer's pending draws before it is composited (first frame of a shot)
     if (blurPx > .5) {
       if (!MAP.tmp) { MAP.tmp = document.createElement('canvas'); MAP.tmp.width = W; MAP.tmp.height = H; }
       const x = MAP.tmp.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(MAP.ctx.canvas, 0, 0);
@@ -123,19 +125,13 @@ definePreset('mapView', {
   },
 });
 
-definePreset('mapBase', {
-  label: 'Map Base', about: 'ocean, Natural Earth land with a soft shore line and coastline, optional graticule',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
-    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
-    assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
-  defaults: { dataset: 'land50', style: 'flat', ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
-    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235' },
-  run(t, o) {
+// mapBase's drawing (every style but antique, which draws physical through it and ages the result)
+function mapBaseDraw(t, o) {
     const c = mapCtx(), path = d3.geoPath(MAP.proj, c), land = GEO[o.dataset].geometry, u = US();
     if (o.style === 'satellite' || o.style === 'physical') {   // a Mercator raster: one affine draw (source-cropped to the frame), wrapped in longitude
       const X = MAP.ras[o.style];
       if (!X) throw new Error(`mapBase ${o.style} needs its raster (python tools/geo_raster_hi.py --style ${o.style})`);
-      const filt = o.saturate !== 1 || o.brightness !== 1 || o.contrast !== 1 ? `saturate(${o.saturate}) brightness(${o.brightness}) contrast(${o.contrast})` : 'none';
+      const filt = o.aged ? `sepia(.85) saturate(${.75 * o.saturate}) brightness(${1.04 * o.brightness}) contrast(${.88 * o.contrast})` : o.saturate !== 1 || o.brightness !== 1 || o.contrast !== 1 ? `saturate(${o.saturate}) brightness(${o.brightness}) contrast(${o.contrast})` : 'none';
       // the raster has its own crisp coastline: a vector coast (1:50m) over it would only blur it
       if (MAP.proj.clipAngle && MAP.proj.clipAngle()) { const L = mapLevel(X); if (L) mapGlobeHi(c, X, L, filt); else mapGlobeRaster(c, X, filt); return; }
       if (!MAP_IS_MERC(MAP.proj)) throw new Error(`mapBase ${o.style} needs mapView projection "mercator" or "orthographic"`);
@@ -158,6 +154,50 @@ definePreset('mapBase', {
     c.save(); c.strokeStyle = o.shore; c.globalAlpha = .55; c.lineWidth = 9 * u; c.lineJoin = 'round'; c.stroke(); c.restore();   // shallow-water halo
     c.fillStyle = o.land; c.fill();
     if (o.coastWidth > 0) { c.strokeStyle = o.coast; c.lineWidth = o.coastWidth * u; c.lineJoin = 'round'; c.stroke(); }
+}
+
+// rivers (Natural Earth 1:10m centrelines): more of them, and wider, the closer the camera; the big ones first
+function mapRivers(c, o) {
+  if (!GEO.rivers10) return;
+  const u = US(), z = MAP.proj.scale() / (Math.min(W, H) / 2), maxRank = z < 2 ? 4 : z < 5 ? 6 : z < 10 ? 7 : 9, path = d3.geoPath(MAP.proj, c);
+  c.save(); c.lineJoin = c.lineCap = 'round'; c.strokeStyle = o.riverColor || (o.style === 'antique' ? '#5E6F78' : '#3F86C8'); c.globalAlpha = .9;
+  for (const r of GEO.rivers10) { if (r.r > maxRank) continue;
+    c.lineWidth = Math.max(1, (o.rivers === true ? 1 : o.rivers) * u * (2.6 - r.r * .2) * Math.min(3.2, .7 + z * .1));
+    c.beginPath(); path({ type: 'MultiLineString', coordinates: r.c }); c.stroke(); }
+  c.restore();
+}
+
+// the old-map finish: parchment tone (multiply), paper grain, a brown graticule and a dark edge, all inside the frame
+function mapAntique(c, o) {
+  const u = US();
+  if (!MAP.grain) {   // a small tiled paper grain (seeded, so every frame is the same)
+    const g = document.createElement('canvas'); g.width = g.height = 256; const x = g.getContext('2d'), d = x.createImageData(256, 256);
+    let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < d.data.length; i += 4) { const v = 128 + (r() - .5) * 70; d.data[i] = v; d.data[i + 1] = v * .96; d.data[i + 2] = v * .88; d.data[i + 3] = 255; }
+    x.putImageData(d, 0, 0); MAP.grain = g;
+  }
+  c.save();
+  c.globalCompositeOperation = 'multiply'; c.fillStyle = o.paper || '#D9C39A'; c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = 'overlay'; c.globalAlpha = .35; c.fillStyle = c.createPattern(MAP.grain, 'repeat'); c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = .28; c.strokeStyle = '#6B4E2E'; c.lineWidth = 1.2 * u;
+  c.beginPath(); d3.geoPath(MAP.proj, c)(d3.geoGraticule().step([10, 10])()); c.stroke();
+  const vg = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.hypot(W, H) * .6);
+  vg.addColorStop(0, 'rgba(60,35,10,0)'); vg.addColorStop(1, 'rgba(60,35,10,.55)'); c.globalAlpha = 1; c.fillStyle = vg; c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+definePreset('mapBase', {
+  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera)',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
+    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical', 'antique'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
+    assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
+  defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
+    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235' },
+  run(t, o) {
+    if (o.style !== 'antique') mapBaseDraw(t, o);
+    else { mapBaseDraw(t, { ...o, style: 'physical', aged: true }); }   // antique: the physical raster aged (sepia, softer)…
+    if (o.rivers) mapRivers(mapCtx(), o);
+    if (o.style === 'antique') mapAntique(mapCtx(), o);                   // …then paper, a faint graticule and a vignette over it
   },
 });
 
@@ -212,7 +252,8 @@ function mapGlobeHi(c, X, Hm, filt) {
   if (BW <= 0 || BH <= 0) return;
   if (!X.px) { const [IW, IH] = X.R.size, cv = document.createElement('canvas'); cv.width = IW; cv.height = IH; const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(X.img.canvas || X.img.elt, 0, 0); X.px = x.getImageData(0, 0, IW, IH).data; }
   if (!MAP.globeHi || MAP.globeHi.width !== BW || MAP.globeHi.height !== BH) { MAP.globeHi = document.createElement('canvas'); MAP.globeHi.width = BW; MAP.globeHi.height = BH; }
-  const gx = MAP.globeHi.getContext('2d'), img = gx.createImageData(BW, BH), out = img.data, caps = mapCaps(X);
+  // a CPU-backed canvas: its pixels are rewritten every frame, and a GPU one could reach the map layer a frame late
+  const gx = MAP.globeHi.getContext('2d', { willReadFrequently: true }), img = gx.createImageData(BW, BH), out = img.data, caps = mapCaps(X);
   const [HW, HH] = Hm.size, TS = Hm.tile, [IW, IH] = X.R.size, ov = X.px, k = IW / HW, tick = ++MAP_TICK, tp = new Array(Hm.rows * Hm.cols);
   const ym = Math.log(Math.tan(Math.PI / 4 + X.R.lat * Math.PI / 360)), sp = Math.sin(p0), cp = Math.cos(p0), cg = Math.cos(g0), sg = Math.sin(g0);
   const tile = (r, col) => { const i = r * Hm.cols + col; let v = tp[i]; if (v !== undefined) return v;
@@ -366,10 +407,10 @@ definePreset('mapMarker', {
 });
 
 definePreset('mapLabel', {
-  label: 'Map Label', about: 'live text (Thai-safe) pinned to [lon, lat] with an offset; fades and rises in, optional fade out. box: the text on a dark rounded tag (boxColor), the most readable on a busy map',
-  meta: { version: '1.1.0', category: 'map', tags: ['map', 'label', 'text', 'place name', 'date', 'caption', 'thai', 'tag'],
-    params: { font: { enum: ['body', 'display'] }, align: { enum: ['left', 'center', 'right'] }, size: { min: 12, max: 160 } }, layers: ['text'] },
-  defaults: { text: '', lonlat: [0, 0], dx: 18, dy: -16, size: 52, weight: 600, font: 'body', color: '#2B2A3A', halo: '#F6EFE2', box: false, boxColor: 'rgba(16,16,22,.78)', align: 'left', out: null, outDur: .35, ease: 'easeOut', dur: .5 },
+  label: 'Map Label', about: 'live text (Thai-safe) pinned to [lon, lat] with an offset; fades and rises in, optional fade out. box: the text on a dark rounded tag (boxColor), the most readable on a busy map. style marker: a highlighter strip (markerColor) wipes in under dark text, tilted by angle (a name stuck on the map); style neon: glowing text (glow colour) that flickers on (a name that means something: Green Land, Ice Land)',
+  meta: { version: '1.2.0', category: 'map', tags: ['map', 'label', 'text', 'place name', 'date', 'caption', 'thai', 'tag', 'highlighter', 'marker', 'neon', 'glow'],
+    params: { font: { enum: ['body', 'display', 'headline', 'hand'] }, align: { enum: ['left', 'center', 'right'] }, size: { min: 12, max: 160 }, style: { enum: ['plain', 'marker', 'neon'] }, angle: { min: -45, max: 45 } }, layers: ['text'] },
+  defaults: { text: '', lonlat: [0, 0], dx: 18, dy: -16, size: 52, weight: 600, font: 'body', color: '#2B2A3A', halo: '#F6EFE2', box: false, boxColor: 'rgba(16,16,22,.78)', style: 'plain', markerColor: '#FFE14D', glow: '#7CFF6B', angle: 0, align: 'left', out: null, outDur: .35, ease: 'easeOut', dur: .5 },
   run(t, o) {
     const c = mapCtx(), k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(k, q);
     if (a <= 0 || !o.text || !mapVisible(o.lonlat)) return;
@@ -380,7 +421,10 @@ definePreset('mapLabel', {
     const tw = c.measureText(o.text).width, x0 = { left: 0, center: -tw / 2, right: -tw }[o.align];
     const x = clamp(p[0] + o.dx * u + x0, m, W - m - tw) - x0, y = clamp(p[1] + o.dy * u + (1 - k) * 14 * u, m + o.size * TS(), H - m);
     const font = c.font; c.restore();
-    const px = o.size * TS(), padX = o.box ? px * .42 : px * .1, rect = { x: x + x0 - padX, y: y - px * 1.02, w: tw + padX * 2, h: px * 1.42 };
+    const px = o.size * TS(), padX = o.box || o.style === 'marker' ? px * .42 : px * .1, rect = { x: x + x0 - padX, y: y - px * 1.02, w: tw + padX * 2, h: px * 1.42 };
+    if (o.style === 'marker' || o.style === 'neon') {   // drawn last too, with their own looks
+      const kk = clamp((t - o.at) / Math.max(.05, o.dur)); MAP.labels.push({ rect, draw: (ox, oy) => mapLabelFx(c, o, rect, x + ox, y + oy, ox, oy, font, kk, q) }); return;
+    }
     MAP.labels.push({ rect, draw: (ox, oy) => {   // drawn after every other map layer (mapPlaceLabels), moved off pins
       c.save(); c.globalAlpha = a; c.font = font; c.textAlign = o.align; c.textBaseline = 'alphabetic';
       if (o.box) {   // a rounded tag behind the text, with a soft shadow
@@ -410,6 +454,24 @@ function mapPlaceLabels() {
   }
 }
 const mapObstacle = (x, y, w, h) => { if (MAP.obst) MAP.obst.push({ x, y, w, h }); };
+
+// marker: a highlighter strip wipes in (left to right), then the dark text; neon: the text flickers on and glows
+function mapLabelFx(c, o, r, x, y, ox, oy, font, k, q) {
+  const u = US(), cx = r.x + ox + r.w / 2, cy = r.y + oy + r.h / 2;
+  c.save(); c.translate(cx, cy); c.rotate(o.angle * Math.PI / 180); c.translate(-cx, -cy); c.font = font; c.textAlign = o.align; c.textBaseline = 'alphabetic';
+  if (o.style === 'marker') {
+    const w = easeOut(clamp(k / .6)) * r.w; c.globalAlpha = q;
+    c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 8 * u; c.shadowOffsetY = 3 * u; c.fillStyle = o.markerColor;
+    c.beginPath(); c.moveTo(r.x + ox, r.y + oy + r.h * .06); c.lineTo(r.x + ox + w, r.y + oy); c.lineTo(r.x + ox + w - r.h * .05, r.y + oy + r.h); c.lineTo(r.x + ox + r.h * .04, r.y + oy + r.h * .96); c.closePath(); c.fill(); c.restore();
+    c.beginPath(); c.rect(r.x + ox, r.y + oy - r.h, w, r.h * 3); c.clip(); c.fillStyle = o.color === '#2B2A3A' ? '#121214' : o.color; c.fillText(o.text, x, y);
+  } else {   // neon
+    const on = k < .35 ? (Math.sin(k * 90) > .2 ? .35 + k : .1) : 1;   // a short flicker, then steady with a slow breath
+    c.globalAlpha = q * on; c.shadowColor = o.glow; c.lineJoin = 'round';
+    for (const [b, a] of [[38, .55], [16, .8], [5, 1]]) { c.shadowBlur = b * u; c.globalAlpha = q * on * a; c.fillStyle = o.glow; c.fillText(o.text, x, y); }
+    c.shadowBlur = 0; c.globalAlpha = q * on; c.fillStyle = 'rgba(255,255,255,.92)'; c.fillText(o.text, x, y);
+  }
+  c.restore();
+}
 
 // a territory's geometries: `units` (countries and "<ISO3>/<province>") or the single country `name`
 function mapUnits(o, who) {

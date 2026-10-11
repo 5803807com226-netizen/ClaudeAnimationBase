@@ -71,3 +71,22 @@ These are small cut-outs from the same `artwork` items (vector, real proportions
   - Over the `drop` stretch it releases `bombs`. Each bomb falls, then bursts with a flash, a shock ring and smoke.
 
 The effects (dust, bombs, blasts) are drawn, because they are motion. The soldiers and the aircraft are always artwork. Use at most one token group per shot.
+
+## Explainer kit (`mapLabel` marker / neon, `mapGlow`, `mapSwarm`, `mapNote`, `mapPhoto`, `weather`, `spyglass`, antique map, rivers)
+
+These presets came out of a study of a "why is it called…" map short. Each one does its own job:
+
+| Preset | What it does |
+|---|---|
+| `mapLabel` `style: "marker"` | A yellow highlighter strip wipes in under dark text, tilted by `angle` |
+| `mapLabel` `style: "neon"` | The text flickers on and glows in `glow` |
+| `mapGlow` | A territory glows from inside (fill, inner glow, bright rim) and breathes |
+| `mapSwarm` | Tokens (an artwork item, or an emoji `glyph`) pop one by one at seeded points spread across a territory |
+| `mapNote` | A handwritten note (Mali, font role `hand`) is written on, then a hand-drawn arrow draws itself to the place |
+| `mapPhoto` | A photo card (an opaque artwork item) pops out beside a place, white border, tilted |
+| `weather` | Snow, rain or dust over the frame (screen) |
+| `spyglass` | The frame becomes a telescope view of an opaque artwork scene, with an optional speech bubble (screen) |
+| `mapBase` `style: "antique"` | The physical map aged: sepia, paper grain, graticule, vignette |
+| `mapBase` `rivers: true` | Natural Earth 1:10m rivers (`src/geo/rivers_10m.js`) |
+
+Artwork items may set `"opaque": true` for a whole picture (no cut-out) and `"style"` to replace the shared style. The demo is `tools/fixtures/plans/bangkok_name.json`.
