@@ -53,9 +53,12 @@ const TARGETS = [
   { name: 'map_explainer', story: '_plan_bangkok_name', byAspect: { '16:9': '_plan_bangkok_name_16x9' }, times: [3.6, 7.4, 12.4, 16.6, 25, 30] },
   // size explainer: mapMeasure (ruler + measured km), mapTrueSize (true-size overlay + measured area)
   { name: 'map_size', story: '_plan_thailand_size', byAspect: { '16:9': '_plan_thailand_size_16x9' }, times: [7.5, 14, 21.5, 27.5] },
+  // foundation kit on the map: eraTicker, deepTimeline, mapBlast + shake, mapFlow, mapEmpire, mapDogfight (mock art in the cloud), barRace, tilt
+  { name: 'map_epic', story: '_plan_earth_to_ai', byAspect: { '16:9': '_plan_earth_to_ai_16x9' }, times: [3.5, 8.7, 15.5, 21.5, 29.2, 34.5] },
   { name: 'map_doc_kit', story: '_plan_siam_colonial', byAspect: { '16:9': '_plan_siam_colonial_16x9' }, times: [3, 9, 15, 23.5, 29.5, 35] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
+  ...['blast', 'eraTicker', 'deepTimeline', 'barRace'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.5, 1.6, 2.6] })),
   ...['sticker', 'dateCard', 'chapterBadge', 'weather'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
 ];

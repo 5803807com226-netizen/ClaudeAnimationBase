@@ -24,8 +24,8 @@ Code draws only motion, effects, diagrams, maps and data.
 ## 0. Foundations used by every era (Tier 1)
 | Preset | What it does | Status |
 |---|---|---|
-| `eraTicker` | A persistent era / year readout: "4.5 billion years ago" → "1945" → "2026", with unit changes (Ga, Ma, ka, BCE/CE, Buddhist Era) | 🆕 Tier 1 |
-| `deepTimeline` | A zoomable time ruler, linear or logarithmic, that flies from the Big Bang to today. Eras are coloured bands, and a "you are here" marker counts down | 🆕 Tier 1 |
+| `eraTicker` | A persistent era / year readout: "4.5 billion years ago" → "1945" → "2026", with unit changes (Ga, Ma, ka, BCE/CE, Buddhist Era) | ✅ (`src/presets/epic.js`) |
+| `deepTimeline` | A zoomable time ruler, linear or logarithmic, that flies from the Big Bang to today. Eras are coloured bands, and a "you are here" marker counts down | ✅ (`src/presets/epic.js`) |
 | `realPhoto` + `creditTag` | A sourced real photo, kept unedited, cut out as a collage layer. The credit stays on screen while it shows, and a credits list is made for the description | 🆕 Tier 1 |
 | `quoteCard` | A sourced quotation with its citation (book, page, year) | 🆕 |
 | `beforeAfter` / `splitCompare` | A wipe slider between two images or maps; side-by-side comparison | 🆕 |
@@ -54,7 +54,7 @@ Code draws only motion, effects, diagrams, maps and data.
 | `cellDivide` | Mitosis and dividing cells as soft blobs | 🆕 |
 | `dnaHelix` | A rotating double helix; base pairs light up | 🆕 (3D) |
 | `fossilReveal` | A fossil revealed by a brush-off wipe over artwork | 🟡 `brushWipe` + artwork |
-| `mapFlow` | Migration or spread arrows that branch over time with dates (out of Africa, the spread of farming) | 🆕 Tier 1 (also religions, trade, ideas) |
+| `mapFlow` | Migration or spread arrows that branch over time with dates (out of Africa, the spread of farming) | ✅ (`src/presets/epic.js`) |
 | `extinctionCounter` | Species bars that drop at the mass extinctions | 🟡 `barChart` / `lineChart` |
 | `figure` | Early humans as vector illustrations beside the map | ✅ |
 | `mapSwarm` | Herds and settlements popping up over a region | ✅ |
@@ -62,7 +62,7 @@ Code draws only motion, effects, diagrams, maps and data.
 ## 3. Civilizations and empires
 | Preset | What it does | Status |
 |---|---|---|
-| `mapEmpire` | A territory grows and shrinks across dated frames, with a year ticker (sourced historical outlines) | 🆕 Tier 1 |
+| `mapEmpire` | A territory grows and shrinks across dated frames, with a year ticker (sourced historical outlines) | ✅ (`src/presets/epic.js`) |
 | `mapTransfer`, `mapRegion` units, `mapHighlight`, `mapPin`, `mapGlow`, `mapNote`, antique map | Territories changing hands, notes, an aged map | ✅ |
 | `routeDraw`, `mapSprite` | Trade routes (Silk Road, spice routes), ships and caravans | ✅ |
 | `monumentBuild` | A structure builds up layer by layer (collage pieces stack in) | 🆕 |
@@ -74,7 +74,7 @@ Code draws only motion, effects, diagrams, maps and data.
 ## 4. Religions and beliefs (respectful, neutral, sourced)
 | Preset | What it does | Status |
 |---|---|---|
-| `mapFlow` | A faith spreads from its origin with dates and routes | 🆕 (same as §2) |
+| `mapFlow` | A faith spreads from its origin with dates and routes | ✅ (`src/presets/epic.js`) |
 | `scrollUnroll` / `quoteCard` | Scripture with its exact reference (book, chapter or sutta, edition) | 🆕 (same as §0/§3) |
 | `compareTable` | Beliefs, practices and calendars side by side, cell by cell | 🆕 |
 | `sacredPattern` | Geometric light patterns, rays and halos as abstract decoration (no religious symbol drawn in code) | 🆕 |
@@ -87,11 +87,11 @@ Rules: people and sacred objects come from real credited photos or respectful ar
 | Preset | What it does | Status |
 |---|---|---|
 | `mapTroops`, `mapBomber`, `mapArrow`, `mapTransfer` | Armies on the move, air raids, thrusts, captured land | ✅ |
-| `mapDogfight` | Aircraft circle and chase over a place: smoke trails, tracer bursts, one shot down in a smoke spiral | 🆕 |
+| `mapDogfight` | Aircraft circle and chase over a place: smoke trails, tracer bursts, one shot down in a smoke spiral | ✅ (`src/presets/epic.js`) |
 | `frontLine` | A front line that moves across dated frames (a shaded side, a glowing contested edge) | 🆕 Tier 1 |
 | `navalBattle` | Ships manoeuvre, cannon or gun flashes, splashes, a ship sinking | 🆕 |
 | `siege` | Projectile arcs onto walls, fire and smoke | 🆕 |
-| `explosionFx` | A reusable blast (flash, shock ring, smoke column) at any place or over artwork | 🆕 (extracted from `mapBomber`) |
+| `mapBlast` / `blast` | A reusable blast (flash, fireball, shock ring, sparks, smoke) at a place or over artwork, with a light flash and a camera shake | ✅ (`src/presets/epic.js`) |
 | `casualtyCounter` | Sober counting with a sourced number, slow and without effects | 🟡 `type.counter` (style rule: no celebratory motion) |
 
 Rules: no hate symbols (a colour stands in for a side), no glorification, and figures are cited.
@@ -110,7 +110,7 @@ Rules: no hate symbols (a colour stands in for a side), no glorification, and fi
 ## 7. Industry and economy
 | Preset | What it does | Status |
 |---|---|---|
-| `barRace` | A bar-chart race over years (GDP, population, companies), sourced data | 🆕 Tier 1 |
+| `barRace` | A bar-chart race over years (GDP, population, companies), sourced data | ✅ (`src/presets/epic.js`) |
 | `gears` / `machine` | Interlocking gears, pistons and belts that drive each other | 🆕 |
 | `assemblyLine` | Artwork items move along a conveyor and change at stations | 🆕 |
 | `railNetwork` | A railway or road network spreads over the map by year | 🟡 `routeDraw` ×N → 🆕 `mapNetwork` |

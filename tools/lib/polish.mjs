@@ -74,10 +74,16 @@ export function polishManifest(M, { CAPS, allowExp, aspect }) {
 
 const SFX_OF_MOTION = { place: 'paper', pop: 'pop', drop: 'impact', slam: 'impact', wipe: 'paper', peel: 'paper', appear: 'pop', vanish: 'pop', swing: 'whoosh', fly: 'whoosh', leave: 'whoosh', flutter: 'paper', shake: 'impact' };
 const SFX_OF_TRANS = { push: 'whoosh', slide: 'paper', whip: 'whoosh', tear: 'paper', iris: 'whoosh', fade: null, cut: null };
-const SFX_OF_PRESET = { popBounce: 'pop', particleBurst: 'ding', objectReveal: 'whoosh', brushWipe: 'whoosh', barChart: 'tick', lineChart: 'riser', donutChart: 'tick', timeline: 'tick', iconGrid: 'pop', callout: 'pop', captionBar: 'paper' };
+const SFX_OF_PRESET = { mapFlow: 'whoosh', mapEmpire: 'riser', eraTicker: 'tick', deepTimeline: 'whoosh', barRace: 'riser', mapMeasure: 'whoosh', mapTrueSize: 'whoosh', popBounce: 'pop', particleBurst: 'ding', objectReveal: 'whoosh', brushWipe: 'whoosh', barChart: 'tick', lineChart: 'riser', donutChart: 'tick', timeline: 'tick', iconGrid: 'pop', callout: 'pop', captionBar: 'paper' };
+// presets with timed events of their own: [offset in the shot, category] for each (blasts, gun bursts, a crash)
+const SFX_EVENTS = {
+  mapBlast: p => (p.hits || [0]).map(h => [(p.at || 0) + h, 'explosion']),
+  blast: p => (p.hits || [0]).map(h => [(p.at || 0) + h, 'explosion']),
+  mapDogfight: p => [[(p.at || 0), 'whoosh'], ...(p.bursts || []).map(([a]) => [(p.at || 0) + a, 'gunfire']), ...(p.down ? [[(p.at || 0) + p.down.at + (p.fall ?? 1.5), 'explosion']] : [])],
+};
 const SFX_OF_TYPE = { impact: 'impact', stamp: 'impact', counter: 'tick', pop: 'pop', slide: 'whoosh', cutout: 'paper', reveal: 'whoosh' };
 const SFX_OF_ACTION = { jump: 'whoosh', land: 'impact', fire: 'whoosh', pick_up: 'paper', drop: 'impact', dodge: 'whoosh', turn: 'paper', react: 'pop', impact: 'impact' };
-const GAIN = { whoosh: .5, pop: .45, paper: .55, tick: .35, impact: .55, riser: .4, ding: .35, type: .3 };
+const GAIN = { whoosh: .5, pop: .45, paper: .55, tick: .35, impact: .55, riser: .4, ding: .35, type: .3, explosion: .7, gunfire: .5, rumble: .5 };
 
 export function sfxCues(compiled, { dir = 'assets/sfx', minGap = .22, perShot = 5, off = false } = {}) {
   const warnings = [], files = {};
@@ -100,6 +106,7 @@ export function sfxCues(compiled, { dir = 'assets/sfx', minGap = .22, perShot = 
       for (const L of s.layers || []) {
         const name = L.cap.startsWith('type.') ? null : L.cap, at = typeof L.params?.at === 'number' ? L.params.at : 0;
         if (name && SFX_OF_PRESET[name]) want.push([at, SFX_OF_PRESET[name], name]);
+        if (name && SFX_EVENTS[name]) for (const [ev, cat] of SFX_EVENTS[name](L.params || {})) want.push([ev, cat, `${name} ${cat}`]);
         if (L.cap.startsWith('type.') && SFX_OF_TYPE[L.cap.slice(5)]) want.push([at, SFX_OF_TYPE[L.cap.slice(5)], L.cap]);
       }
     }
