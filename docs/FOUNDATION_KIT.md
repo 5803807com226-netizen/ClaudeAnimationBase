@@ -14,7 +14,16 @@ These presets come from `docs/PRESET_ROADMAP.md` (Tier 1 and the war extras) and
 | `mapDogfight` | map | Two artwork aircraft circle and chase, as a circle or a figure eight (`radius` in km, or `px` for a close shot), with smoke trails and ground shadows. `bursts: [[from, to]]` fire tracers with muzzle flashes and hit sparks; `down: {at}` sends the chased plane spinning down in black smoke to a crash blast |
 | `mapFlow` | map | A broad tapered arrow of spread (a migration, a faith, farming, a trade) with flowing texture inside and a dated label at its head. Several layers make a branching spread |
 | `mapEmpire` | map | A territory through dated `steps: [{at, units, label}]`, cross-fading with an edge pulse. The compiler checks every unit name in every step |
-| `barRace` | screen | A bar-chart race from a sourced table (`years`, `series[].values`) on a dark plate. Bars swap places as values change, the year shows large, and the `source` line is printed under the chart |
+| `barRace` | screen | A bar-chart race from a sourced table (`years`, `series[].values`). `style: "overlay"` (the default) draws clean white bars straight over the picture with soft shadows and no box; `style: "plate"` draws bars in one harmonious palette on a dark plate. Bars swap places as values change, the year shows large and soft behind them, and the `source` line is printed under the chart |
+
+## One look per story (`strategy.map`)
+`strategy.map` in a manifest sets the style and grade of every `mapBase` in the story, for example `{ "style": "physical", "saturate": 1.08, "brightness": 1.04 }`. Shots then never jump between a bright atlas and a dark satellite picture. A layer can opt out with `"theme": false`.
+
+The two raster styles differ a lot:
+- `physical` (atlas relief, light seas) is bright and clear;
+- `satellite` (Blue Marble, dark seas) is moody.
+
+Pick one per story. Explosions are painted, not added, so they read on both.
 
 ## Camera
 - **`mapView` keys** take `tilt` (a dutch angle in degrees) besides `center`, `zoom` and `rot`. The frame is scaled up just enough to stay covered.

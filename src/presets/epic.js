@@ -16,7 +16,7 @@ const epRand = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7 + 17.3) * 43
 // one explosion at (x, y), radius R px, s seconds after it goes off (seed varies the shape). Returns false when over.
 function blastFx(c, x, y, R, s, seed = 1, o = {}) {
   const life = o.life ?? 2.6; if (s < 0 || s > life) return false;
-  const hot = o.color || '#FFB347', smoke = o.smoke || '#4E4A47';
+  const hot = o.color || '#FFB347', smoke = o.smoke || '#3E3A38';
   c.save();
   // smoke first (under the fire): puffs that rise, grow and thin out
   for (let i = 0; i < 9; i++) {
@@ -30,14 +30,17 @@ function blastFx(c, x, y, R, s, seed = 1, o = {}) {
   if (s < .35) { const f = s / .35, r = R * (.5 + 1.4 * f), g = c.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, `rgba(255,252,235,${1 - f})`); g.addColorStop(.35, `rgba(255,200,110,${.85 * (1 - f)})`); g.addColorStop(1, 'rgba(255,120,40,0)');
     c.globalAlpha = 1; c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU2); c.fill(); }
-  // the fireball: overlapping hot blobs that swell, then cool to red and fade
+  // the fireball: overlapping hot blobs that swell, then cool to red and fade (painted, not added, so it reads on a
+  // bright map as well as on a dark one)
+  c.globalCompositeOperation = 'source-over';
   if (s < 1.1) for (let i = 0; i < 6; i++) {
     const k = clamp(s / 1.1), a = epRand(seed, i + 80) * TAU2, dd = R * .35 * epRand(seed, i + 90) * Math.sqrt(k), r = R * (.25 + .45 * Math.sqrt(k)) * (.7 + epRand(seed, i + 100) * .5);
     const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd - R * .25 * k, g = c.createRadialGradient(px, py, 0, px, py, r);
-    g.addColorStop(0, k < .3 ? 'rgba(255,240,190,.9)' : 'rgba(255,170,70,.75)'); g.addColorStop(.6, hot); g.addColorStop(1, 'rgba(200,40,10,0)');
-    c.globalAlpha = (1 - k) * .8; c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, TAU2); c.fill();
+    g.addColorStop(0, k < .3 ? 'rgba(255,236,170,.95)' : 'rgba(255,150,50,.9)'); g.addColorStop(.55, hot); g.addColorStop(1, 'rgba(190,40,10,0)');
+    c.globalAlpha = (1 - k) * .92; c.fillStyle = g; c.beginPath(); c.arc(px, py, r, 0, TAU2); c.fill();
   }
   // sparks: hot streaks flung out on ballistic paths
+  c.globalCompositeOperation = 'lighter';
   const n = o.sparks ?? 26;
   for (let i = 0; i < n; i++) {
     const a = epRand(seed, i + 200) * TAU2, v = R * (2.2 + 2.8 * epRand(seed, i + 300)), ss = Math.min(s, .9), g = R * 2.4;
@@ -275,36 +278,65 @@ definePreset('deepTimeline', {
 });
 
 // ---------------------------------------------------------------- bar chart race
+// one harmonious palette (similar lightness and saturation, hues spread around the wheel) for series without a colour
+const BAR_PALETTE = ['#E8705F', '#F2A65A', '#E9C46A', '#76C893', '#4FB0C6', '#5C8FD6', '#8C7AE6', '#D27AB5'];
+const niceStep = x => { const p = 10 ** Math.floor(Math.log10(Math.max(x, 1e-9))), f = x / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; };
+function shade(hex, k) {   // lighten (k > 0) or darken (k < 0) a #rrggbb colour
+  const n = parseInt(hex.slice(1), 16), ch = s => { const v = (n >> s) & 255; return Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)); };
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
 definePreset('barRace', {
-  label: 'Bar Race', about: 'a bar-chart race over years from a sourced table: years [...], series [{name, color, values [...]}] (one value per year); bars slide and swap places as values change, values count, the year shows large; source: the citation shown small under the chart',
-  meta: { version: '1.0.0', category: 'infographic', tags: ['bar race', 'chart', 'ranking', 'gdp', 'population', 'economy', 'race', 'years', 'data', 'compare'], camera: 'screen', layers: ['screen'],
-    params: { top: { min: 2, max: 15 } } },
-  defaults: { years: [2000, 2010, 2020], series: [], top: 6, plate: 'rgba(10,10,16,.62)', unit: '', decimals: 0, x0: .06, x1: .94, y0: .2, y1: .78, title: '', source: '', size: 36, out: null, outDur: .4, dur: 6 },
+  label: 'Bar Race', about: 'a bar-chart race over years from a sourced table: years [...], series [{name, values [...], color?}] (one value per year). style overlay (default): clean white bars straight over the picture with soft shadows, no box; style plate: coloured gradient bars on a dark plate. Names in a left column, rounded gradient bars in one harmonious palette (or the series colour), the value in a pill at the bar end, a faint scale, the year large and soft behind the bars, the source line under the chart; on the same dark plate as the era readout',
+  meta: { version: '1.1.0', category: 'infographic', tags: ['bar race', 'chart', 'ranking', 'gdp', 'population', 'economy', 'race', 'years', 'data', 'compare'], camera: 'screen', layers: ['screen'],
+    params: { top: { min: 2, max: 15 }, style: { enum: ['overlay', 'plate'] } } },
+  defaults: { years: [2000, 2010, 2020], series: [], top: 6, style: 'overlay', palette: null, plate: 'rgba(12,12,18,.72)', accent: '#FFD43B', unit: '', decimals: 0, x0: .05, x1: .95, y0: .2, y1: .78, title: '', source: '', size: 34, out: null, outDur: .4, dur: 6 },
   run(t, o) {
-    const q = (o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1) * clamp((t - o.at) / .3); if (q <= 0 || !o.series.length) return;
-    const n = o.years.length, fy = clamp((t - o.at) / o.dur) * (n - 1), i0 = Math.min(n - 2, Math.floor(fy)), fr = n > 1 ? fy - i0 : 0;
-    const val = s => n > 1 ? lerp(s.values[i0] ?? 0, s.values[i0 + 1] ?? 0, fr) : s.values[0];
+    const q = (o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1) * clamp((t - o.at) / .35); if (q <= 0 || !o.series.length) return;
+    const pal = o.palette || BAR_PALETTE, n = o.years.length, fy = clamp((t - o.at) / o.dur) * (n - 1), i0 = Math.min(Math.max(0, n - 2), Math.floor(fy)), fr = n > 1 ? fy - i0 : 0;
+    const val = s => n > 1 ? lerp(s.values[i0] ?? 0, s.values[i0 + 1] ?? 0, ease(fr)) : s.values[0];
     const rankAt = k => [...o.series].sort((a, b) => (b.values[k] ?? 0) - (a.values[k] ?? 0)).map(s => s.name);
-    const ra = rankAt(i0), rb = rankAt(Math.min(n - 1, i0 + 1)), e = ease(clamp((fr - .15) / .7));
-    const rows = o.series.map(s => ({ s, v: val(s), r: lerp(ra.indexOf(s.name), rb.indexOf(s.name), e) })).filter(x => x.r < o.top - .02);
-    const max = Math.max(...rows.map(x => x.v), 1e-9), X0 = o.x0 * W, X1 = o.x1 * W, Y0 = o.y0 * H, Y1 = o.y1 * H, rh = (Y1 - Y0) / o.top, px = o.size * TS();
-    const { g, c } = stkCtx(o, 'barRace'); c.save(); c.globalAlpha = q;
-    if (o.plate) { c.fillStyle = o.plate; c.beginPath(); c.roundRect(X0 - px * .6, Y0 - px * (o.title ? 2.2 : .8), X1 - X0 + px * 1.2, Y1 - Y0 + px * (o.title ? 5.2 : 3.8), px * .5); c.fill(); }
-    if (o.title) { c.font = fontCss({ font: 'display', weight: 800, size: o.size * 1.3 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(o.title, X0, Y0 - px * .9); }
-    for (const { s, v, r } of rows) {
-      const y = Y0 + r * rh, w = (X1 - X0) * .62 * v / max, a = clamp((o.top - r) * 1.5);
-      c.globalAlpha = q * a; c.fillStyle = s.color || '#4FA3FF'; c.beginPath(); c.roundRect(X0, y + rh * .12, Math.max(4, w), rh * .76, rh * .16); c.fill();
-      // the name inside the bar when it fits, else just after it; the value always follows
-      c.font = fontCss({ font: 'display', weight: 700, size: o.size }); c.textBaseline = 'middle'; c.textAlign = 'left'; const nw = c.measureText(s.name).width, inside = nw + px < w;
-      c.fillStyle = '#FFFFFF'; c.fillText(s.name, inside ? X0 + px * .4 : X0 + w + px * .3, y + rh / 2);
-      const vt = fmtNum(v, 10 ** -o.decimals) + (o.unit ? ' ' + o.unit : ''); c.font = fontCss({ font: 'display', weight: 800, size: o.size * .9 });
-      c.fillStyle = '#FFE58A'; c.fillText(vt, inside ? X0 + w + px * .3 : X0 + w + px * .6 + nw, y + rh / 2);
+    const ra = rankAt(i0), rb = rankAt(Math.min(n - 1, i0 + 1)), e = ease(clamp((fr - .1) / .6));
+    const rows = o.series.map((s, k) => ({ s, k, v: val(s), r: lerp(ra.indexOf(s.name), rb.indexOf(s.name), e) })).filter(x => x.r < o.top - .02);
+    const max = Math.max(...rows.map(x => x.v), 1e-9), px = o.size * TS(), u = US();
+    const { g, c } = stkCtx(o, 'barRace'); c.save(); c.globalAlpha = q; c.textBaseline = 'middle';
+    // the plate (the same family as the era readout: dark glass, an accent line under it)
+    const titleH = o.title ? px * 2 : px * .6, PX0 = o.x0 * W, PX1 = o.x1 * W, PY0 = o.y0 * H - titleH, PY1 = o.y1 * H + px * 1.6, ov = o.style !== 'plate';
+    if (ov) {   // overlay: no box, only a very soft darkening behind the chart so white reads on a bright picture
+      const sc = c.createRadialGradient((PX0 + PX1) / 2, (PY0 + PY1) / 2, 0, (PX0 + PX1) / 2, (PY0 + PY1) / 2, (PX1 - PX0) * .75);
+      sc.addColorStop(0, 'rgba(8,10,16,.34)'); sc.addColorStop(1, 'rgba(8,10,16,0)'); c.fillStyle = sc; c.fillRect(0, 0, W, H);
+      c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 2 * u;
+    } else {
+      c.fillStyle = o.plate; c.beginPath(); c.roundRect(PX0, PY0, PX1 - PX0, PY1 - PY0, px * .5); c.fill();
+      c.fillStyle = o.accent; c.fillRect(PX0 + px * .5, PY1 - px * .12, PX1 - PX0 - px, px * .06);
     }
-    // the year: large, under the bars on the right; the source: small, on the left of the same line
-    c.globalAlpha = q; c.font = fontCss({ font: 'display', weight: 800, size: o.size * 2.2 }); c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillStyle = 'rgba(255,255,255,.9)';
-    c.fillText(String(Math.round(lerp(o.years[i0], o.years[Math.min(n - 1, i0 + 1)], fr))), X1, Y1 + px * 2.6);
-    if (o.source) { c.font = fontCss({ font: 'body', weight: 500, size: o.size * .55 }); c.textAlign = 'left'; c.fillStyle = 'rgba(255,255,255,.75)'; c.fillText('ที่มา: ' + o.source, X0, Y1 + px * 2.6); }
+    if (o.title) { c.font = fontCss({ font: 'display', weight: 800, size: o.size * 1.15 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left'; c.fillText(o.title, PX0 + px * .8, PY0 + px * 1.05); }
+    // the column of names, the bar field, the scale
+    c.font = fontCss({ font: 'display', weight: 700, size: o.size }); const nameW = Math.max(...o.series.map(s => c.measureText(s.name).width)) + px * .6;
+    const X0 = PX0 + px * .8 + nameW, X1 = PX1 - px * 3.6, Y0 = o.y0 * H, Y1 = o.y1 * H, rh = (Y1 - Y0) / o.top, bh = rh * (ov ? .58 : .62);
+    const yr = Math.round(lerp(o.years[i0], o.years[Math.min(n - 1, i0 + 1)], fr));
+    c.save(); c.font = fontCss({ font: 'display', weight: 800, size: o.size * 3.2 }); c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillStyle = ov ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.12)'; c.fillText(String(yr), PX1 - px * .7, Y1 - px * .1); c.restore();
+    const step = niceStep(max / 4); c.font = fontCss({ font: 'body', weight: 500, size: o.size * .5 }); c.textAlign = 'center';
+    for (let v = step; v < max * 1.02; v += step) { const x = X0 + (X1 - X0) * v / max; c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(x, Y0, 1, Y1 - Y0); c.fillStyle = 'rgba(255,255,255,.4)'; c.fillText(fmtNum(v), x, Y0 - px * .35); }
+    for (const { s, k, v, r } of rows) {
+      const y = Y0 + r * rh + rh / 2, w = Math.max(bh * (ov ? .45 : 1), (X1 - X0) * v / max), col = s.color || pal[k % pal.length], a = clamp((o.top - r) * 1.5);
+      c.globalAlpha = q * a;
+      c.fillStyle = '#FFFFFF'; c.font = fontCss({ font: 'display', weight: 700, size: o.size }); c.textAlign = 'right'; c.fillText(s.name, X0 - px * .4, y);
+      const vt = fmtNum(v, 10 ** -o.decimals) + (o.unit ? ' ' + o.unit : '');
+      if (ov) {   // white bar, solid, with a soft shadow; the value in bold white just after it
+        c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 12 * u; c.shadowOffsetY = 3 * u; c.fillStyle = 'rgba(255,255,255,.94)'; c.beginPath(); c.roundRect(X0, y - bh / 2, w, bh, bh * .22); c.fill(); c.restore();
+        c.font = fontCss({ font: 'display', weight: 800, size: o.size * .95 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left'; c.fillText(vt, X0 + w + px * .35, y + px * .02);
+        continue;
+      }
+      const gr = c.createLinearGradient(X0, 0, X0 + w, 0); gr.addColorStop(0, shade(col, -.18)); gr.addColorStop(1, shade(col, .12));
+      c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 8 * u; c.shadowOffsetY = 3 * u; c.fillStyle = gr; c.beginPath(); c.roundRect(X0, y - bh / 2, w, bh, bh / 2); c.fill(); c.restore();
+      c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.roundRect(X0 + bh * .25, y - bh / 2 + bh * .12, Math.max(0, w - bh * .5), bh * .22, bh * .11); c.fill();   // a soft sheen
+      c.font = fontCss({ font: 'display', weight: 800, size: o.size * .82 }); const vw = c.measureText(vt).width;
+      c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.roundRect(X0 + w + px * .3, y - px * .5, vw + px * .6, px, px * .5); c.fill();
+      c.fillStyle = shade(col, -.45); c.textAlign = 'left'; c.fillText(vt, X0 + w + px * .6, y + px * .02);
+    }
+    c.globalAlpha = q;
+    if (o.source) { c.font = fontCss({ font: 'body', weight: 500, size: o.size * .5 }); c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText('ที่มา: ' + o.source, PX0 + px * .8, PY1 - px * .45); }
     c.restore(); stkBlit(g);
   },
-  demo: { bg: '#1A1D26', after: [['barRace', { at: .1, dur: 2.4, years: [2000, 2010, 2020], title: 'ตัวอย่าง (ข้อมูลสมมติ)', source: 'demo data', series: [{ name: 'A', color: '#E5484D', values: [10, 30, 45] }, { name: 'B', color: '#3D7DD8', values: [25, 28, 30] }, { name: 'C', color: '#46A758', values: [18, 35, 60] }] }]] },
+  demo: { bg: '#1A1D26', after: [['barRace', { at: .1, dur: 2.4, years: [2000, 2010, 2020], title: 'ตัวอย่าง (ข้อมูลสมมติ)', source: 'demo data', series: [{ name: 'A', values: [10, 30, 45] }, { name: 'B', values: [25, 28, 30] }, { name: 'C', values: [18, 35, 60] }] }]] },
 });

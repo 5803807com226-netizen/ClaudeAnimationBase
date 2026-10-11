@@ -8,8 +8,13 @@
  "tolerance_seconds": 2,
  "strategy": {
   "name": "deep time documentary",
-  "look": "cinematic",
-  "background": "#05060A"
+  "look": "documentary",
+  "background": "#05060A",
+  "map": {
+   "style": "physical",
+   "saturate": 1.08,
+   "brightness": 1.04
+  }
  },
  "audio": {},
  "subtitles": true,
@@ -435,7 +440,7 @@
       "radius": 150,
       "spread": 70,
       "shake": 22,
-      "flash": 0.6
+      "flash": 0.3
      }
     },
     {
@@ -991,16 +996,15 @@
        2020
       ],
       "top": 6,
-      "unit": "ล้านคน",
+      "unit": "",
       "title": "ประชากร (ล้านคน)",
       "source": "UN WPP 2022 (ปัดเศษ)",
-      "y0": 0.26,
-      "y1": 0.62,
-      "size": 34,
+      "y0": 0.28,
+      "y1": 0.64,
+      "size": 32,
       "series": [
        {
         "name": "จีน",
-        "color": "#E5484D",
         "values": [
          544,
          982,
@@ -1010,7 +1014,6 @@
        },
        {
         "name": "อินเดีย",
-        "color": "#FF9F43",
         "values": [
          357,
          697,
@@ -1020,7 +1023,6 @@
        },
        {
         "name": "สหรัฐฯ",
-        "color": "#3D7DD8",
         "values": [
          159,
          229,
@@ -1030,7 +1032,6 @@
        },
        {
         "name": "อินโดนีเซีย",
-        "color": "#46A758",
         "values": [
          69,
          147,
@@ -1040,7 +1041,6 @@
        },
        {
         "name": "บราซิล",
-        "color": "#2BB5A0",
         "values": [
          54,
          122,
@@ -1050,7 +1050,6 @@
        },
        {
         "name": "ปากีสถาน",
-        "color": "#8E6CEF",
         "values": [
          37,
          80,
@@ -1060,7 +1059,6 @@
        },
        {
         "name": "ไนจีเรีย",
-        "color": "#C9A227",
         "values": [
          37,
          73,

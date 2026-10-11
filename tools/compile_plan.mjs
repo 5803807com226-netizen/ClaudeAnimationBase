@@ -118,6 +118,10 @@ function checkLayer(L, len, prov, errors, subs) {
   }
   if (GEO_AREAS && cap.assets?.some(a => a.type === 'geo')) for (const n of [...(Array.isArray(params.units) && params.units.length ? params.units : params.name != null ? [params.name] : []), ...(Array.isArray(params.steps) ? params.steps.flatMap(s => s.units || []) : [])])
     if (!GEO_AREAS.has(n)) errors.push(`${L.id}: blocked:unknown_area "${n}" (countries: Natural Earth English names; provinces "<ISO3>/<name>"; closest: ${areaHint(n)})`);
+  // one map look per story: strategy.map (e.g. { "style": "physical", "saturate": 1.1 }) is applied to every mapBase, so
+  // shots never jump between a bright atlas and a dark satellite picture. A layer keeps its own with "theme": false.
+  if (cap.id === 'mapBase' && M.strategy?.map && params.theme !== false) params = { ...params, ...M.strategy.map };
+  delete params.theme;
   for (const [k, v] of Object.entries(params)) {
     const S = cap.params[k];
     if (!S) { errors.push(`${L.id}: blocked:invalid_param "${k}" (not a parameter of ${cap.id}; has ${Object.keys(cap.params).join(', ')})`); continue; }
