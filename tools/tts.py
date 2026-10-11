@@ -39,8 +39,12 @@ def ff(*a): r = subprocess.run(['ffmpeg', '-v', 'error', '-y', *a], capture_outp
 def dur(f): return float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], capture_output=True, text=True).stdout.strip() or 0)
 
 def edge(text, path):
-    import asyncio, edge_tts
-    asyncio.run(edge_tts.Communicate(text, VOICE, rate=RATE).save(path))
+    import asyncio, time, edge_tts
+    for attempt in range(8):   # the service often answers a line with no audio; a retry gets it
+        try: return asyncio.run(edge_tts.Communicate(text, VOICE, rate=RATE).save(path))
+        except edge_tts.exceptions.NoAudioReceived:
+            if attempt == 7: raise
+            time.sleep(min(1 + attempt, 4))
 
 def sapi(text, path):
     if os.name != 'nt': raise RuntimeError('sapi needs Windows')
