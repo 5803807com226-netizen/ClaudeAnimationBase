@@ -99,7 +99,7 @@
   <div class="navfoot"><button onclick="quit()">⏻ ปิดโปรแกรม</button></div>
 </nav>
 <div class="main">
-  <div class="top"><div><h1 id="ptitle">หน้าหลัก</h1><div class="sub" id="psub"></div></div><span class="sp"></span><span id="b-claude" class="pill">Claude…</span><span id="b-comfy" class="pill">ComfyUI…</span></div>
+  <div class="top"><div><h1 id="ptitle">หน้าหลัก</h1><div class="sub" id="psub"></div></div><span class="sp"></span><a id="b-update" class="pill ok" href="#settings" hidden></a><span id="b-claude" class="pill">Claude…</span><span id="b-comfy" class="pill">ComfyUI…</span></div>
   <div class="content" id="page"></div>
 </div>
 <div class="jobbar" id="jobbar">
@@ -239,11 +239,25 @@ VIEWS.settings = async () => {
       <div><label>โหมดกราฟิก</label><select id="s-renderFlags"><option value="">การ์ดจอ (เร็ว ค่าเริ่มต้น)</option><option value="--soft-gl" ${(s.renderFlags || []).includes('--soft-gl') ? 'selected' : ''}>ซอฟต์แวร์ (ช้า ใช้เมื่อเรนเดอร์ไม่ขึ้น)</option></select></div>
     </div>
     ${s.hasApiKey ? '<div class="alert info">มี API key ในไฟล์ตั้งค่า (ไม่แสดงเพื่อความปลอดภัย)</div>' : ''}
-    <div class="bar"><span class="sp"></span><button class="b dark" onclick="saveSettings()">บันทึก</button></div></div>`;
+    <div class="bar"><label class="chk"><input type="checkbox" id="s-autoUpdate" ${s.autoUpdate === false ? '' : 'checked'}> อัปเดตอัตโนมัติทุกครั้งที่เปิดโปรแกรม</label><span class="sp"></span><button class="b dark" onclick="saveSettings()">บันทึก</button></div></div>
+  <div class="card" id="upd"><h2>อัปเดตโปรแกรม</h2><div class="muted">กำลังตรวจหาอัปเดตจาก GitHub…</div></div>`;
+  drawUpdate(true);
 };
+async function drawUpdate(fresh) {
+  const g = await api('/api/ws/update' + (fresh ? '?fresh=1' : '')), el = $('#upd'); showUpdatePill(g); if (!el) return;
+  if (!g.git) { el.innerHTML = '<h2>อัปเดตโปรแกรม</h2><div class="alert warn">โฟลเดอร์นี้ไม่ได้ติดตั้งด้วย git (เช่น แตกจาก zip) จึงอัปเดตเองไม่ได้ · ติดตั้งใหม่ด้วย git clone แล้วจะอัปเดตได้ด้วยปุ่มเดียว</div>'; return; }
+  el.innerHTML = `<h2>อัปเดตโปรแกรม</h2><p class="lead">ดึงงานใหม่ที่ Claude ส่งขึ้น GitHub มาลงเครื่องนี้ · ไม่แตะโปรเจกต์ การตั้งค่า และไฟล์ที่คุณแก้เอง</p>
+    <div class="muted">สาขา <b>${esc(g.branch)}</b> · ตอนนี้: ${esc(g.head)}</div>
+    ${g.fetchError ? `<div class="alert warn">ติดต่อ GitHub ไม่ได้: ${esc(g.fetchError)}</div>` : g.behind.length ? `<div class="alert info"><b>มีอัปเดตใหม่ ${g.behind.length} รายการ</b>${g.behind.slice(0, 8).map(c => `<div class="small">• ${esc(c)}</div>`).join('')}</div>` : '<div class="alert ok">เป็นเวอร์ชันล่าสุดแล้ว</div>'}
+    ${g.dirty.length ? `<div class="alert warn small">มีไฟล์ที่แก้ไว้ในเครื่อง ${g.dirty.length} ไฟล์ (${esc(g.dirty.slice(0, 4).join(', '))}${g.dirty.length > 4 ? ', …' : ''}): ถ้าอัปเดตแล้วชนกัน ระบบจะหยุดและไม่ทับไฟล์ของคุณ</div>` : ''}
+    <div class="bar"><button class="b" onclick="drawUpdate(true)">ตรวจอีกครั้ง</button><span class="sp"></span><button class="b primary" ${g.behind.length ? '' : 'disabled'} onclick="runUpdate()">อัปเดตตอนนี้</button></div>`;
+}
+function showUpdatePill(g) { const b = $('#b-update'); if (g?.behind?.length) { b.hidden = false; b.textContent = `มีอัปเดตใหม่ (${g.behind.length})`; } else b.hidden = true; }
+function runUpdate() { runTool({ tool: 'update' }, async () => { toast('อัปเดตแล้ว กำลังเริ่มโปรแกรมใหม่…'); await api('/api/ws/restart', 'POST').catch(() => {});
+  for (let i = 0; i < 40; i++) { await new Promise(r => setTimeout(r, 1000)); try { await api('/api/state'); location.reload(); return; } catch {} } toast('เปิดโปรแกรมใหม่ไม่สำเร็จ: ดับเบิลคลิก AnimationStudio.vbs'); }); }
 async function saveSettings() {
   const v = k => $('#s-' + k).value.trim();
-  await api('/api/ws/settings', 'POST', { python: v('python'), comfyEngines: v('comfyEngines'), autocinematic: v('autocinematic'), claudeModel: v('claudeModel'), renderFlags: v('renderFlags') ? [v('renderFlags')] : '' });
+  await api('/api/ws/settings', 'POST', { python: v('python'), comfyEngines: v('comfyEngines'), autocinematic: v('autocinematic'), claudeModel: v('claudeModel'), renderFlags: v('renderFlags') ? [v('renderFlags')] : '', autoUpdate: $('#s-autoUpdate').checked ? '' : false });
   toast('บันทึกแล้ว'); refreshHealth(true); refreshState();
 }
 
@@ -452,6 +466,7 @@ async function quit() { if (!confirm('ปิดโปรแกรมสตูด
 (async () => {
   const p = new URLSearchParams(location.search).get('p'); if (p && !location.hash) location.hash = '#projects/' + p;
   await refreshState(); refreshHealth().catch(() => {}); route(); pollJob();
+  api('/api/ws/update').then(showUpdatePill).catch(() => {});
   setInterval(() => { if (!$('#rig')) refreshHealth().catch(() => {}); }, 20000);
 })();
 </script>

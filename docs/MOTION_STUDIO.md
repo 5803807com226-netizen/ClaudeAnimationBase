@@ -66,6 +66,12 @@ The sidebar groups the pages:
 | | ตรวจสุขภาพระบบ | `tools/audit_windows.mjs` with selectable steps; the latest report as a table |
 | | ตั้งค่า | `studio/config.local.json` (python, ComfyUI engines file, AutoCinematic folder, model, graphics mode); only these keys are written, and the API key is never shown |
 
+**Updates.** The studio updates itself from GitHub; nothing has to be copied by hand.
+- `AnimationStudio.vbs` and `MotionStudio.bat` run `git pull --ff-only` before they start, and `npm install` when the packages changed. Turn this off with `"autoUpdate": false` (ตั้งค่า page).
+- The ตั้งค่า page lists the new commits waiting on GitHub, and the header shows **มีอัปเดตใหม่ (n)**. **อัปเดตตอนนี้** pulls them and restarts the studio.
+- An update is only ever a fast-forward. Projects and settings are not in git, and a file you edited yourself is never overwritten: the update stops and says which file conflicts.
+- The folder must be a git clone; a zip copy can't update itself.
+
 One job runs at a time. The bar at the bottom of every page shows it, opens its live log, and stops it. Server side: `studio/workspace.mjs`. It only runs the existing tools (a whitelist) and reads the files they write.
 
 ## Settings: `studio/config.local.json`

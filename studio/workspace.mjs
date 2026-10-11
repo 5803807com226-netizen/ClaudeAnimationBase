@@ -10,7 +10,7 @@
 //   GET|POST /api/ws/settings   studio/config.local.json (merged, whitelisted keys; the API key is never sent back)
 //   POST /api/ws/run         { tool, ... } one whitelisted tool as a job      POST /api/ws/shutdown   quit the program
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { resolve, basename, extname } from 'node:path';
 import { ACTION_CATALOG, ACTION_LAYERS } from '../tools/action/plan.mjs';
 
@@ -19,7 +19,22 @@ const rj = (f, d = null) => { try { return JSON.parse(readFileSync(f, 'utf8')); 
 const url = f => `/files/${f.replace(/\\/g, '/')}?v=${Math.round(statSync(f).mtimeMs)}`;
 const okId = id => /^[a-z0-9][a-z0-9_]{0,40}$/.test(id || '');
 const ls = d => existsSync(d) ? readdirSync(d) : [];
-const SETTINGS = ['python', 'comfyEngines', 'claudeModel', 'provider', 'autocinematic', 'renderFlags', 'footageWidth'];
+const SETTINGS = ['python', 'comfyEngines', 'claudeModel', 'provider', 'autocinematic', 'renderFlags', 'footageWidth', 'autoUpdate'];
+
+// self-update from GitHub: the program is this git checkout; new work pushed to its branch arrives with a fast-forward
+// pull (never a merge or a reset: local edits are kept, and a pull that would touch them is refused). Projects and
+// settings are not in git, so an update never changes them.
+let GITINFO = null;
+const git = (a, timeout = 30000) => { const r = spawnSync('git', a, { encoding: 'utf8', timeout }); return { ok: r.status === 0, out: ((r.stdout || '') + (r.stderr || '')).trim() }; };
+function gitInfo(fresh) {
+  if (GITINFO && !fresh && Date.now() - GITINFO.at < 10 * 60000) return GITINFO;
+  if (!existsSync('.git')) return (GITINFO = { at: Date.now(), git: false });
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).out, head = git(['log', '-1', '--format=%h %s']).out;
+  const f = git(['fetch', '--quiet', 'origin', branch], 45000);
+  const behind = f.ok ? git(['log', '--format=%h %ad %s', '--date=format:%d/%m %H:%M', `HEAD..origin/${branch}`]).out.split('\n').filter(Boolean) : [];
+  const dirty = (spawnSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).stdout || '').split('\n').filter(Boolean).map(l => l.slice(3));   // untrimmed: the status column starts with a space
+  return (GITINFO = { at: Date.now(), git: true, branch, head, behind, dirty, fetchError: f.ok ? null : f.out.split('\n').pop() });
+}
 const CFG_FILE = 'studio/config.local.json';
 
 // quick, bounded probes of the programs the studio drives
@@ -161,6 +176,13 @@ function toolSteps(b, { run, PY, RF, cfg }) {
       const ac = cfg().autocinematic;
       return [['ตรวจสุขภาพระบบ', () => run('node', ['tools/audit_windows.mjs', `--python=${PY()}`, ...(steps.length ? [`--only=${steps.join(',')}`] : []), ...(b.claudeCall ? ['--claude-call'] : []), ...(ac ? [`--autocinematic=${ac}`] : []), ...RF()], { allowFail: true })]];
     }
+    case 'update': {
+      const npm = process.platform === 'win32' ? ['cmd', ['/c', 'npm', 'install', '--no-audit', '--no-fund']] : ['npm', ['install', '--no-audit', '--no-fund']];
+      const lockTime = () => existsSync('package-lock.json') ? statSync('package-lock.json').mtimeMs : 0;
+      let before = 0;
+      return [['ดึงงานใหม่จาก GitHub', async () => { before = lockTime(); await run('git', ['fetch', 'origin']); await run('git', ['pull', '--ff-only']); GITINFO = null; }],
+        ['ติดตั้งแพ็กเกจที่เปลี่ยน (ถ้ามี)', async () => { if (lockTime() !== before || !existsSync('node_modules')) await run(...npm); }]];
+    }
     case 'sfx': return [['สร้างชุดเสียงประกอบเริ่มต้น', () => run(PY(), ['tools/make_sfx.py'])]];
     case 'catalog': return [['อ่านความสามารถของเอนจินใหม่', () => run('node', ['tools/capabilities.mjs', '--out=out/capabilities.json', ...RF()])]];
     default: throw new Error('ไม่รู้จักคำสั่ง ' + t);
@@ -179,6 +201,12 @@ export async function handleWorkspace(p, req, res, ctx) {
   if (r === 'images') { send(res, 200, images()); return true; }
   if (r === 'rigs') { send(res, 200, rigs()); return true; }
   if (r === 'audit') { send(res, 200, latestAudit()); return true; }
+  if (r === 'update') { send(res, 200, gitInfo(new URL(req.url, 'http://x').searchParams.has('fresh'))); return true; }
+  if (r === 'restart' && req.method === 'POST') {   // start a new studio once this one has let go of the port, then quit
+    send(res, 200, { ok: true });
+    const relaunch = `setTimeout(() => require('child_process').spawn(process.execPath, ${JSON.stringify(['studio/server.mjs', ...process.argv.slice(2).filter(a => a !== '--no-open'), '--no-open'])}, { detached: true, stdio: 'ignore', cwd: ${JSON.stringify(process.cwd())} }).unref(), 1500)`;
+    spawn(process.execPath, ['-e', relaunch], { detached: true, stdio: 'ignore' }).unref(); setTimeout(() => process.exit(0), 300); return true;
+  }
   if (r === 'settings') {
     if (req.method === 'POST') {
       const b = await body(req), cur = rj(CFG_FILE, {});

@@ -1,7 +1,9 @@
 @echo off
 rem Motion Studio with a console window (shows the server log). Without a window: double-click AnimationStudio.vbs
+rem Before it starts: pulls the newest version from GitHub (unless "autoUpdate": false in studio\config.local.json).
 cd /d "%~dp0"
 where node >NUL 2>NUL || (echo Node.js is not installed: https://nodejs.org & pause & exit /b 1)
+if exist .git (findstr /r /c:"\"autoUpdate\": *false" studio\config.local.json >NUL 2>NUL || git pull --ff-only)
 if not exist node_modules\@anthropic-ai\sdk (echo Installing packages... & call npm install)
 node studio\server.mjs
 pause
