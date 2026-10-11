@@ -22,7 +22,7 @@ const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16'
   barChart: ['9:16', '16:9', '4:5'], lineChart: ['9:16', '16:9', '4:5'], donutChart: ['9:16', '16:9', '4:5'],
   timeline: ['9:16', '16:9', '4:5'], iconGrid: ['9:16', '16:9', '4:5'], callout: ['9:16', '16:9', '4:5'],
   // map documentary kit (fixture: aspect_test target map_doc_kit, the Siam showcase plan; production formats) and stickers (their gallery demos)
-  mapTransfer: ['9:16', '16:9'], mapHighlight: ['9:16', '16:9'], mapPin: ['9:16', '16:9'],
+  mapTransfer: ['9:16', '16:9'], mapHighlight: ['9:16', '16:9'], mapPin: ['9:16', '16:9'], mapArrow: ['9:16', '16:9', '4:5'],
   sticker: ['9:16', '16:9', '4:5'], dateCard: ['9:16', '16:9', '4:5'], chapterBadge: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;

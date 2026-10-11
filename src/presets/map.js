@@ -2,6 +2,7 @@
 // @requires node_modules/d3-geo/dist/d3-geo.min.js
 // @requires src/geo/land_50m.js
 // @requires src/geo/countries_50m.js
+// @requires src/geo/countries_10m.js
 // @requires src/geo/relief_mercator.js
 // @requires src/geo/tiles_satellite.js
 // @requires src/geo/tiles_physical.js
@@ -109,7 +110,9 @@ definePreset('mapView', {
     }
     if (!MAP.g) { MAP.g = createGraphics(W, H); MAP.g.pixelDensity(1); MAP.ctx = MAP.g.drawingContext; }
     MAP.ctx.setTransform(1, 0, 0, 1, 0, 0); MAP.ctx.clearRect(0, 0, W, H); MAP.ctx.globalAlpha = 1;
+    MAP.obst = []; MAP.labels = [];
     if (inner) inner();
+    mapPlaceLabels();
     if (blurPx > .5) {
       if (!MAP.tmp) { MAP.tmp = document.createElement('canvas'); MAP.tmp.width = W; MAP.tmp.height = H; }
       const x = MAP.tmp.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(MAP.ctx.canvas, 0, 0);
@@ -133,10 +136,11 @@ definePreset('mapBase', {
       const X = MAP.ras[o.style];
       if (!X) throw new Error(`mapBase ${o.style} needs its raster (python tools/geo_raster_hi.py --style ${o.style})`);
       const filt = o.saturate !== 1 || o.brightness !== 1 || o.contrast !== 1 ? `saturate(${o.saturate}) brightness(${o.brightness}) contrast(${o.contrast})` : 'none';
-      if (MAP.proj.clipAngle && MAP.proj.clipAngle()) { const L = mapLevel(X); if (L) mapGlobeHi(c, X, L, filt); else mapGlobeRaster(c, X, filt); if (o.coastWidth > 0) { c.beginPath(); path(land); c.strokeStyle = o.coast; c.globalAlpha = .35; c.lineWidth = o.coastWidth * u; c.stroke(); c.globalAlpha = 1; } return; }
+      // the raster has its own crisp coastline: a vector coast (1:50m) over it would only blur it
+      if (MAP.proj.clipAngle && MAP.proj.clipAngle()) { const L = mapLevel(X); if (L) mapGlobeHi(c, X, L, filt); else mapGlobeRaster(c, X, filt); return; }
       if (!MAP_IS_MERC(MAP.proj)) throw new Error(`mapBase ${o.style} needs mapView projection "mercator" or "orthographic"`);
       c.save(); c.filter = filt;
-      const L = mapLevel(X); if (L) { mapHiTiles(c, X, L); c.restore(); if (o.coastWidth > 0) { c.beginPath(); path(land); c.strokeStyle = o.coast; c.globalAlpha = .35; c.lineWidth = o.coastWidth * u; c.stroke(); c.globalAlpha = 1; } return; }
+      const L = mapLevel(X); if (L) { mapHiTiles(c, X, L); c.restore(); return; }
       const R = X.R, [IW, IH] = R.size, ym = Math.log(Math.tan(Math.PI / 4 + R.lat * Math.PI / 360)), f = MAP.proj.scale() * 2 * Math.PI / IW;
       const lam = -MAP.proj.rotate()[0], a = MAP.proj([lam, 0]), ix = (lam + 180) / 360 * IW, iy = ym / (2 * ym) * IH;
       for (const k of [-1, 0, 1]) {
@@ -145,7 +149,6 @@ definePreset('mapBase', {
         if (sx1 > sx0 && sy1 > sy0) c.drawImage(X.img.canvas || X.img.elt, sx0, sy0, sx1 - sx0, sy1 - sy0, dx + sx0 * f, dy + sy0 * f, (sx1 - sx0) * f, (sy1 - sy0) * f);
       }
       c.restore();
-      if (o.coastWidth > 0) { c.beginPath(); path(land); c.strokeStyle = o.coast; c.globalAlpha = .35; c.lineWidth = o.coastWidth * u; c.stroke(); c.globalAlpha = 1; }
       return;
     }
     c.fillStyle = o.ocean;   // a globe fills only its sphere; flat projections fill the frame edge to edge
@@ -307,13 +310,55 @@ definePreset('routeDraw', {
   },
 });
 
+// the military campaign arrow: a thick tapered arrow in a side's colour grows from where an advance starts to its
+// target, along sourced waypoints (two points + bend: one smooth curve on screen); white edge and drop shadow
+definePreset('mapArrow', {
+  label: 'Map Attack Arrow', about: 'an advance, invasion or offensive: a thick tapered arrow in the side\'s colour grows from the start to the target (coords: sourced [lon, lat] waypoints; with two points, bend curves it), white edge and soft shadow; one arrow says "who attacks where" without any text',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'arrow', 'attack', 'invasion', 'offensive', 'advance', 'campaign', 'war', 'military', 'front', 'landing'],
+    params: { width: { min: 8, max: 120 }, bend: { min: -1, max: 1 }, alpha: { min: 0, max: 1 } }, assets: [{ param: 'coords', type: 'route' }], layers: ['overlay'] },
+  defaults: { coords: [[13.4, 52.5], [21, 52.2]], bend: .25, width: 34, color: '#B3302B', edge: '#FFFFFF', alpha: .95, out: null, outDur: .4, ease: 'easeInOut', dur: 1 },
+  run(t, o) {
+    const k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1; if (k <= 0 || q <= 0) return;
+    const c = mapCtx(), u = US(), Wd = o.width * u;
+    // screen polyline: two points → a quadratic curve bent sideways; more → the densified route
+    let P;
+    if (o.coords.length === 2) {
+      const a = mapPt(o.coords[0]), b = mapPt(o.coords[1]); if (!a || !b) return;
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), cx = mx - dy / (L || 1) * L * .35 * o.bend, cy = my + dx / (L || 1) * L * .35 * o.bend;
+      P = []; for (let i = 0; i <= 48; i++) { const s = i / 48; P.push([(1 - s) ** 2 * a[0] + 2 * (1 - s) * s * cx + s * s * b[0], (1 - s) ** 2 * a[1] + 2 * (1 - s) * s * cy + s * s * b[1]]); }
+    } else { P = routeOf(o.coords).P.map(mapPt).filter(Boolean); if (P.length < 2) return; }
+    const D = [0]; for (let i = 1; i < P.length; i++) D.push(D[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+    const total = D.at(-1), end = total * k, hl = Math.min(Wd * 1.9, end * .6); if (end < 2) return;
+    const at = d => { let i = 1; while (i < D.length - 1 && D[i] < d) i++; const f = (d - D[i - 1]) / ((D[i] - D[i - 1]) || 1); return [lerp(P[i - 1][0], P[i][0], f), lerp(P[i - 1][1], P[i][1], f)]; };
+    const dirAt = d => { const p0 = at(Math.max(0, d - 2)), p1 = at(Math.min(total, d + 2)), L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1; return [(p1[0] - p0[0]) / L, (p1[1] - p0[1]) / L]; };
+    const bodyEnd = end - hl, N = 40, left = [], right = [];
+    for (let i = 0; i <= N; i++) {   // the body tapers from 45% at the tail to full width at the head's shoulders
+      const d = bodyEnd * i / N, p = at(d), [tx, ty] = dirAt(d), w = Wd * .5 * lerp(.45, 1, i / N);
+      left.push([p[0] - ty * w, p[1] + tx * w]); right.push([p[0] + ty * w, p[1] - tx * w]);
+    }
+    const hb = at(bodyEnd), [tx, ty] = dirAt(bodyEnd), tip = at(end), hw = Wd * 1.05;
+    c.save(); c.globalAlpha = o.alpha * q; c.lineJoin = 'round';
+    c.beginPath(); left.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+    c.lineTo(hb[0] - ty * hw, hb[1] + tx * hw); c.lineTo(tip[0], tip[1]); c.lineTo(hb[0] + ty * hw, hb[1] - tx * hw);
+    for (let i = right.length - 1; i >= 0; i--) c.lineTo(...right[i]); c.closePath();
+    c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 14 * u; c.shadowOffsetY = 6 * u; c.fillStyle = o.color; c.fill();
+    c.shadowColor = 'transparent'; c.lineWidth = 3 * u; c.strokeStyle = o.edge; c.stroke();
+    // a lighter stripe down the middle gives the arrow body some volume
+    c.globalAlpha = .25 * o.alpha * q; c.strokeStyle = '#FFFFFF'; c.lineWidth = Wd * .12; c.beginPath();
+    for (let i = 0; i <= N; i++) { const p = at(bodyEnd * i / N); i ? c.lineTo(...p) : c.moveTo(...p); } c.stroke();
+    c.restore();
+    { const b = [P[0], tip]; for (const p of b) mapObstacle(p[0] - Wd, p[1] - Wd, Wd * 2, Wd * 2); }
+  },
+});
+
 definePreset('mapMarker', {
   label: 'Map Marker', about: 'a place marker pinned to [lon, lat]: pops in (backOut), optional slow pulse ring',
   meta: { version: '1.0.0', category: 'map', tags: ['map', 'place', 'marker', 'city', 'port', 'location', 'pin'], params: { r: { min: 2, max: 60 } }, layers: ['overlay'] },
   defaults: { lonlat: [0, 0], color: '#2B2A3A', ring: '#B4432E', r: 12, pulse: true, ease: 'backOut', dur: .45 },
   run(t, o) {
-    const c = mapCtx(), k = presetK(t, o); if (k <= 0 || !mapVisible(o.lonlat)) return;
+    const c = mapCtx(), k = presetK(t, o); if (!mapVisible(o.lonlat)) return;
     const p = mapPt(o.lonlat); if (!p) return;
+    { const R = (o.r + 4) * US(); mapObstacle(p[0] - R, p[1] - R, 2 * R, 2 * R); } if (k <= 0) return;
     const u = US(), r = o.r * u * Math.max(0, k);
     if (o.pulse && t > o.at + o.dur) { const q = ((t - o.at - o.dur) * .6) % 1; c.beginPath(); c.arc(p[0], p[1], r * (1 + 2.2 * q), 0, TAU); c.globalAlpha = 1 - q; c.strokeStyle = o.ring; c.lineWidth = 2 * u; c.stroke(); c.globalAlpha = 1; }
     c.beginPath(); c.arc(p[0], p[1], r, 0, TAU); c.fillStyle = o.color; c.fill(); c.lineWidth = 2.5 * u; c.strokeStyle = '#FFF8EC'; c.stroke();
@@ -334,18 +379,42 @@ definePreset('mapLabel', {
     // stay readable: the text box is slid inside the frame margins (never clipped by the edge), the pin stays put
     const tw = c.measureText(o.text).width, x0 = { left: 0, center: -tw / 2, right: -tw }[o.align];
     const x = clamp(p[0] + o.dx * u + x0, m, W - m - tw) - x0, y = clamp(p[1] + o.dy * u + (1 - k) * 14 * u, m + o.size * TS(), H - m);
-    if (o.box) {   // a rounded tag behind the text, with a soft shadow
-      const px = o.size * TS(), padX = px * .42, bx = x + x0 - padX, by = y - px * 1.02, bw = tw + padX * 2, bh = px * 1.42;
-      c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 3 * u; c.fillStyle = o.boxColor; c.beginPath(); c.roundRect(bx, by, bw, bh, bh * .3); c.fill(); c.restore();
-    } else if (o.halo) { c.lineWidth = Math.max(3, o.size * .16) * u; c.strokeStyle = o.halo; c.lineJoin = 'round'; c.strokeText(o.text, x, y); }
-    c.fillStyle = o.color; c.fillText(o.text, x, y); c.restore();
+    const font = c.font; c.restore();
+    const px = o.size * TS(), padX = o.box ? px * .42 : px * .1, rect = { x: x + x0 - padX, y: y - px * 1.02, w: tw + padX * 2, h: px * 1.42 };
+    MAP.labels.push({ rect, draw: (ox, oy) => {   // drawn after every other map layer (mapPlaceLabels), moved off pins
+      c.save(); c.globalAlpha = a; c.font = font; c.textAlign = o.align; c.textBaseline = 'alphabetic';
+      if (o.box) {   // a rounded tag behind the text, with a soft shadow
+        c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 3 * u; c.fillStyle = o.boxColor; c.beginPath(); c.roundRect(rect.x + ox, rect.y + oy, rect.w, rect.h, rect.h * .3); c.fill(); c.restore();
+      } else if (o.halo) { c.lineWidth = Math.max(3, o.size * .16) * u; c.strokeStyle = o.halo; c.lineJoin = 'round'; c.strokeText(o.text, x + ox, y + oy); }
+      c.fillStyle = o.color; c.fillText(o.text, x + ox, y + oy); c.restore();
+    } });
   },
 });
+
+// labels never cover a pin, a marker or another label: each label (in layer order) takes the first free spot among
+// small moves around its own place, and labels are drawn last, on top of the map. Pins and markers register their
+// boxes for the whole shot (not only once they have popped in), so a label does not jump when a pin appears.
+const mapHit = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m;
+function mapPlaceLabels() {
+  const placed = [], m = 6 * US(), M = .03 * Math.min(W, H);
+  for (const L of MAP.labels) {
+    const r = L.rect, step = r.h * .6, cands = [[0, 0]];
+    for (let i = 1; i <= 6; i++) cands.push([0, i * step], [0, -i * step], [i * step * 1.4, 0], [-i * step * 1.4, 0], [i * step, i * step], [-i * step, i * step]);
+    let best = [0, 0];
+    for (const [ox, oy] of cands) {
+      const b = { x: r.x + ox, y: r.y + oy, w: r.w, h: r.h };
+      if (b.x < M || b.y < M || b.x + b.w > W - M || b.y + b.h > H - M) continue;
+      if (![...MAP.obst, ...placed].some(o => mapHit(b, o, m))) { best = [ox, oy]; break; }
+    }
+    placed.push({ x: r.x + best[0], y: r.y + best[1], w: r.w, h: r.h }); L.draw(best[0], best[1]);
+  }
+}
+const mapObstacle = (x, y, w, h) => { if (MAP.obst) MAP.obst.push({ x, y, w, h }); };
 
 // a territory's geometries: `units` (countries and "<ISO3>/<province>") or the single country `name`
 function mapUnits(o, who) {
   const list = o.units?.length ? o.units : [o.name];
-  return list.map(n => { const g = String(n).includes('/') ? GEO.admin1?.[n] : GEO.countries50[n];
+  return list.map(n => { const g = String(n).includes('/') ? GEO.admin1?.[n] : GEO.countries10?.[n] || GEO.countries50[n];   // 1:10m borders when present (smooth up close)
     if (!g) throw new Error(`${who}: no area "${n}" (countries: Natural Earth English names, e.g. "Vietnam"; provinces: "<ISO3>/<name>" from src/geo/admin1_10m.js, rebuild with tools/geo_build.mjs --admin1=… --countries=…)`);
     return g; });
 }

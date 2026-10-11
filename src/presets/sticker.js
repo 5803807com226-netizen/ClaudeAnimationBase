@@ -150,7 +150,7 @@ definePreset('dateCard', {
   label: 'Date Card', about: 'a date in history. style ticker (default): an accent bar grows, the year rolls in like an odometer (from the previous date\'s year with `from`), the day and full Thai month slide out beside it; style calendar: a tear-off calendar card (Thai month in a red header, the day large). era ce = ค.ศ., be = พ.ศ., none',
   meta: { version: '1.1.0', category: 'sticker', tags: ['date', 'calendar', 'day', 'year', 'history', 'timeline', 'event', 'documentary', 'odometer', 'counter'], camera: 'screen', layers: ['screen'],
     params: { style: { enum: ['ticker', 'calendar'] }, day: { min: 0, max: 31 }, month: { min: 0, max: 12 }, era: { enum: ['ce', 'be', 'none'] }, size: { min: 60, max: 600 }, align: { enum: ['right', 'left'] } } },
-  defaults: { style: 'ticker', x: .93, y: .1, size: 150, day: 18, month: 4, year: 1855, from: null, era: 'none', align: 'right', header: '#D7312E', accent: '#F2C14E', color: '#FFFFFF', out: null, outDur: .3, ease: 'backOut', dur: .45 },
+  defaults: { style: 'ticker', x: .93, y: .1, size: 150, day: 18, month: 4, year: 1855, from: null, era: 'none', align: 'right', header: '#D7312E', accent: '#F2C14E', color: '#FFFFFF', plate: '#101016', out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
     if (o.style !== 'calendar') return dateTicker(t, o);
     const s = stickerPop(t, o) * stickerOut(t, o); if (s <= .001) return;
@@ -175,7 +175,12 @@ function dateTicker(t, o) {
   const q = stickerOut(t, o), k = clamp((t - o.at) / .9); if (k <= 0 || q <= 0) return;
   const { g, c } = stkCtx(o, 'dateCard'), u = US(), S = o.size / 150, yr = o.era === 'be' ? o.year + 543 : o.year, era = { ce: 'ค.ศ.', be: 'พ.ศ.', none: '' }[o.era];
   const big = 96 * S, small = 36 * S, bar = 7 * S * u, gap = 18 * S * u, R = o.align !== 'left', X = o.x * W, Y = o.y * H;
-  c.save(); c.globalAlpha = q; c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u;
+  c.save(); c.globalAlpha = q;
+  { // a dark plate behind the block (readable over any map); its width follows the year
+    c.font = fontCss({ font: 'display', weight: 800, size: big }); const bw = c.measureText('0').width * String(yr).length + (era ? 80 * S * u : 0) + bar + gap * 2.2, bh = (big + small * 1.25) * TS() * 1.1;
+    const kp = easeOut(clamp(k / .4)); c.save(); c.globalAlpha = .6 * q * kp; c.fillStyle = o.plate; c.beginPath(); c.roundRect(R ? X - bw : X, Y - small * .25 * TS(), bw, bh, 10 * u); c.fill(); c.restore();
+  }
+  c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 2 * u;
   // the accent bar grows downward
   const bh = (big + small * 1.25) * TS() * easeOut(clamp(k / .35)); c.fillStyle = o.accent; c.fillRect(R ? X - bar : X, Y, bar, bh);
   const tx = R ? X - bar - gap : X + bar + gap; c.textAlign = R ? 'right' : 'left'; c.textBaseline = 'alphabetic';
@@ -195,7 +200,7 @@ function dateTicker(t, o) {
   if (o.day || o.month) {
     const txt = [o.day || '', o.month ? TH_MONTHS_FULL[(o.month - 1 + 12) % 12] : ''].filter(Boolean).join(' '), m = easeOut(clamp((k - .25) / .45));
     c.save(); c.beginPath(); R ? c.rect(0, Y - small, tx + 2 * u, small * 2.2 * TS()) : c.rect(tx - 2 * u, Y - small, W, small * 2.2 * TS()); c.clip();
-    c.globalAlpha = q * m; c.fillStyle = o.accent; c.font = fontCss({ font: 'display', weight: 700, size: small }); c.textAlign = R ? 'right' : 'left';
+    c.globalAlpha = q * m; c.fillStyle = o.color; c.font = fontCss({ font: 'display', weight: 700, size: small }); c.textAlign = R ? 'right' : 'left';
     c.fillText(txt, tx + (R ? 1 : -1) * (1 - m) * 80 * u, Y + small * TS() * .95); c.restore();
   }
   c.restore(); stkBlit(g);
@@ -205,7 +210,7 @@ definePreset('chapterBadge', {
   label: 'Chapter Badge', about: 'a chapter title (left aligned). With a number: the number in a coloured disc pops, the title slides in beside it ("reason 1, 2, 3"). number null: no number, a coloured bar grows and the title is revealed from behind it, underlined by a thin line (parts of a story)',
   meta: { version: '1.1.0', category: 'sticker', tags: ['chapter', 'number', 'list', 'step', 'reason', 'part', 'title', 'explainer'], camera: 'screen', layers: ['screen'],
     params: { size: { min: 20, max: 160 } } },
-  defaults: { x: .07, y: .12, number: 1, text: '', size: 54, color: '#FFD43B', ink: '#22202A', textColor: '#FFFFFF', stroke: '#1A1A1A', highlight: '#FFD43B', out: null, outDur: .3, ease: 'backOut', dur: .45 },
+  defaults: { x: .07, y: .12, number: 1, text: '', size: 54, color: '#FFD43B', ink: '#22202A', textColor: '#FFFFFF', stroke: '#1A1A1A', highlight: '#FFD43B', plate: '#101016', out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
     if (o.number == null || o.number === '') return chapterLine(t, o);
     const q = stickerOut(t, o), s = stickerPop(t, o) * q; if (s <= .001) return;
@@ -224,8 +229,8 @@ definePreset('chapterBadge', {
   demo: { bg: '#2E5E7E', after: [['chapterBadge', { at: .3, x: .08, y: .3, number: 1, text: 'ยอม[เปิดการค้า]' }], ['chapterBadge', { at: .6, x: .08, y: .5, number: null, text: 'ปฏิรูป[ประเทศ]', color: '#D7312E' }]] },
 });
 
-// a chapter title without a number: a bar in the chapter colour grows, the title is wiped in from behind it, a thin
-// line underlines it; leaves by wiping back
+// a chapter title without a number: on a dark plate, a bar in the chapter colour grows, the white title is wiped in
+// from behind it and a thin line in the chapter colour underlines it
 function chapterLine(t, o) {
   const q = stickerOut(t, o), k = clamp((t - o.at) / .8); if (k <= 0 || q <= 0) return;
   const { g, c } = stkCtx(o, 'chapterBadge'), u = US(), px = o.size * .82 * TS(), X = o.x * W, Y = o.y * H, bar = .16 * px;
@@ -233,14 +238,16 @@ function chapterLine(t, o) {
   c.save(); c.font = fontCss({ font: 'display', weight: 700, size: o.size * .82 }); c.textBaseline = 'middle'; c.textAlign = 'left';
   const tw = parts.reduce((a, p) => a + c.measureText(p[0] === '[' ? p.slice(1, -1) : p).width, 0);
   const kb = easeOut(clamp(k / .3)) * q, kt = easeOut(clamp((k - .18) / .5)) * q, kl = easeOut(clamp((k - .35) / .5)) * q;
-  c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 12 * u; c.shadowOffsetY = 3 * u;
-  c.fillStyle = o.color; c.fillRect(X, Y - px * .62 * kb, bar, px * 1.24 * kb);   // the bar grows from its middle
-  const x0 = X + bar + .35 * px;
-  c.save(); c.beginPath(); c.rect(X + bar, Y - px, (tw + .5 * px) * kt, px * 2); c.clip();
+  const x0 = X + bar + .4 * px, pw = (tw + .8 * px) * kt;
+  // a dark plate the title sits on (readable over ice, desert or sea), opening with the title
+  c.save(); c.globalAlpha = .62 * q; c.fillStyle = o.plate; c.beginPath(); c.roundRect(X, Y - px * .78, bar + pw, px * 1.56, [0, px * .2, px * .2, 0]); c.fill(); c.restore();
+  c.fillStyle = o.color; c.fillRect(X, Y - px * .78 * kb, bar, px * 1.56 * kb);   // the chapter-colour bar grows from its middle
+  c.save(); c.beginPath(); c.rect(X + bar, Y - px, pw, px * 2); c.clip();
+  c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6 * u; c.shadowOffsetY = 2 * u;
   let x = x0 - (1 - kt) * .6 * px;
-  for (const p of parts) { const hl = p[0] === '[' && p.at(-1) === ']', txt = hl ? p.slice(1, -1) : p; c.fillStyle = hl ? o.highlight : o.textColor; c.fillText(txt, x, Y + px * .04); x += c.measureText(txt).width; }
+  for (const p of parts) { const hl = p[0] === '[' && p.at(-1) === ']', txt = hl ? p.slice(1, -1) : p; c.fillStyle = o.textColor; c.fillText(txt, x, Y + px * .04); x += c.measureText(txt).width; }
   c.restore();
-  c.globalAlpha = .85; c.fillStyle = o.textColor; c.fillRect(x0, Y + px * .62, tw * kl, Math.max(2, .045 * px));   // the underline
+  c.globalAlpha = .9 * q; c.fillStyle = o.color; c.fillRect(x0, Y + px * .5, tw * kl, Math.max(2, .06 * px));   // the underline, in the chapter colour
   c.restore(); stkBlit(g);
 }
 
@@ -253,8 +260,13 @@ definePreset('mapPin', {
   defaults: { lonlat: [0, 0], dx: 0, dy: 0, style: 'card', size: 90, bob: 1, flag: null, icon: null, glyph: null, image: null, color: null, ink: '#FFFFFF', card: true, out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
     if (!mapVisible(o.lonlat)) return; const p = mapPt(o.lonlat); if (!p) return;
+    const u = US(), size = o.size * u, x = p[0] + o.dx * u, y = p[1] + o.dy * u + Math.sin((t - o.at) * 3.2) * 3 * o.bob * u;
+    if (o.out == null || t < o.out + (o.outDur || .3)) {   // its box, for the whole shot: map labels keep off it (map.js mapPlaceLabels)
+      if (o.style === 'pole' && o.flag) mapObstacle(p[0] - 6 * u, p[1] - size * 1.25, size * 1.05, size * 1.25 + 6 * u);
+      else mapObstacle(p[0] + o.dx * u - size * .55, p[1] + o.dy * u - size * .55, size * 1.1, size * 1.1);
+    }
     const s = stickerPop(t, o) * stickerOut(t, o); if (s <= .001) return;
-    const c = mapCtx(), u = US(), size = o.size * u, x = p[0] + o.dx * u, y = p[1] + o.dy * u + Math.sin((t - o.at) * 3.2) * 3 * o.bob * u;
+    const c = mapCtx();
     c.save();
     if (o.style === 'pole' && o.flag) {   // a flag on a pole planted in the place
       const h = size * 1.15, F = FLAGS[o.flag], fh = size * (F?.ratio || .66) * .8;

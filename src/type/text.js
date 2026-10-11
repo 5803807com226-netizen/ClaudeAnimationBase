@@ -13,11 +13,14 @@
 const FONTS = {
   display: { family: 'Kanit', fallback: ['Leelawadee UI', 'Noto Sans Thai', 'Tahoma', 'Loma', 'sans-serif'] },
   body: { family: 'Sarabun', fallback: ['Leelawadee UI', 'Noto Sans Thai', 'Tahoma', 'Loma', 'sans-serif'] },
+  headline: { family: 'Noto Serif Thai', fallback: ['Kanit', 'Leelawadee UI', 'Tahoma', 'serif'] },   // serious documentary headlines
 };
 const THAI_RANGE = 'U+0E01-0E5B, U+200C-200D, U+25CC', LATIN_RANGE = 'U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2212';
-// The bundled open-licence fonts (assets/fonts, SIL OFL): Kanit for display, Sarabun for body text.
+// The bundled open-licence fonts (assets/fonts, SIL OFL): Kanit for display, Sarabun for body text, Noto Serif Thai for
+// headlines (style.font 'headline').
 const BUNDLED_FACES = {
   Kanit: [500, 700, 800].flatMap(w => [{ src: `assets/fonts/kanit-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/kanit-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
+  'Noto Serif Thai': [700, 800].flatMap(w => [{ src: `assets/fonts/noto-serif-thai-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/noto-serif-thai-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
   Sarabun: [400, 600].flatMap(w => [{ src: `assets/fonts/sarabun-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/sarabun-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
 };
 
