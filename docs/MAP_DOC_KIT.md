@@ -56,3 +56,18 @@ A map story shows the people it is about as watercolour illustrations, never as 
 4. In the cloud, only `--mock` stand-ins exist (`out/mock_assets/...`, used with `--assets=`). They test placement and are never the artwork.
 
 Prompts describe people and clothing only. Every negative guards against text, flags, insignia, and Nazi or hate symbols.
+
+## Tokens on the map (`mapTroops`, `mapBomber`)
+
+These are small watercolour cut-outs from the same `artwork` items, acting on the map. The art is a side view facing right, and a token turns to face its direction of travel.
+
+- `mapTroops` shows an army on the move.
+  - A wedge of `count` soldiers (default 3) marches along sourced `coords`.
+  - The soldiers step and sway, with dust at their feet and a ring in the side's colour under them.
+  - On arrival, a pulse ring plays in that colour.
+  - Map labels keep off its start and end points.
+- `mapBomber` shows an air raid.
+  - The aircraft flies at `altitude`, with its shadow on the ground.
+  - Over the `drop` stretch it releases `bombs`. Each bomb falls, then bursts with a flash, a shock ring and smoke.
+
+The effects (dust, bombs, blasts) are drawn, because they are motion. The soldiers and the aircraft are always artwork. Use at most one token group per shot.

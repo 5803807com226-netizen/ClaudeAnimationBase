@@ -278,6 +278,89 @@ definePreset('figure', {
   },
 });
 
+// map tokens: small watercolour cut-outs (artwork items, never drawn here) acting on the map. The art faces RIGHT
+// (side view); a token turns to face the way it moves. Effects (dust, bombs, blasts, smoke) are drawn: they are motion.
+const mapRoutePos = (R, g) => { let i = 1; while (i < R.P.length - 1 && R.d[i] < g) i++; const f = R.d[i] > R.d[i - 1] ? clamp((g - R.d[i - 1]) / (R.d[i] - R.d[i - 1])) : 0; return [lerp(R.P[i - 1][0], R.P[i][0], f), lerp(R.P[i - 1][1], R.P[i][1], f)]; };
+function mapTokenImg(c, im, x, y, h, face, rot = 0, alpha = 1) {   // bottom-centre anchored at (x, y)
+  const w = h * im.width / im.height; c.save(); c.globalAlpha *= alpha; c.translate(x, y); c.rotate(rot); c.scale(face, 1);
+  c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = h * .08; c.shadowOffsetY = h * .04; c.drawImage(im.canvas || im.elt, -w / 2, -h, w, h); c.restore();
+}
+const mapRand = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+
+definePreset('mapTroops', {
+  label: 'Map Troops', about: 'an army on the move: a small group of watercolour soldier cut-outs marches along a sourced route (an advance, an invasion, a retreat), stepping and swaying, dust at their feet, a ring in their side\'s colour under them; on arrival a pulse ring in that colour. art: an artwork item (side view, facing right)',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'troops', 'army', 'soldiers', 'invasion', 'advance', 'attack', 'march', 'retreat', 'war', 'military', 'token', 'watercolor'],
+    params: { count: { min: 1, max: 5 }, height: { min: 30, max: 220 } }, assets: [{ param: 'coords', type: 'route' }, { param: 'image', type: 'image' }], layers: ['overlay'] },
+  defaults: { coords: [[13.4, 52.5], [21, 52.2]], image: '', art: null, color: '#4A4446', count: 3, height: 74, spacing: 1, progress: [0, 1], arrive: true, out: null, outDur: .4, ease: 'ease', dur: 2 },
+  run(t, o) {
+    const im = STICKER_IMG[artPath(o.image)], q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1; if (q <= 0 || t < o.at - .3) return;
+    const c = mapCtx(), u = US(), R = routeOf(o.coords), k = presetK(t, o), h = o.height * u, appear = clamp((t - o.at + .3) / .3);
+    const pts = R.P.map(mapPt); if (pts.some(p => !p)) return;
+    const S = [0]; for (let i = 1; i < pts.length; i++) S.push(S[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));   // screen arc length
+    const total = S.at(-1), posAt = d => { d = clamp(d, 0, total); let i = 1; while (i < S.length - 1 && S[i] < d) i++; const f = (d - S[i - 1]) / ((S[i] - S[i - 1]) || 1); return [lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)]; };
+    const prog = lerp(o.progress[0], o.progress[1], k), lead = prog * total, moving = k > 0 && k < 1;
+    const dir = (() => { const a = posAt(lead - 6 * u), b = posAt(lead + 6 * u); return b[0] - a[0] >= 0 ? 1 : -1; })();
+    c.save(); c.globalAlpha = q * appear;
+    for (let i = o.count - 1; i >= 0; i--) {   // the group: a staggered wedge behind the leader (back ones drawn first)
+      const back = i * h * .55 * o.spacing, side = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * h * .32 * o.spacing, p = posAt(lead - back), sc = 1 - i * .06;
+      const ph = (t * 7 + i * 1.7), step = moving ? Math.abs(Math.sin(ph)) : 0, x = p[0], y = p[1] + side * .35;
+      // the side's ring on the ground
+      c.save(); c.globalAlpha *= .85; c.fillStyle = o.color; c.beginPath(); c.ellipse(x, y, h * .32 * sc, h * .1 * sc, 0, 0, TAU); c.fill();
+      c.lineWidth = 1.5 * u; c.strokeStyle = 'rgba(255,255,255,.8)'; c.stroke(); c.restore();
+      if (moving) for (let j = 0; j < 3; j++) {   // dust kicked up behind the feet
+        const a = ((t * 2.2 + j / 3 + i * .37) % 1), dx = -dir * a * h * .5, r = h * (.06 + a * .14);
+        c.save(); c.globalAlpha *= (1 - a) * .35; c.fillStyle = '#C9B79A'; c.beginPath(); c.arc(x + dx - dir * h * .1, y - r * .6 - a * h * .1, r, 0, TAU); c.fill(); c.restore();
+      }
+      if (im) mapTokenImg(c, im, x, y - step * h * .06, h * sc, dir, (moving ? Math.sin(ph) * .06 : 0) * dir);
+    }
+    c.restore();
+    if (o.arrive && k >= 1) {   // arrived: one pulse ring in the side's colour
+      const a = clamp((t - (o.at + o.dur)) / .9), p = posAt(total); if (a < 1) { c.save(); c.globalAlpha = (1 - a) * q; c.strokeStyle = o.color; c.lineWidth = 4 * u; c.beginPath(); c.ellipse(p[0], p[1], h * (.4 + a * 1.4), h * (.13 + a * .45), 0, 0, TAU); c.stroke(); c.restore(); }
+    }
+    for (const p of [posAt(0), posAt(total)]) mapObstacle(p[0] - h * .6, p[1] - h * 1.05, h * 1.2, h * 1.15);   // where it starts and ends (fixed: labels never jump as it moves)
+  },
+});
+
+definePreset('mapBomber', {
+  label: 'Map Bomber', about: 'an air raid: a watercolour aircraft cut-out flies along a sourced route at altitude (its shadow on the ground below), drops bombs over the target stretch (drop: [from, to] of the route), each bomb falls and bursts (flash, shock ring, smoke). art: an artwork item (side view, facing right)',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'plane', 'aircraft', 'bomber', 'air raid', 'bombing', 'blitz', 'attack', 'explosion', 'war', 'token', 'watercolor'],
+    params: { bombs: { min: 0, max: 12 }, width: { min: 40, max: 400 }, altitude: { min: 0, max: 400 } }, assets: [{ param: 'coords', type: 'route' }, { param: 'image', type: 'image' }], layers: ['overlay'] },
+  defaults: { coords: [[8, 50], [2.35, 48.86]], image: '', art: null, width: 130, altitude: 120, bombs: 5, drop: [.62, .95], fall: .55, blast: '#FFB347', smoke: '#5A5550', out: null, outDur: .4, ease: 'linear', dur: 2.4 },
+  run(t, o) {
+    const im = STICKER_IMG[artPath(o.image)], q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1; if (q <= 0 || t < o.at) return;
+    const c = mapCtx(), u = US(), pts = routeOf(o.coords).P.map(mapPt); if (pts.some(p => !p)) return;
+    const S = [0]; for (let i = 1; i < pts.length; i++) S.push(S[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const total = S.at(-1), posAt = d => { d = clamp(d, 0, total); let i = 1; while (i < S.length - 1 && S[i] < d) i++; const f = (d - S[i - 1]) / ((S[i] - S[i - 1]) || 1); return [lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)]; };
+    const wd = o.width * u, alt = o.altitude * u, k = clamp((t - o.at) / o.dur), e = easeBy(o.ease)(k), here = posAt(e * total);
+    const ah = posAt(e * total + 8 * u), bh = posAt(e * total - 8 * u), ang = Math.atan2(ah[1] - bh[1], ah[0] - bh[0]), face = Math.cos(ang) >= 0 ? 1 : -1;
+    // bombs: released evenly over the drop stretch, each falls (accelerating, from the plane to its ground point) then bursts
+    for (let i = 0; i < o.bombs; i++) {
+      const fr = lerp(o.drop[0], o.drop[1], o.bombs > 1 ? i / (o.bombs - 1) : .5), tRel = o.at + fr * o.dur, g = posAt(fr * total) /* ground point */, j = mapRand(i, 1);
+      const ground = [g[0] + (j - .5) * wd * .5, g[1] + (mapRand(i, 2) - .5) * wd * .25], tf = (t - tRel) / o.fall;
+      if (tf >= 0 && tf < 1) {   // falling
+        const yy = lerp(ground[1] - alt, ground[1], tf * tf), xx = ground[0] + face * (1 - tf) * wd * .25;
+        c.save(); c.globalAlpha = q; c.translate(xx, yy); c.rotate(Math.PI / 2 - face * (1 - tf) * .6); c.fillStyle = '#2A2A2E'; c.beginPath(); c.ellipse(0, 0, wd * .07, wd * .028, 0, 0, TAU); c.fill(); c.restore();
+      } else if (tf >= 1) {        // burst: flash, shock ring, rising smoke that fades
+        const b = (t - tRel - o.fall) / 1.6; if (b > 1) continue;
+        c.save(); c.globalAlpha = q;
+        if (b < .25) { const f = b / .25; const gr = c.createRadialGradient(ground[0], ground[1], 0, ground[0], ground[1], wd * .45 * (.4 + f));
+          gr.addColorStop(0, `rgba(255,248,220,${1 - f})`); gr.addColorStop(.4, o.blast); gr.addColorStop(1, 'rgba(255,120,40,0)'); c.globalAlpha = q * (1 - f * .6); c.fillStyle = gr; c.beginPath(); c.arc(ground[0], ground[1], wd * .45 * (.4 + f), 0, TAU); c.fill(); }
+        if (b < .5) { c.globalAlpha = q * (1 - b / .5) * .8; c.strokeStyle = '#FFF4DC'; c.lineWidth = 2.5 * u; c.beginPath(); c.ellipse(ground[0], ground[1], wd * (.15 + b * 1.1), wd * (.06 + b * .45), 0, 0, TAU); c.stroke(); }
+        for (let s = 0; s < 4; s++) { const sb = clamp(b * 1.2 - s * .06); if (sb <= 0) continue; const r = wd * (.06 + sb * .16) * (1 + mapRand(i, s + 3) * .4);
+          c.globalAlpha = q * (1 - b) * .55; c.fillStyle = o.smoke; c.beginPath(); c.arc(ground[0] + (mapRand(i, s + 7) - .5) * wd * .2, ground[1] - sb * wd * .35 - s * wd * .04, r, 0, TAU); c.fill(); }
+        c.restore();
+      }
+    }
+    if (k >= 1 && (t - o.at - o.dur) > .4) return;   // flown off: only the last bursts finish
+    const fade = clamp(k / .08) * (k < 1 ? 1 : clamp(1 - (t - o.at - o.dur) / .4));   // in at the start, out once past the end
+    // the shadow on the ground, then the plane above it (a gentle sway)
+    c.save(); c.globalAlpha = q * fade * .3; c.fillStyle = '#000'; c.filter = `blur(${(3 * u).toFixed(1)}px)`; c.beginPath(); c.ellipse(here[0], here[1], wd * .42, wd * .1, ang, 0, TAU); c.fill(); c.restore();
+    if (im) { c.save(); c.globalAlpha = q * fade; const h = wd * im.height / im.width, sway = Math.sin(t * 2.6) * .03;
+      c.translate(here[0], here[1] - alt); c.rotate(face > 0 ? ang + sway : ang - Math.PI + sway); c.scale(face, 1);
+      c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 8 * u; c.drawImage(im.canvas || im.elt, -wd / 2, -h / 2, wd, h); c.restore(); }
+  },
+});
+
 // pinned to a place on the map (drawn by mapView with the other map layers, so it stays on the place)
 definePreset('mapPin', {
   label: 'Map Pin Sticker', about: 'a sticker pinned to a place: a national flag (on a card or a pole), an icon (treaty document, cannon, axe, crown, coin), a glyph (? ! ✕ ✓) or an imported PNG; pops in and bobs gently, stays on the place while the camera moves',

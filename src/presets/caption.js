@@ -42,8 +42,17 @@ function capLines(c, o) {
   let size = o.size, lines;
   for (; size > 18; size *= .92) {
     c.font = fontCss({ font: o.font, weight: o.weight, size }); lines = [];
-    for (const toks of out) { lines.push([]); let x = 0;
-      for (const tk of toks) { const w = c.measureText(tk.w).width; if (x + w > W * o.maxWidth && lines.at(-1).length && tk.w.trim()) { lines.push([]); x = 0; } if (!lines.at(-1).length && !tk.w.trim()) continue; lines.at(-1).push({ ...tk, wd: w }); x += w; } }
+    for (const toks of out) {   // balanced wrap: a paragraph that needs n lines is cut into n lines of about equal width
+      const ws = toks.map(tk => c.measureText(tk.w).width), sum = ws.reduce((a, b) => a + b, 0), n = Math.max(1, Math.ceil(sum / (W * o.maxWidth)));
+      // the cut points (only before a word, never before a space) that make the widest of the n lines as narrow as possible
+      const N = toks.length, pre = [0]; ws.forEach(w => pre.push(pre.at(-1) + w));
+      const best = Array.from({ length: n + 1 }, () => new Array(N + 1).fill(Infinity)), cut = Array.from({ length: n + 1 }, () => new Array(N + 1).fill(0)); best[0][0] = 0;
+      for (let k = 1; k <= n; k++) for (let j = 1; j <= N; j++) for (let i = k - 1; i < j; i++) {
+        if (i > 0 && !toks[i].w.trim()) continue; const v = Math.max(best[k - 1][i], pre[j] - pre[i]); if (v < best[k][j]) { best[k][j] = v; cut[k][j] = i; }
+      }
+      const cuts = []; for (let k = n, j = N; k > 0; k--) { cuts.unshift(cut[k][j]); j = cut[k][j]; }
+      cuts.push(N); cuts.slice(0, -1).forEach((a, k) => { const ln = []; for (let i = a; i < cuts[k + 1]; i++) if (ln.length || toks[i].w.trim()) ln.push({ ...toks[i], wd: ws[i] }); if (ln.length) lines.push(ln); });
+    }
     if (o.mode !== 'block' || lines.length <= 2) break;
   }
   lines.size = size; return lines;

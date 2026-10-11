@@ -215,6 +215,70 @@
    "source": "story: ปี 1940 เยอรมนีบุกฝรั่งเศส",
    "confidence": "schematic",
    "note": "label position only, inside France"
+  },
+  "march_poland": {
+   "coords": [
+    [
+     13.6,
+     52.6
+    ],
+    [
+     20.6,
+     52.2
+    ]
+   ],
+   "source": "story: 1 กันยายน 1939 เยอรมนีบุกโปแลนด์",
+   "confidence": "schematic",
+   "note": "direction of the invasion only"
+  },
+  "raid_france": {
+   "coords": [
+    [
+     9.0,
+     50.6
+    ],
+    [
+     5.5,
+     49.6
+    ],
+    [
+     2.4,
+     48.9
+    ]
+   ],
+   "source": "story: ปี 1940 เยอรมนีบุกฝรั่งเศส ปารีสถูกยึด",
+   "confidence": "schematic",
+   "note": "an illustrative air raid toward Paris; not a specific mission"
+  },
+  "march_east": {
+   "coords": [
+    [
+     22.5,
+     52.3
+    ],
+    [
+     31.5,
+     54.6
+    ]
+   ],
+   "source": "story: มิถุนายน 1941 เยอรมนีหันไปบุกสหภาพโซเวียต",
+   "confidence": "schematic",
+   "note": "direction of the invasion only"
+  },
+  "march_berlin": {
+   "coords": [
+    [
+     20.8,
+     52.3
+    ],
+    [
+     13.9,
+     52.5
+    ]
+   ],
+   "source": "story: โซเวียตยึดเบอร์ลิน",
+   "confidence": "schematic",
+   "note": "direction of the Soviet advance only"
   }
  },
  "shots": [
@@ -233,21 +297,39 @@
      "dur": 3,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       12,
-       46
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         12,
+         46
+        ],
+        "zoom": 1.6
+       }
       ],
-      "zoom": 1.6
-     },
-     "to": {
-      "center": [
-       19,
-       52
+      [
+       1.7,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.4
+       }
       ],
-      "zoom": 3.2
-     },
-     "blur": 1
+      [
+       3,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.724
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -349,20 +431,19 @@
      }
     },
     {
-     "id": "battle",
-     "cap": "mapPin",
+     "id": "troops",
+     "cap": "mapTroops",
      "params": {
-      "at": 1.1,
-      "lonlat": {
-       "$data": "warsaw",
-       "field": "lonlat"
+      "at": 0.7,
+      "coords": {
+       "$data": "march_poland",
+       "field": "coords"
       },
-      "dx": 50,
-      "dy": -20,
-      "size": 52,
-      "icon": "cannon",
-      "card": true,
-      "bob": 1
+      "art": "german_infantry",
+      "color": "#4A4446",
+      "count": 3,
+      "height": 72,
+      "dur": 1.7
      }
     },
     {
@@ -451,16 +532,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 76,
+       "size": 100,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -473,8 +554,8 @@
       "end": 2.9,
       "text": "1 กันยายน 1939\nเยอรมนีบุกโปแลนด์",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -500,21 +581,39 @@
      "dur": 3.5,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       19,
-       52
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.724
+       }
       ],
-      "zoom": 3.2
-     },
-     "to": {
-      "center": [
-       6,
-       50.5
+      [
+       1.3,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 4.8
+       }
       ],
-      "zoom": 3
-     },
-     "blur": 1
+      [
+       3.5,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 5.088
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -721,16 +820,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 72,
+       "size": 95,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -741,10 +840,10 @@
      "params": {
       "at": 0.1,
       "end": 3.4,
-      "text": "สองวันต่อมา\nอังกฤษและฝรั่งเศสประกาศสงคราม",
+      "text": "สองวันต่อมา\nอังกฤษและฝรั่งเศส\nประกาศสงคราม",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -770,21 +869,39 @@
      "dur": 4.7,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       6,
-       50.5
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 5.088
+       }
       ],
-      "zoom": 3
-     },
-     "to": {
-      "center": [
-       3,
-       49.5
+      [
+       1.2,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.0
+       }
       ],
-      "zoom": 3.8
-     },
-     "blur": 1
+      [
+       4.7,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.36
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -960,6 +1077,22 @@
      }
     },
     {
+     "id": "raid",
+     "cap": "mapBomber",
+     "params": {
+      "at": 0.9,
+      "coords": {
+       "$data": "raid_france",
+       "field": "coords"
+      },
+      "art": "bomber_plane",
+      "width": 130,
+      "altitude": 110,
+      "bombs": 4,
+      "dur": 2.4
+     }
+    },
+    {
      "id": "year",
      "cap": "mapLabel",
      "params": {
@@ -1082,16 +1215,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 74,
+       "size": 98,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -1102,10 +1235,10 @@
      "params": {
       "at": 0.1,
       "end": 4.6,
-      "text": "ปี 1940 เนเธอร์แลนด์ เบลเยียม\nและฝรั่งเศสถูกบุก\nปารีสถูกยึด",
+      "text": "ปี 1940\nเนเธอร์แลนด์ เบลเยียม\nและฝรั่งเศสถูกบุก\nปารีสถูกยึด",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -1131,22 +1264,40 @@
      "dur": 3.6,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       3,
-       49.5
-      ],
-      "zoom": 3.8
-     },
-     "to": {
-      "center": [
-       32,
-       52
-      ],
-      "zoom": 2.2
-     },
      "arc": 0.2,
-     "blur": 1
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.36
+       }
+      ],
+      [
+       1.5,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.4
+       }
+      ],
+      [
+       3.6,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.604
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -1288,6 +1439,22 @@
      }
     },
     {
+     "id": "troops",
+     "cap": "mapTroops",
+     "params": {
+      "at": 0.9,
+      "coords": {
+       "$data": "march_east",
+       "field": "coords"
+      },
+      "art": "german_infantry",
+      "color": "#4A4446",
+      "count": 3,
+      "height": 72,
+      "dur": 2.0
+     }
+    },
+    {
      "id": "date",
      "cap": "dateCard",
      "params": {
@@ -1331,16 +1498,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 68,
+       "size": 90,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -1351,10 +1518,10 @@
      "params": {
       "at": 0.1,
       "end": 3.5,
-      "text": "มิถุนายน 1941\nเยอรมนีหันไปบุกสหภาพโซเวียต",
+      "text": "มิถุนายน 1941\nเยอรมนีหันไป\nบุกสหภาพโซเวียต",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -1380,21 +1547,39 @@
      "dur": 4.6,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       32,
-       52
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.604
+       }
       ],
-      "zoom": 2.2
-     },
-     "to": {
-      "center": [
-       44.5,
-       48.7
+      [
+       1.4,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.4
+       }
       ],
-      "zoom": 4.2
-     },
-     "blur": 1
+      [
+       4.6,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.784
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -1643,16 +1828,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 80,
+       "size": 106,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -1665,8 +1850,8 @@
       "end": 4.5,
       "text": "ที่[สตาลินกราด]\nกองทัพเยอรมันยอมจำนน\nคือ[จุดเปลี่ยน]ของสงคราม",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -1692,22 +1877,40 @@
      "dur": 4,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       44.5,
-       48.7
-      ],
-      "zoom": 4.2
-     },
-     "to": {
-      "center": [
-       -0.5,
-       49.3
-      ],
-      "zoom": 4.4
-     },
      "arc": 0.35,
-     "blur": 1
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.784
+       }
+      ],
+      [
+       1.6,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.0
+       }
+      ],
+      [
+       4,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.42
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -1919,16 +2122,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 80,
+       "size": 106,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -1939,10 +2142,10 @@
      "params": {
       "at": 0.1,
       "end": 3.9,
-      "text": "6 มิถุนายน 1944\nสัมพันธมิตรยกพลขึ้นบกที่นอร์มังดี",
+      "text": "6 มิถุนายน 1944\nสัมพันธมิตรยกพลขึ้นบก\nที่นอร์มังดี",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -1968,21 +2171,39 @@
      "dur": 3.9,
      "ease": "ease",
      "projection": "orthographic",
-     "from": {
-      "center": [
-       -0.5,
-       49.3
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.42
+       }
       ],
-      "zoom": 4.4
-     },
-     "to": {
-      "center": [
-       13.4,
-       52.5
+      [
+       1.4,
+       {
+        "center": [
+         14,
+         52.4
+        ],
+        "zoom": 6.0
+       }
       ],
-      "zoom": 4
-     },
-     "blur": 1
+      [
+       3.9,
+       {
+        "center": [
+         14,
+         52.4
+        ],
+        "zoom": 6.36
+       }
+      ]
+     ]
     }
    },
    "layers": [
@@ -2135,6 +2356,22 @@
      }
     },
     {
+     "id": "troops",
+     "cap": "mapTroops",
+     "params": {
+      "at": 0.3,
+      "coords": {
+       "$data": "march_berlin",
+       "field": "coords"
+      },
+      "art": "soviet_infantry",
+      "color": "#B3302B",
+      "count": 3,
+      "height": 72,
+      "dur": 1.8
+     }
+    },
+    {
      "id": "date",
      "cap": "dateCard",
      "params": {
@@ -2178,16 +2415,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 68,
+       "size": 90,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -2200,8 +2437,8 @@
       "end": 3.8,
       "text": "โซเวียตยึดเบอร์ลิน\n8 พฤษภาคม 1945\nเยอรมนี[ยอมจำนน]",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -2229,10 +2466,10 @@
      "projection": "orthographic",
      "from": {
       "center": [
-       13.4,
-       52.5
+       14,
+       52.4
       ],
-      "zoom": 4
+      "zoom": 6.36
      },
      "to": {
       "center": [
@@ -2335,16 +2572,16 @@
       "style": {
        "font": "headline",
        "weight": 800,
-       "size": 72,
+       "size": 95,
        "color": "#FFFFFF",
        "stroke": {
-        "width": 7,
-        "color": "#15151B"
+        "width": 8,
+        "color": "#121218"
        },
        "shadow": {
-        "color": "rgba(0,0,0,.55)",
-        "blur": 16,
-        "dy": 4
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
        }
       }
      }
@@ -2355,10 +2592,10 @@
      "params": {
       "at": 0.1,
       "end": 4.4,
-      "text": "สงครามที่เริ่มจากการยึดดินแดน\nจบลงด้วย[ความสูญเสียของทุกฝ่าย]",
+      "text": "สงครามที่เริ่มจาก\nการยึดดินแดน\nจบลงด้วย\n[ความสูญเสียของทุกฝ่าย]",
       "y": 0.86,
-      "size": 50,
-      "maxWidth": 0.9,
+      "size": 60,
+      "maxWidth": 0.86,
       "accent": "#F2C14E",
       "font": "display",
       "weight": 700
@@ -2418,6 +2655,27 @@
      null,
      1100
     ]
+   },
+   "german_infantry": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, rifle on the shoulder, marching, full body side view facing right",
+    "size": [
+     null,
+     600
+    ]
+   },
+   "soviet_infantry": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, rifle held forward, advancing, full body side view facing right",
+    "size": [
+     null,
+     600
+    ]
+   },
+   "bomber_plane": {
+    "prompt": "a 1940 twin-engine propeller bomber airplane in plain grey-green paint with no markings, seen from the side flying to the right, wings visible",
+    "size": [
+     900
+    ],
+    "negative": "roundel, cross, swastika, markings, numbers"
    }
   }
  }

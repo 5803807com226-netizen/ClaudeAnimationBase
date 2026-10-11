@@ -4,7 +4,7 @@
 // then typography. Every time in a layer's params is SHOT-LOCAL seconds, so one shot renders the same alone or in the film.
 function playPlan(plan) {
   // imported images used by layers (stickers, map pins) load before the first frame
-  if (typeof stickerPreload === 'function') stickerPreload(plan.shots.flatMap(s => (s.layers || []).map(L => L.params?.image && (L.cap === 'figure' ? artPath(L.params.image) : L.params.image)).filter(Boolean)));
+  if (typeof stickerPreload === 'function') stickerPreload(plan.shots.flatMap(s => (s.layers || []).map(L => L.params?.image && (L.params.art != null ? artPath(L.params.image) : L.params.image)).filter(Boolean)));
   // runs of consecutive collage shots play as ONE reel (their transitions span the cut between them)
   const runs = []; for (const s of plan.shots) if (s.scene) { const r = runs.at(-1); if (r && r.end === s) r.list.push(s); else runs.push({ list: [s] }); runs.at(-1).end = plan.shots[plan.shots.indexOf(s) + 1]; }
   for (const r of runs) playCollage(r.list.map(s => SCENES[s.scene]), { start: r.list[0].start });
