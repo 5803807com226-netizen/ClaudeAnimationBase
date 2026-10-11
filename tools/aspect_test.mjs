@@ -51,6 +51,8 @@ const TARGETS = [
   { name: 'map_war', story: '_plan_nazi_war_30', byAspect: { '16:9': '_plan_nazi_war_30_16x9' }, times: [2.4, 9.6, 10.2, 13.5, 17, 21.5, 24.5] },   // + figure, mapTroops, mapBomber, type plate (art: --assets=out/mock_assets/_plan_nazi_war_30/nazi_war_30_art/ in the cloud)
   // explainer kit: mapLabel marker/neon, mapGlow, mapSwarm, mapNote, mapPhoto, spyglass, mapBase antique + rivers (mock art in the cloud)
   { name: 'map_explainer', story: '_plan_bangkok_name', byAspect: { '16:9': '_plan_bangkok_name_16x9' }, times: [3.6, 7.4, 12.4, 16.6, 25, 30] },
+  // size explainer: mapMeasure (ruler + measured km), mapTrueSize (true-size overlay + measured area)
+  { name: 'map_size', story: '_plan_thailand_size', byAspect: { '16:9': '_plan_thailand_size_16x9' }, times: [7.5, 14, 21.5, 27.5] },
   { name: 'map_doc_kit', story: '_plan_siam_colonial', byAspect: { '16:9': '_plan_siam_colonial_16x9' }, times: [3, 9, 15, 23.5, 29.5, 35] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit

@@ -90,3 +90,17 @@ These presets came out of a study of a "why is it called…" map short. Each one
 | `mapBase` `rivers: true` | Natural Earth 1:10m rivers (`src/geo/rivers_10m.js`) |
 
 Artwork items may set `"opaque": true` for a whole picture (no cut-out) and `"style"` to replace the shared style. The demo is `tools/fixtures/plans/bangkok_name.json`.
+
+## Size and distance (`mapMeasure`, `mapTrueSize`)
+
+For "how big is …?" and "how far is …?" explainers. The engine computes every number on screen from the geometry; none is typed in:
+- **Distances** are great-circle distances with the mean Earth radius, 6,371.0088 km.
+- **Areas** are the spherical areas of the Natural Earth 1:10m borders. Thailand measures about 516,000 km²; the official figure is 513,120 km².
+
+| Preset | What it does |
+|---|---|
+| `mapMeasure` | A ruler draws itself along sourced `coords`, with ticks every `tick` km and end caps. Its tag counts the measured length up: `text: "{km} กม."`, rounded to `round`. |
+| `mapTrueSize` | A country's outline (`name` or `units`) lifts off and slides on the sphere to a sourced `lonlat`, keeping its true shape and area. Mercator then draws it at the size it really has at its new latitude, so a size comparison is honest. Its tag: `{km2}` (km²), `{rai}`. |
+
+- **Fixture:** `tools/fixtures/plans/thailand_size.json` ("ไทยใหญ่แค่ไหน?", 28 s). It measures Mae Sai → Betong (1,640 km) and Mae Sariang → Khong Chiam (870 km), then lays Thailand over France and Japan at true size.
+- **Test:** `node tools/aspect_test.mjs --only=map_size`.
