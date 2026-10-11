@@ -16,6 +16,7 @@ import { resolve, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as D from './director.mjs';
 import { handleWorkspace } from './workspace.mjs';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 process.chdir(resolve(dirname(fileURLToPath(import.meta.url)), '..'));   // run from the repository root
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));

@@ -295,7 +295,7 @@ VIEWS.characters = async (sel) => {
   <div class="card"><h2><span class="n">1</span>เลือกตัวละคร</h2><p class="lead">ภาพ .png พื้นหลังโปร่งใส ท่ายืนตรง แขนขาแยกออกจากลำตัว จะได้โครงกระดูกที่แม่นที่สุด</p>
     <div class="bar" style="margin-top:0">${RIGS.map(r => `<a class="b ${RIG?.id === r.id ? 'dark' : ''}" href="#characters/${r.id}">${esc(r.id)}${r.counts.uncertain ? ` <span class="tag bad">${r.counts.uncertain} จุดต้องแก้</span>` : ''}</a>`).join('')}<button class="b" onclick="$('#newrig').hidden=!$('#newrig').hidden">+ ตัวละครใหม่</button></div>
     <div id="newrig" ${RIG && RIGS.length ? 'hidden' : ''} style="margin-top:12px">
-      <div class="row"><div><label>ชื่อตัวละคร (อังกฤษตัวเล็ก)</label><input id="r-id" placeholder="เช่น taro"></div><div><label>แม่แบบ</label><select id="r-tpl"><option value="human">คน / สัตว์ยืนสองขา</option></select></div></div>
+      <div class="row"><div><label>ชื่อตัวละคร (อังกฤษตัวเล็ก)</label><input id="r-id" placeholder="เช่น taro"></div><div><label>แม่แบบ</label><select id="r-tpl"><option value="human">คน (ยืนหันหน้าตรง แขนขาแยกจากลำตัว)</option><option value="biped_tail">สัตว์ยืนสองขามีหาง หันข้าง (เช่น ไดโนเสาร์)</option></select></div></div>
       <label>ภาพตัวละคร: เลือกจากคลัง หรือพิมพ์ที่อยู่ไฟล์</label><input id="r-img" placeholder="D:\\art\\caveman.png">
       <div class="pick" id="pick"></div>
       <div class="bar"><span class="sp"></span><button class="b primary" onclick="makeRig()">สร้างโครงกระดูก</button></div></div></div>
@@ -303,7 +303,7 @@ VIEWS.characters = async (sel) => {
   if (!$('#newrig').hidden) loadPick();
   if (RIG) initRigCanvas();
 };
-async function loadPick() { const im = await api('/api/ws/images'); $('#pick').innerHTML = im.map(x => `<button title="${esc(x.path)}" onclick="$$('.pick button').forEach(b=>b.classList.remove('on'));this.classList.add('on');$('#r-img').value='${esc(x.path)}';if(!$('#r-id').value)$('#r-id').value='${esc(x.name.replace(/\.png$/i, '').toLowerCase().replace(/[^a-z0-9_]/g, '_'))}'"><img src="${x.url}" loading="lazy"><small>${esc(x.group)}/${esc(x.name)}</small></button>`).join(''); }
+async function loadPick() { const im = await api('/api/ws/images'); $('#pick').innerHTML = im.map(x => `<button title="${esc(x.path)}" onclick="$$('.pick button').forEach(b=>b.classList.remove('on'));this.classList.add('on');$('#r-img').value='${esc(x.path)}';if(!$('#r-id').value)$('#r-id').value='${esc(x.name.replace(/\.png$/i, '').toLowerCase().replace(/[^a-z0-9_]/g, '_'))}';$('#r-tpl').value=/dino|rex|raptor|lizard|bird|kangaroo/i.test('${esc(x.name)}')?'biped_tail':'human'"><img src="${x.url}" loading="lazy"><small>${esc(x.group)}/${esc(x.name)}</small></button>`).join(''); }
 function makeRig() { const id = $('#r-id').value.trim(); runTool({ tool: 'rig', id, image: $('#r-img').value.trim(), template: $('#r-tpl').value }, () => location.hash === '#characters/' + id ? route() : location.hash = '#characters/' + id); }
 function rigEditor() {
   const R = RIG, V = R.verify, acts = R.plan?.actions || PRESETS_QUICK['เดินแล้วโบกมือ'].map(([type, start, duration]) => ({ type, start, duration }));
@@ -312,7 +312,7 @@ function rigEditor() {
     <div class="legend"><span><i style="background:#1EAA3C"></i>ตรวจพบ</span><span><i style="background:#F08C14"></i>ประมาณ</span><span><i style="background:#DC1E1E"></i>เดา (ต้องแก้)</span><span><i style="background:#286EE6"></i>แก้ด้วยมือ</span></div>
     <div class="rigbox"><canvas id="rig"></canvas></div>
     ${R.warnings.map(w => `<div class="alert warn small">${esc(w)}</div>`).join('')}
-    <div class="bar"><span class="muted" id="rigmsg">${R.counts.all} จุด · ต้องแก้ ${R.counts.uncertain}</span><span class="sp"></span><button class="b dark" onclick="saveRig()">บันทึกโครงกระดูก</button></div></div>
+    <div class="bar"><span class="muted" id="rigmsg">${R.counts.all} จุด · ต้องแก้ ${R.counts.uncertain}</span><span class="sp"></span>${R.template === 'biped_tail' ? '<button class="b sm" onclick="swapLegs()" title="ภาพด้านข้างบอกไม่ได้ว่าขาไหนอยู่หน้า ถ้าขาที่ควรอยู่หลังถูกวาดทับตัว ให้กดสลับ">สลับขาหน้า/หลัง</button>' : ''}<button class="b dark" onclick="saveRig()">บันทึกโครงกระดูก</button></div></div>
   <div class="card"><h2><span class="n">3</span>สั่งท่าทาง</h2><p class="lead">เลือกท่าจากคลัง ${CATALOG.actions.length} ท่า ตั้งเวลาเริ่มและความยาว (วินาที)</p>
     <div class="bar" style="margin-top:0"><span class="muted small">ชุดสำเร็จรูป:</span>${Object.keys(PRESETS_QUICK).map(k => `<button class="b sm" onclick="quickActs('${k}')">${k}</button>`).join('')}</div>
     <div class="acts" id="acts" style="margin-top:10px">${acts.map(actRow).join('')}</div>
@@ -350,6 +350,7 @@ function drawRig() {
   for (const [n, j] of Object.entries(R.joints)) { x.fillStyle = '#fff'; x.beginPath(); x.arc(j.x * s, j.y * s, 8, 0, 7); x.fill(); x.fillStyle = CONFCOL[j.confidence] || '#888'; x.beginPath(); x.arc(j.x * s, j.y * s, 5.5, 0, 7); x.fill(); }
   if (DRAG) { const j = R.joints[DRAG]; x.font = '600 13px Sarabun, sans-serif'; x.fillStyle = '#1F1D24'; x.fillText(DRAG, j.x * s + 10, j.y * s - 10); }
 }
+async function swapLegs() { if (Object.keys(EDITED).length) await saveRig(true); await api(`/api/ws/rig/${RIG.id}/swaplegs`, 'POST'); toast('สลับขาแล้ว'); route(); }
 async function saveRig(quiet) { if (!Object.keys(EDITED).length) return quiet || toast('ยังไม่มีจุดที่แก้'); await api(`/api/ws/rig/${RIG.id}`, 'PUT', { joints: EDITED }); EDITED = {}; toast('บันทึกโครงกระดูกแล้ว'); if (!quiet) route(); }
 
 // ---------- projects (Motion Studio: story → Opus → artwork → video) ----------

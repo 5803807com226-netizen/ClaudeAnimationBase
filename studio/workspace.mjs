@@ -135,8 +135,8 @@ function toolSteps(b, { run, PY, RF, cfg }) {
     case 'rig': {
       need(okId(b.id), 'ชื่อตัวละคร: ภาษาอังกฤษตัวเล็ก ตัวเลข และ _ เท่านั้น');
       const src = String(b.image || '').trim().replace(/^"|"$/g, ''); need(/\.png$/i.test(src) && existsSync(src), 'ไม่พบไฟล์ภาพ .png (ต้องเป็นภาพพื้นหลังโปร่งใส)');
-      need(['human', 'quadruped', 'object'].includes(b.template || 'human'), 'แม่แบบไม่ถูกต้อง');
-      need((b.template || 'human') === 'human', 'ตอนนี้เครื่องเล่นท่าทางรองรับเฉพาะแม่แบบ "คน/ยืนสองขา" (แบบสี่ขายังเล่นไม่ได้)');
+      need(['human', 'biped_tail', 'quadruped', 'object'].includes(b.template || 'human'), 'แม่แบบไม่ถูกต้อง');
+      need(['human', 'biped_tail'].includes(b.template || 'human'), 'ตอนนี้เครื่องเล่นท่าทางรองรับแม่แบบ "คน" และ "สัตว์ยืนสองขามีหาง" (แบบสี่ขายังเล่นไม่ได้)');
       const d = `out/studio/rigs/${b.id}/`;
       return [['ตรวจภาพและสร้างโครงกระดูก', () => { mkdirSync(d, { recursive: true }); copyFileSync(src, d + basename(src));
         return run(PY(), ['tools/action/rig_analyze.py', `--image=${d + basename(src)}`, `--template=${b.template || 'human'}`, `--id=${b.id}`, `--out=${d}${b.id}.rig.json`]); }]];
@@ -197,6 +197,14 @@ export async function handleWorkspace(p, req, res, ctx) {
     // re-measure every bone's capsule on the silhouette from the moved joints (stale radii cut the art into wrong regions)
     const m = spawnSync(ctx.PY(), ['tools/action/rig_analyze.py', `--image=out/studio/rigs/${rm[1]}/${rig.image}`, `--joints=${f}`, `--out=${f}`], { encoding: 'utf8', timeout: 60000 });
     send(res, m.status === 0 ? 200 : 500, m.status === 0 ? { ok: true } : { error: 'วัดขนาดชิ้นส่วนใหม่ไม่สำเร็จ: ' + ((m.stderr || m.stdout || '').trim().split('\n').pop() || m.error?.message) }); return true;
+  }
+  const sw = r.match(/^rig\/([a-z0-9_]+)\/swaplegs$/);
+  if (sw && req.method === 'POST') {
+    const f = `out/studio/rigs/${sw[1]}/${sw[1]}.rig.json`, rig = rj(f); if (!rig) { send(res, 404, { error: 'ไม่พบโครงกระดูก' }); return true; }
+    for (const n of ['hip', 'knee', 'ankle', 'toe']) [rig.joints[n + '_f'], rig.joints[n + '_b']] = [rig.joints[n + '_b'], rig.joints[n + '_f']];
+    writeFileSync(f, JSON.stringify(rig, null, 1));
+    const m = spawnSync(ctx.PY(), ['tools/action/rig_analyze.py', `--image=out/studio/rigs/${sw[1]}/${rig.image}`, `--joints=${f}`, `--out=${f}`], { encoding: 'utf8', timeout: 60000 });
+    send(res, m.status === 0 ? 200 : 500, m.status === 0 ? { ok: true } : { error: 'วัดขนาดชิ้นส่วนใหม่ไม่สำเร็จ' }); return true;
   }
   if (r === 'run' && req.method === 'POST') { const b = await body(req); startJob(`${b.tool}${b.id || b.story ? ' · ' + (b.id || b.story) : ''}`, toolSteps(b, ctx)); send(res, 200, { ok: true }); return true; }
   if (r === 'shutdown' && req.method === 'POST') { send(res, 200, { ok: true }); setTimeout(() => process.exit(0), 300); return true; }

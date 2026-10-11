@@ -17,6 +17,10 @@ track    track.json: `global`, the plate's camera motion per frame (cumulative t
          a confidence per frame (low confidence = occluded or lost: check those frames).
 numpy and Pillow only; ffmpeg for decoding.
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import argparse, json, os, subprocess, glob
 import numpy as np
 from PIL import Image

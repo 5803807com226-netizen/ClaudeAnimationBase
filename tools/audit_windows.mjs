@@ -16,6 +16,7 @@ import { spawnSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 const WIN = process.platform === 'win32', PY = args.python || (WIN ? 'python' : 'python3');
@@ -137,7 +138,7 @@ if (step('rig', 'Action Composer rigging of the caveman and dinosaur reference i
   for (const [id, img] of refs) {
     if (!existsSync(img)) { check('rig', `${id} reference`, 'FAIL', `missing ${img}`); continue; }
     copyFileSync(img, D + basename(img));   // a copy: the analysis never touches your file
-    const r = sh(PY, ['tools/action/rig_analyze.py', `--image=${D + basename(img)}`, '--template=human', `--id=${id.toLowerCase()}`, `--out=${D}${id.toLowerCase()}.rig.json`], { timeout: 120 });
+    const r = sh(PY, ['tools/action/rig_analyze.py', `--image=${D + basename(img)}`, `--template=${id === 'DINO' ? 'biped_tail' : 'human'}`, `--id=${id.toLowerCase()}`, `--out=${D}${id.toLowerCase()}.rig.json`], { timeout: 120 });
     const rig = existsSync(`${D}${id.toLowerCase()}.rig.json`) ? JSON.parse(readFileSync(`${D}${id.toLowerCase()}.rig.json`, 'utf8')) : null;
     const unc = rig ? Object.values(rig.joints).filter(j => j.confidence === 'uncertain').length : 0;
     check('rig', `${id} rig from ${basename(img)}`, !rig ? 'FAIL' : unc ? 'WARN' : 'PASS', rig ? `${Object.keys(rig.joints).length} joints, ${unc} uncertain${r.out.includes('warning') ? ': ' + r.out.split('\n').filter(l => /warning/.test(l)).join('; ').slice(0, 220) : ''}` : last(r.out), `${D}${id.toLowerCase()}.rig.json`);
@@ -146,7 +147,7 @@ if (step('rig', 'Action Composer rigging of the caveman and dinosaur reference i
   if (chars.length === 2) {
     writeFileSync(D + 'plan.json', JSON.stringify({ schema: 'motion_plan/1', id: 'audit_rig', duration: 4, fps: 24, aspect: '9:16', ground_y: .8, backdrop: { sky: '#EAF1F4', ground: '#D9CBB0' },
       characters: [{ ...chars[0], x: .25, height: .36, facing: 'right' }, { ...chars[1], x: .7, height: .28, facing: 'left' }],
-      actions: [{ character: 'TARO', type: 'idle', start: 0, duration: .6 }, { character: 'TARO', type: 'walk', start: .6, duration: 1.8 }, { character: 'TARO', type: 'wave', start: 2.5, duration: 1.3 },
+      actions: [{ character: 'TARO', type: 'idle', start: 0, duration: .6 }, { character: 'TARO', type: 'walk', start: .6, duration: 1.8 }, { character: 'TARO', type: 'idle', start: 2.4, duration: 1.6 }, { character: 'TARO', type: 'wave', start: 2.5, duration: 1.3 },
         { character: 'DINO', type: 'idle', start: 0, duration: 1.2 }, { character: 'DINO', type: 'bounce', start: 1.2, duration: 1.4 }, { character: 'DINO', type: 'idle', start: 2.6, duration: 1.4 }] }, null, 1));
     const p = sh('node', ['tools/action/plan.mjs', `--plan=${D}plan.json`], { timeout: 120 });
     if (p.code !== 0) check('rig', 'motion plan', 'FAIL', last(p.out, 2));

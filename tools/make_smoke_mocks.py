@@ -6,6 +6,10 @@ the same spec drops in unchanged. Character asymmetry is honoured: LEFT-cheek sc
     python tools/make_smoke_mocks.py [--out out/mock_assets/the_last_smoke]
     node render.mjs --story=the_last_smoke --assets=out/mock_assets/the_last_smoke/ --sheet=0.5,3.5,6.5,9.5,12.5
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import json, math, os, random, re, sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 

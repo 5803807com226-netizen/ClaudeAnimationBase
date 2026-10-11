@@ -1,6 +1,6 @@
 """rig_analyze.py: REFERENCE IMAGE ANALYSIS → an editable 2D rig spec (char_rig/1) for the Action Composer.
 
-    python tools/action/rig_analyze.py --image=<png> [--template=human|quadruped|object] [--id=<name>] [--out=<rig.json>]
+    python tools/action/rig_analyze.py --image=<png> [--template=human|biped_tail|quadruped|object] [--id=<name>] [--out=<rig.json>]
     python tools/action/rig_analyze.py --image=<png> --joints=<edited rig.json> [--out=<rig.json>]
         keep the joints of an edited rig (placed by hand in the rig editor) and re-measure every bone's capsule radius
         on the silhouette from THOSE joints (the radii decide which pixels move with which bone)
@@ -12,11 +12,17 @@ colours and pixels do not reveal where an elbow is. Every joint carries a confid
   uncertain  a guess the user must check (templates without a detector, a limb the silhouette does not show)
 The rig editor (AutoCinematic → Action Composer) shows uncertain joints in red and estimated ones in orange.
 
+biped_tail: a side-view biped with a tail (cartoon dinosaur): facing, toes, tail tip and head top are detected; the trunk and
+legs are placed by proportion; the arms are template guesses. Uses the human skeleton + a tail, so the engine plays it.
 human: works on an A-pose / T-pose / relaxed standing figure (front or three-quarter view) whose arms and legs are
 apart from the body. A figure with crossed or hidden limbs gets an `uncertain` rig and warnings: edit it by hand,
 or provide layered parts. quadruped / object: proportional templates, every joint `uncertain`.
 Also writes, per bone, a capsule radius measured on the silhouette (used to split the image into body regions).
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import json, math, os, sys
 import numpy as np
 from PIL import Image
@@ -34,6 +40,9 @@ QUAD_BONES = [
     ('leg_ff', 'spine', 'shoulder_f', 'paw_ff', 'leg_ff', 70), ('leg_hf', None, 'hip_f', 'paw_hf', 'leg_hf', 71),
 ]
 OBJECT_BONES = [('body', None, 'base', 'top', 'body', 50)]
+# a biped seen from the SIDE with a tail (cartoon dinosaurs, birds, kangaroos): the human skeleton the engine animates
+# (legs with feet, short arms, spine, neck, head) plus a tail hanging off the hips, drawn behind the body
+BIPED_TAIL_BONES = HUMAN_BONES + [('tail', None, 'hips', 'tail_tip', 'body', 15)]
 
 
 def runs(row):
@@ -174,6 +183,55 @@ def template(name, M, warnings):
     return {'base': F(.5, 1), 'top': F(.5, 0)}, 'right', {}
 
 
+def analyze_biped_tail(M, warnings):
+    """side-view biped with a tail: detects which way it faces, the toes (where the silhouette touches the ground), the
+    tail tip and the top of the head; the trunk and leg joints are placed by proportion along the silhouette
+    (estimated); the small arms are template guesses (uncertain), they rarely stand apart from the belly"""
+    H, W = M.shape; ys, xs = np.where(M); x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max(); w, h = x1 - x0, y1 - y0
+    cx = (x0 + x1) / 2
+    top = xs[ys < y0 + .4 * h]                                            # the head is the heavy end of the upper part
+    d = 1 if top.mean() >= cx else -1; facing = 'right' if d > 0 else 'left'
+    # toes: the runs of silhouette in the lowest rows, the one further forward is the near (f) foot
+    band = M[int(y1 - .05 * h):int(y1) + 1].any(axis=0); feet = sorted(runs(band), key=lambda r: r[1] - r[0], reverse=True)[:2]
+    if len(feet) < 2:   # the feet touch (or a soft shadow joins them): split where the lowest rows are thinnest
+        a, b = feet[0] if feet else (int(cx - .1 * w), int(cx + .1 * w))
+        fill = M[int(y1 - .12 * h):int(y1) + 1, a:b].sum(axis=0).astype(float); lo, hi = int(.2 * len(fill)), int(.8 * len(fill))
+        m = a + (lo + int(np.argmin(fill[lo:hi])) if hi > lo else len(fill) // 2); feet = [(a, m), (m, b)]
+        warnings.append('biped_tail: the two feet touch: they were split where the silhouette is thinnest (check them)')
+    feet = sorted(feet, key=lambda r: d * (r[0] + r[1]))                   # far foot first, near foot last
+    warnings.append('biped_tail: from one side view the near and far leg cannot be told apart: if the wrong leg is drawn in front, swap the legs in the rig editor')
+    J2 = {}
+    for side, (a, b) in zip(('b', 'f'), feet):
+        tip = b if d > 0 else a; heel = a if d > 0 else b; fw = b - a
+        J2['toe_' + side] = J(tip - d * .1 * fw, y1 - .02 * h, 'detected', 'front of the foot on the ground')
+        J2['ankle_' + side] = J(heel + d * .3 * fw, y1 - .07 * h, 'estimated', 'above the heel')
+    # tail tip: the farthest silhouette point behind, in the lower two thirds
+    low = ys > y0 + .35 * h; bx = xs[low].min() if d > 0 else xs[low].max()
+    J2['tail_tip'] = J(bx, float(ys[low][xs[low] == bx].mean()), 'detected', 'farthest point behind')
+    # head: the top of the silhouette in the front 30 % (spikes on the back are left out)
+    front = (xs >= x1 - .3 * w) if d > 0 else (xs <= x0 + .3 * w); hy = ys[front].min()
+    J2['head_top'] = J(float(xs[front][ys[front] == hy].mean()), hy, 'detected', 'top of the head (front part)')
+    # the neck sits under the jaw: the lowest silhouette row in the front quarter (above the feet) is the chin.
+    # Cartoon heads can be more than half the height, so a fixed proportion would cut the face in two.
+    fq = (xs >= x1 - .25 * w) if d > 0 else (xs <= x0 + .25 * w); up = fq & (ys < y0 + .8 * h)
+    chin = float(ys[up].max()) if up.any() else y0 + .5 * h
+    fx = np.mean([J2['ankle_f']['x'], J2['ankle_b']['x']]); edge = (x1 - .25 * w) if d > 0 else (x0 + .25 * w)
+    J2['neck'] = J(edge - d * .06 * w, chin - .02 * h, 'estimated', 'under the jaw (the chin is the lowest point of the head)')
+    J2['chest'] = J(J2['neck']['x'] - d * .1 * w, chin + .03 * h, 'estimated', 'behind the neck, where the arms join')
+    J2['hips'] = J(fx - d * .05 * w, max(J2['chest']['y'] + .08 * h, y0 + .74 * h), 'estimated', 'over the feet, leaving room for the thighs')
+    for side, o in (('f', .03), ('b', -.03)):
+        hx, hy2 = J2['hips']['x'] + d * o * w, J2['hips']['y'] + .02 * h; A = J2['ankle_' + side]
+        J2['hip_' + side] = J(hx, hy2, 'estimated', 'beside the hips')
+        J2['knee_' + side] = J((hx + A['x']) / 2 + d * .04 * w, (hy2 + A['y']) / 2, 'estimated', 'between hip and ankle, bent forward')
+        sx, sy = J2['chest']['x'] + d * (.02 if side == 'f' else .06) * w, J2['chest']['y'] + .03 * h
+        J2['shoulder_' + side] = J(sx, sy, 'uncertain', 'template: drag onto the shoulder')
+        J2['elbow_' + side] = J(sx + d * .05 * w, sy + .06 * h, 'uncertain', 'template: drag onto the elbow')
+        J2['wrist_' + side] = J(sx + d * .09 * w, sy + .08 * h, 'uncertain', 'template: drag onto the wrist')
+        J2['hand_' + side + '_tip'] = J(sx + d * .11 * w, sy + .1 * h, 'uncertain', 'template: drag onto the hand tip')
+    warnings.append('biped_tail: the arms are template guesses; check the hips, knees and neck too (placed by proportion)')
+    return J2, facing, {'view': 'side', 'keepBind': ['spine', 'neck', 'head', 'tail']}   # it leans as drawn: rest angles from the image
+
+
 def radius_at(M, a, b, f=.5, side_min=False):
     """half the silhouette's width across the segment a→b at fraction f along it (px)"""
     H, W = M.shape; mx, my = a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f; dx, dy = b[0] - a[0], b[1] - a[1]; L = math.hypot(dx, dy) or 1
@@ -202,8 +260,9 @@ def main():
         cid = args.get('id') or old.get('id') or cid
         warnings = [w for w in old.get('warnings', []) if 'could not be traced' not in w and 'not separated' not in w] if not any(j['confidence'] == 'uncertain' for j in joints.values()) else old.get('warnings', [])
     elif tpl == 'human': joints, facing, extra = analyze_human(M, warnings)
+    elif tpl == 'biped_tail': joints, facing, extra = analyze_biped_tail(M, warnings)
     else: joints, facing, extra = template(tpl, M, warnings)
-    bones = HUMAN_BONES if tpl == 'human' else QUAD_BONES if tpl == 'quadruped' else OBJECT_BONES
+    bones = {'human': HUMAN_BONES, 'biped_tail': BIPED_TAIL_BONES, 'quadruped': QUAD_BONES}.get(tpl, OBJECT_BONES)
     out_bones = []
     for name, parent, a, b, chain, z in bones:
         pa, pb = (joints[a]['x'], joints[a]['y']), (joints[b]['x'], joints[b]['y'])

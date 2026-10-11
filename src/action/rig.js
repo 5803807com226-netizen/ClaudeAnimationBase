@@ -31,11 +31,15 @@ async function loadCharacter(spec, url, opt = {}) {
   const bones = spec.bones.map(b => ({ ...b, a: J[b.from], b: J[b.to] }));
   const byName = Object.fromEntries(bones.map(b => [b.name, b]));
   const root = spec.joints.hips ? J.hips : J[bones[0].from];
+  // spec.keepBind: bones whose rest angle is the one in the image, not the standing-human stance (a dinosaur leans
+  // forward: forcing its spine and neck upright would stand it on end)
+  const keep = new Set(spec.keepBind || []);
+  for (const b of bones) { b.len = Math.hypot(b.b[0] - b.a[0], b.b[1] - b.a[1]) || 1; b.bind = Math.atan2(b.b[1] - b.a[1], b.b[0] - b.a[0]); }
+  const neutralOf = b => keep.has(b.name) ? b.bind : ACT_NEUTRAL[b.name] ?? ACT_NEUTRAL[actKind(b.name)] ?? b.bind;
   for (const b of bones) {
-    b.len = Math.hypot(b.b[0] - b.a[0], b.b[1] - b.a[1]) || 1; b.bind = Math.atan2(b.b[1] - b.a[1], b.b[0] - b.a[0]);
-    b.neutral = ACT_NEUTRAL[b.name] ?? ACT_NEUTRAL[actKind(b.name)] ?? b.bind;
+    b.neutral = neutralOf(b);
     const P = b.parent ? byName[b.parent] : null;
-    b.neutralLocal = b.neutral - (P ? (ACT_NEUTRAL[P.name] ?? ACT_NEUTRAL[actKind(P.name)] ?? P.bind) : 0);
+    b.neutralLocal = b.neutral - (P ? neutralOf(P) : 0);
     // where this bone starts, in its parent's frame (along / across the parent, in bind pixels); roots: from the hips
     const o = P ? P.a : root, ref = P ? P.bind : 0, dx = b.a[0] - o[0], dy = b.a[1] - o[1];
     b.off = [dx * Math.cos(-ref) - dy * Math.sin(-ref), dx * Math.sin(-ref) + dy * Math.cos(-ref)];

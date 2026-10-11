@@ -12,6 +12,10 @@ handheld: grips are handles that hang below the main body (the first from the re
 grip2); the muzzle is the far end of the body along forward. object: grip = the top centre (a carried box), no muzzle.
 Everything is editable in AutoCinematic's attachment editor; uncertain anchors are shown in red there.
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import json, os, sys
 import numpy as np
 from PIL import Image

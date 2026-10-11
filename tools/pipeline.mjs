@@ -25,6 +25,7 @@ import { comfyGenerate } from './comfy/client.mjs';
 import { direct, TRANSITIONS } from './lib/director.mjs';
 import { windows, loadBeats, cueTimes } from './lib/timeline.mjs';
 import { presetFiles } from './lib/capfiles.mjs';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 if (!args.job) { console.error('usage: node tools/pipeline.mjs --job=jobs/<id>.json'); process.exit(1); }

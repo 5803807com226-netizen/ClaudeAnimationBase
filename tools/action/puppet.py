@@ -17,6 +17,10 @@ How a character is made (tools/action/gen_character.mjs drives this with your lo
      char_rig/1 with `parts`. It checks that the picture kept the guide's pose (silhouette overlap) and that every part
      has pixels, and says what to regenerate when not.
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import json, os, sys
 import numpy as np
 from PIL import Image, ImageDraw

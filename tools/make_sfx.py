@@ -8,6 +8,10 @@ recorded SFX simply replace or join the starter ones. The starter files are gene
 
     python tools/make_sfx.py [--out=assets/sfx] [--force]
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import math, os, random, struct, sys, wave
 
 SR = 44100

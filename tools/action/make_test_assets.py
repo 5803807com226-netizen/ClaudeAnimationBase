@@ -9,6 +9,10 @@
 
 Drawn at 4x and downsampled (smooth edges), transparent background.
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import os, sys
 from PIL import Image, ImageDraw, ImageFilter
 

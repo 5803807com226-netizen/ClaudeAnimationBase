@@ -25,6 +25,7 @@ import { ruleDirect } from './action/direct.mjs';
 import { copyFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename, relative } from 'node:path';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 const ASPECT_SIZE = { '9:16': [1080, 1920], '16:9': [1920, 1080] };   // production formats (4:5 stays legacy-only)
 const fail = m => { console.error('compile_plan: ' + m); process.exit(2); };
