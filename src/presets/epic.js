@@ -286,10 +286,10 @@ function shade(hex, k) {   // lighten (k > 0) or darken (k < 0) a #rrggbb colour
   return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
 }
 definePreset('barRace', {
-  label: 'Bar Race', about: 'a bar-chart race over years from a sourced table: years [...], series [{name, values [...], color?}] (one value per year). style overlay (default): clean white bars straight over the picture with soft shadows, no box; style plate: coloured gradient bars on a dark plate. Names in a left column, rounded gradient bars in one harmonious palette (or the series colour), the value in a pill at the bar end, a faint scale, the year large and soft behind the bars, the source line under the chart; on the same dark plate as the era readout',
+  label: 'Bar Race', about: 'a bar-chart race over years from a sourced table: years [...], series [{name, values [...], color?}] (one value per year). style overlay (default): thick see-through glass bars (frosted white, glass = fill opacity, a crisp white rim) straight over the picture, no box; style plate: coloured gradient bars on a dark plate. Names in a left column, rounded gradient bars in one harmonious palette (or the series colour), the value in a pill at the bar end, a faint scale, the year large and soft behind the bars, the source line under the chart; on the same dark plate as the era readout',
   meta: { version: '1.1.0', category: 'infographic', tags: ['bar race', 'chart', 'ranking', 'gdp', 'population', 'economy', 'race', 'years', 'data', 'compare'], camera: 'screen', layers: ['screen'],
     params: { top: { min: 2, max: 15 }, style: { enum: ['overlay', 'plate'] } } },
-  defaults: { years: [2000, 2010, 2020], series: [], top: 6, style: 'overlay', palette: null, plate: 'rgba(12,12,18,.72)', accent: '#FFD43B', unit: '', decimals: 0, x0: .05, x1: .95, y0: .2, y1: .78, title: '', source: '', size: 34, out: null, outDur: .4, dur: 6 },
+  defaults: { years: [2000, 2010, 2020], series: [], top: 6, style: 'overlay', glass: .28, palette: null, plate: 'rgba(12,12,18,.72)', accent: '#FFD43B', unit: '', decimals: 0, x0: .05, x1: .95, y0: .2, y1: .78, title: '', source: '', size: 34, out: null, outDur: .4, dur: 6 },
   run(t, o) {
     const q = (o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1) * clamp((t - o.at) / .35); if (q <= 0 || !o.series.length) return;
     const pal = o.palette || BAR_PALETTE, n = o.years.length, fy = clamp((t - o.at) / o.dur) * (n - 1), i0 = Math.min(Math.max(0, n - 2), Math.floor(fy)), fr = n > 1 ? fy - i0 : 0;
@@ -312,7 +312,7 @@ definePreset('barRace', {
     if (o.title) { c.font = fontCss({ font: 'display', weight: 800, size: o.size * 1.15 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left'; c.fillText(o.title, PX0 + px * .8, PY0 + px * 1.05); }
     // the column of names, the bar field, the scale
     c.font = fontCss({ font: 'display', weight: 700, size: o.size }); const nameW = Math.max(...o.series.map(s => c.measureText(s.name).width)) + px * .6;
-    const X0 = PX0 + px * .8 + nameW, X1 = PX1 - px * 3.6, Y0 = o.y0 * H, Y1 = o.y1 * H, rh = (Y1 - Y0) / o.top, bh = rh * (ov ? .58 : .62);
+    const X0 = PX0 + px * .8 + nameW, X1 = PX1 - px * 3.6, Y0 = o.y0 * H, Y1 = o.y1 * H, rh = (Y1 - Y0) / o.top, bh = rh * (ov ? .8 : .62);
     const yr = Math.round(lerp(o.years[i0], o.years[Math.min(n - 1, i0 + 1)], fr));
     c.save(); c.font = fontCss({ font: 'display', weight: 800, size: o.size * 3.2 }); c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillStyle = ov ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.12)'; c.fillText(String(yr), PX1 - px * .7, Y1 - px * .1); c.restore();
     const step = niceStep(max / 4); c.font = fontCss({ font: 'body', weight: 500, size: o.size * .5 }); c.textAlign = 'center';
@@ -323,8 +323,13 @@ definePreset('barRace', {
       c.fillStyle = '#FFFFFF'; c.font = fontCss({ font: 'display', weight: 700, size: o.size }); c.textAlign = 'right'; c.fillText(s.name, X0 - px * .4, y);
       const vt = fmtNum(v, 10 ** -o.decimals) + (o.unit ? ' ' + o.unit : '');
       if (ov) {   // white bar, solid, with a soft shadow; the value in bold white just after it
-        c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 12 * u; c.shadowOffsetY = 3 * u; c.fillStyle = 'rgba(255,255,255,.94)'; c.beginPath(); c.roundRect(X0, y - bh / 2, w, bh, bh * .22); c.fill(); c.restore();
-        c.font = fontCss({ font: 'display', weight: 800, size: o.size * .95 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left'; c.fillText(vt, X0 + w + px * .35, y + px * .02);
+        // see-through glass: a light frosted fill the picture shows through, a brighter top, a crisp white rim
+        const rr = bh * .24, gl = c.createLinearGradient(0, y - bh / 2, 0, y + bh / 2);
+        gl.addColorStop(0, `rgba(255,255,255,${o.glass + .16})`); gl.addColorStop(.5, `rgba(255,255,255,${o.glass})`); gl.addColorStop(1, `rgba(255,255,255,${o.glass * .7})`);
+        c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 14 * u; c.shadowOffsetY = 4 * u; c.fillStyle = gl; c.beginPath(); c.roundRect(X0, y - bh / 2, w, bh, rr); c.fill(); c.restore();
+        c.save(); c.lineWidth = 2.2 * u; c.strokeStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.roundRect(X0, y - bh / 2, w, bh, rr); c.stroke(); c.restore();
+        c.font = fontCss({ font: 'display', weight: 800, size: o.size * 1.05 }); c.fillStyle = '#FFFFFF'; c.textAlign = 'left';
+        if (c.measureText(vt).width + px * 1.3 < w) c.fillText(vt, X0 + px * .45, y + px * .03); else c.fillText(vt, X0 + w + px * .35, y + px * .03);   // the value inside the glass when it fits
         continue;
       }
       const gr = c.createLinearGradient(X0, 0, X0 + w, 0); gr.addColorStop(0, shade(col, -.18)); gr.addColorStop(1, shade(col, .12));
