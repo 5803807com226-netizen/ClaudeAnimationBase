@@ -13,13 +13,15 @@ import { ACTION_CATALOG, ACTION_LAYERS, ACTION_EFFECTS } from './action/plan.mjs
 export async function loadCatalog(browser) {
   const errors = [], page = await openTarget(browser, { name: 'catalog', story: 'type_demo' }, { aspect: '9:16' }, errors);
   const caps = await page.evaluate(() => window.CAPABILITY_CATALOG());
+  // the areas map layers can name (mapRegion / mapTransfer / mapHighlight `name` and `units`)
+  const geo = await page.evaluate(() => ({ countries: Object.keys(window.GEO?.countries50 || {}).sort(), provinces: Object.keys(window.GEO?.admin1 || {}).sort() }));
   await page.close();
   const errs = cleanErrors(errors);
   if (errs.length) throw new Error('engine errors while loading the catalog:\n  ' + errs.join('\n  '));
   caps.sort((a, b) => a.id.localeCompare(b.id));
   const actions = actionCatalog();
   const hash = 'sha256:' + createHash('sha256').update(JSON.stringify([caps, actions])).digest('hex').slice(0, 16);
-  return { schema: 'capability_catalog/1', hash, production_aspects: ['9:16', '16:9'], capabilities: caps, actions };
+  return { schema: 'capability_catalog/1', hash, production_aspects: ['9:16', '16:9'], capabilities: caps, actions, geo };
 }
 
 // the Action Composer's presets, for shots with treatment "action" (an articulated character from its reference image)
@@ -33,7 +35,8 @@ export function actionCatalog() {
 export function compact(cat) {
   const p = s => [s.type, s.enum ? s.enum.join('|') : null, s.min != null || s.max != null ? `${s.min ?? ''}..${s.max ?? ''}` : null].filter(Boolean).join(' ');
   return { schema: 'capability_catalog/1-compact', hash: cat.hash, capabilities: cat.capabilities.map(c => ({ id: c.id, category: c.category, about: c.about,
-    tags: c.tags, params: Object.fromEntries(Object.entries(c.params).map(([k, s]) => [k, p(s)])), assets: c.assets, status: c.status })), actions: cat.actions };
+    tags: c.tags, params: Object.fromEntries(Object.entries(c.params).map(([k, s]) => [k, p(s)])), assets: c.assets, status: c.status })), actions: cat.actions,
+    geo: cat.geo && { countries: 'Natural Earth English names (e.g. Thailand, Vietnam, United Kingdom)', provinces: cat.geo.provinces } };
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('capabilities.mjs')) {

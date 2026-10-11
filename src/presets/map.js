@@ -3,6 +3,7 @@
 // @requires src/geo/land_50m.js
 // @requires src/geo/countries_50m.js
 // @requires src/geo/relief_mercator.js
+// @requires src/geo/admin1_10m.js
 // map.js: geographic capabilities for map-dominant documentaries. Real projections (d3-geo) over vendored Natural Earth
 // land; every position is [longitude, latitude] in degrees, never screen pixels, so routes, labels and markers stay put
 // while the geographic camera moves. The map is drawn crisp on a 2D layer, then composited (the look's grade, grain
@@ -14,6 +15,12 @@
 //   mapLabel  live text (Thai-safe browser shaping) pinned to a place
 //   mapRegion a whole country filled (modern Natural Earth borders), white edge, soft drop shadow; fades / grows in
 //   mapSprite an icon (ship, truck, plane, walker) travelling along a sourced route, facing its direction of travel
+//   mapTransfer  a territory changes hands: its colour sweeps from one owner's to another's, the sweep edge glowing
+//   mapHighlight a territory singled out: glowing outline that pulses, optional light inner wash
+//   mapPin    (in sticker.js: it needs the flags and icons) a sticker pinned to a place
+// Territories (mapRegion, mapTransfer, mapHighlight) are one country (`name`) or a union of `units`: countries
+// ("Laos") and provinces / states ("LAO/Champasak", src/geo/admin1_10m.js). A historical or partial territory is a
+// union of modern provinces given by the manifest's sourced `data`, and the manifest says it is an approximation.
 //   mapBase style 'satellite': the relief raster (tools/geo_raster.py) under a Mercator camera; mapView blur: motion
 //   blur on fast camera moves (the documentary "whoosh"), proportional to how far the frame travels between frames
 // Facts never live here: routes and places come from the shot manifest's sourced `data` (see
@@ -96,12 +103,18 @@ definePreset('mapView', {
 definePreset('mapBase', {
   label: 'Map Base', about: 'ocean, Natural Earth land with a soft shore line and coastline, optional graticule',
   meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
-    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite'] }, coastWidth: { min: 0, max: 8 } }, assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
-  defaults: { dataset: 'land50', style: 'flat', ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4' },
+    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
+    assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
+  defaults: { dataset: 'land50', style: 'flat', ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
+    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235' },
   run(t, o) {
     const c = mapCtx(), path = d3.geoPath(MAP.proj, c), land = GEO[o.dataset].geometry, u = US();
     if (o.style === 'satellite') {   // the relief raster is Mercator: one affine draw (source-cropped to the frame), wrapped in longitude
-      if (!MAP.relief || !MAP_IS_MERC(MAP.proj)) throw new Error('mapBase satellite needs mapView projection "mercator" and src/geo/relief_mercator.jpg');
+      if (!MAP.relief) throw new Error('mapBase satellite needs src/geo/relief_mercator.jpg (python tools/geo_raster.py)');
+      const filt = o.saturate !== 1 || o.brightness !== 1 || o.contrast !== 1 ? `saturate(${o.saturate}) brightness(${o.brightness}) contrast(${o.contrast})` : 'none';
+      if (MAP.proj.clipAngle && MAP.proj.clipAngle()) { mapGlobeRaster(c, o, filt); if (o.coastWidth > 0) { c.beginPath(); path(land); c.strokeStyle = o.coast; c.globalAlpha = .35; c.lineWidth = o.coastWidth * u; c.stroke(); c.globalAlpha = 1; } return; }
+      if (!MAP_IS_MERC(MAP.proj)) throw new Error('mapBase satellite needs mapView projection "mercator" or "orthographic"');
+      c.save(); c.filter = filt;
       const R = GEO.relief, [IW, IH] = R.size, ym = Math.log(Math.tan(Math.PI / 4 + R.lat * Math.PI / 360)), f = MAP.proj.scale() * 2 * Math.PI / IW;
       const lam = -MAP.proj.rotate()[0], a = MAP.proj([lam, 0]), ix = (lam + 180) / 360 * IW, iy = ym / (2 * ym) * IH;
       for (const k of [-1, 0, 1]) {
@@ -109,6 +122,7 @@ definePreset('mapBase', {
         const sx0 = Math.max(0, -dx / f), sy0 = Math.max(0, -dy / f), sx1 = Math.min(IW, (W - dx) / f), sy1 = Math.min(IH, (H - dy) / f);
         if (sx1 > sx0 && sy1 > sy0) c.drawImage(MAP.relief.canvas || MAP.relief.elt, sx0, sy0, sx1 - sx0, sy1 - sy0, dx + sx0 * f, dy + sy0 * f, (sx1 - sx0) * f, (sy1 - sy0) * f);
       }
+      c.restore();
       if (o.coastWidth > 0) { c.beginPath(); path(land); c.strokeStyle = o.coast; c.globalAlpha = .35; c.lineWidth = o.coastWidth * u; c.stroke(); c.globalAlpha = 1; }
       return;
     }
@@ -121,6 +135,29 @@ definePreset('mapBase', {
     if (o.coastWidth > 0) { c.strokeStyle = o.coast; c.lineWidth = o.coastWidth * u; c.lineJoin = 'round'; c.stroke(); }
   },
 });
+
+// the satellite raster wrapped onto the globe: every pixel of the disc is inverse-projected (orthographic) and sampled
+// from the Mercator raster, at most 720 px across then scaled up; a soft limb shade gives the sphere its volume
+function mapGlobeRaster(c, o, filt) {
+  const R = GEO.relief, [IW, IH] = R.size, el = MAP.relief.canvas || MAP.relief.elt;
+  if (!MAP.reliefPx) { const cv = document.createElement('canvas'); cv.width = IW; cv.height = IH; const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(el, 0, 0); MAP.reliefPx = x.getImageData(0, 0, IW, IH).data; }
+  const P = MAP.proj, sc = P.scale(), [tx, ty] = P.translate(), [rl, rp, rg] = P.rotate(), l0 = -rl * Math.PI / 180, p0 = -rp * Math.PI / 180, g0 = (rg || 0) * Math.PI / 180;
+  const D = Math.min(720, Math.ceil(sc * 2));
+  if (!MAP.globe || MAP.globe.width !== D) { MAP.globe = document.createElement('canvas'); MAP.globe.width = MAP.globe.height = D; }
+  const gx = MAP.globe.getContext('2d'), img = gx.createImageData(D, D), out = img.data, src = MAP.reliefPx;
+  const ym = Math.log(Math.tan(Math.PI / 4 + R.lat * Math.PI / 360)), sp = Math.sin(p0), cp = Math.cos(p0), cg = Math.cos(g0), sg = Math.sin(g0);
+  for (let j = 0; j < D; j++) for (let i = 0; i < D; i++) {
+    let x = (i + .5) / D * 2 - 1, y = 1 - (j + .5) / D * 2; const rho = Math.hypot(x, y); if (rho >= 1) continue;
+    [x, y] = [x * cg + y * sg, -x * sg + y * cg];   // undo the view's roll
+    const cc = Math.asin(rho), sc_ = Math.sin(cc), co = Math.cos(cc);
+    const lat = rho ? Math.asin(co * sp + y * sc_ * cp / rho) : p0, lon = l0 + (rho ? Math.atan2(x * sc_, rho * co * cp - y * sc_ * sp) : 0);
+    const u = ((lon * 180 / Math.PI + 180) / 360 % 1 + 1) % 1, my = Math.log(Math.tan(Math.PI / 4 + clamp(lat, -1.43, 1.43) / 2));
+    const si = (Math.min(IH - 1, Math.max(0, Math.floor((ym - my) / (2 * ym) * IH))) * IW + Math.floor(u * IW)) * 4, di = (j * D + i) * 4, sh = .62 + .38 * co;
+    out[di] = src[si] * sh; out[di + 1] = src[si + 1] * sh; out[di + 2] = src[si + 2] * sh; out[di + 3] = 255;
+  }
+  gx.putImageData(img, 0, 0);
+  c.save(); c.filter = filt; c.imageSmoothingQuality = 'high'; c.drawImage(MAP.globe, tx - sc, ty - sc, sc * 2, sc * 2); c.restore();
+}
 
 // densify [lon, lat] waypoints (straight in lon/lat between stops, longitudes unwrapped across the antimeridian) and
 // measure along them, cached per route
@@ -201,19 +238,77 @@ definePreset('mapLabel', {
   },
 });
 
+// a territory's geometries: `units` (countries and "<ISO3>/<province>") or the single country `name`
+function mapUnits(o, who) {
+  const list = o.units?.length ? o.units : [o.name];
+  return list.map(n => { const g = String(n).includes('/') ? GEO.admin1?.[n] : GEO.countries50[n];
+    if (!g) throw new Error(`${who}: no area "${n}" (countries: Natural Earth English names, e.g. "Vietnam"; provinces: "<ISO3>/<name>" from src/geo/admin1_10m.js, rebuild with tools/geo_build.mjs --admin1=… --countries=…)`);
+    return g; });
+}
+const mapTrace = (c, gs) => { const path = d3.geoPath(MAP.proj, c); c.beginPath(); for (const g of gs) path(g); };
+// the OUTER edge of a union of areas (no lines between the provinces inside it): stroke every area at twice the width
+// on a scratch layer, then cut the union's interior away, which removes the inner half of the edge and every
+// internal border; `glow` adds a coloured blur around it
+function mapEdge(c, gs, width, color, alpha = 1, glow = 0) {
+  if (!MAP.tmp2) { MAP.tmp2 = document.createElement('canvas'); MAP.tmp2.width = W; MAP.tmp2.height = H; }
+  const x = MAP.tmp2.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H);
+  mapTrace(x, gs); x.lineJoin = 'round'; x.lineWidth = width * 2; x.strokeStyle = color; x.stroke();
+  x.globalCompositeOperation = 'destination-out'; mapTrace(x, gs); x.fill(); x.globalCompositeOperation = 'source-over';
+  c.save(); c.globalAlpha = alpha; if (glow > 0) { c.shadowColor = color; c.shadowBlur = glow; } c.drawImage(MAP.tmp2, 0, 0); c.restore();
+}
+// screen box of a territory (for sweeps)
+const mapBox = gs => { const b = d3.geoPath(MAP.proj).bounds({ type: 'GeometryCollection', geometries: gs }); return { x0: b[0][0], y0: b[0][1], x1: b[1][0], y1: b[1][1] }; };
+
 definePreset('mapRegion', {
-  label: 'Map Region', about: 'a whole country (modern Natural Earth admin-0 border) filled with a colour, white edge and soft drop shadow; fades in, optional fade out',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'country', 'region', 'territory', 'highlight', 'border', 'fill', 'nation'],
-    params: { alpha: { min: 0, max: 1 }, edge: { min: 0, max: 10 } }, assets: [{ param: 'name', type: 'geo' }], layers: ['overlay'] },
-  defaults: { name: 'Spain', color: '#D8332A', alpha: .85, edge: 2.4, edgeColor: '#FFFFFF', shadow: true, out: null, outDur: .4, ease: 'easeOut', dur: .6 },
+  label: 'Map Region', about: 'a territory filled with a colour, white outer edge and soft drop shadow: one country (modern Natural Earth admin-0), or units = a union of countries and provinces (historical or partial territories); fades in, optional fade out',
+  meta: { version: '1.1.0', category: 'map', tags: ['map', 'country', 'region', 'territory', 'highlight', 'border', 'fill', 'nation', 'province', 'historical', 'empire', 'colony'],
+    params: { alpha: { min: 0, max: 1 }, edge: { min: 0, max: 10 } }, assets: [{ param: 'name', type: 'geo' }, { param: 'units', type: 'geo' }], layers: ['overlay'] },
+  defaults: { name: 'Spain', units: [], color: '#D8332A', alpha: .85, edge: 2.4, edgeColor: '#FFFFFF', shadow: true, out: null, outDur: .4, ease: 'easeOut', dur: .6 },
   run(t, o) {
-    const g = GEO.countries50[o.name]; if (!g) throw new Error(`mapRegion: no country "${o.name}" in Natural Earth 1:50m (English names, e.g. "Vietnam")`);
-    const c = mapCtx(), k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(k, q); if (a <= 0) return;
-    const path = d3.geoPath(MAP.proj, c), u = US();
-    c.save(); c.beginPath(); path(g); c.lineJoin = 'round';
+    const gs = mapUnits(o, 'mapRegion'), c = mapCtx(), k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(k, q); if (a <= 0) return;
+    const u = US();
+    c.save(); mapTrace(c, gs);
     if (o.shadow) { c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 16 * u; c.shadowOffsetY = 7 * u; }
-    c.globalAlpha = o.alpha * a; c.fillStyle = o.color; c.fill();
-    c.shadowColor = 'transparent'; c.globalAlpha = a; c.lineWidth = o.edge * u; c.strokeStyle = o.edgeColor; c.stroke(); c.restore();
+    c.globalAlpha = o.alpha * a; c.fillStyle = o.color; c.fill(); c.restore();
+    if (o.edge > 0) mapEdge(c, gs, o.edge * u, o.edgeColor, a);
+  },
+});
+
+definePreset('mapTransfer', {
+  label: 'Map Territory Transfer', about: 'a territory changes hands: filled in the old owner\'s colour, the new colour sweeps across it (direction dir) with a glowing front, then a white flash on its edge; for cessions, annexations, conquests',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'territory', 'cession', 'annexation', 'conquest', 'border change', 'treaty', 'history', 'colony', 'lost land'],
+    params: { dir: { enum: ['left', 'right', 'up', 'down'] }, alpha: { min: 0, max: 1 }, edge: { min: 0, max: 10 } }, assets: [{ param: 'units', type: 'geo' }], layers: ['overlay'] },
+  defaults: { name: 'Laos', units: [], from: '#E8C547', to: '#3E6FD0', dir: 'right', alpha: .9, edge: 2.4, edgeColor: '#FFFFFF', flash: true, out: null, outDur: .4, ease: 'ease', dur: 1.2 },
+  run(t, o) {
+    const gs = mapUnits(o, 'mapTransfer'), c = mapCtx(), u = US(), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1; if (q <= 0) return;
+    const k = clamp((t - o.at) / o.dur), e = k * k * (3 - 2 * k), B = mapBox(gs);
+    c.save(); c.globalAlpha = o.alpha * q; mapTrace(c, gs); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 16 * u; c.shadowOffsetY = 7 * u;
+    c.fillStyle = o.from; c.fill(); c.restore();
+    if (e > 0) {   // the new owner's colour, clipped to the sweep (a half-plane moving across the territory's box)
+      const pad = 40 * u, R = { right: [B.x0 - pad, B.y0 - pad, (B.x1 - B.x0 + 2 * pad) * e, B.y1 - B.y0 + 2 * pad], left: [B.x1 + pad - (B.x1 - B.x0 + 2 * pad) * e, B.y0 - pad, (B.x1 - B.x0 + 2 * pad) * e, B.y1 - B.y0 + 2 * pad],
+        down: [B.x0 - pad, B.y0 - pad, B.x1 - B.x0 + 2 * pad, (B.y1 - B.y0 + 2 * pad) * e], up: [B.x0 - pad, B.y1 + pad - (B.y1 - B.y0 + 2 * pad) * e, B.x1 - B.x0 + 2 * pad, (B.y1 - B.y0 + 2 * pad) * e] }[o.dir];
+      c.save(); c.beginPath(); c.rect(...R); c.clip(); mapTrace(c, gs); c.globalAlpha = o.alpha * q; c.fillStyle = o.to; c.fill(); c.restore();
+      if (e < 1) {   // the glowing front, inside the territory
+        const fx = { right: R[0] + R[2], left: R[0], down: null, up: null }[o.dir], fy = { down: R[1] + R[3], up: R[1] }[o.dir];
+        c.save(); mapTrace(c, gs); c.clip(); c.strokeStyle = '#FFFFFF'; c.lineWidth = 6 * u; c.shadowColor = '#FFFFFF'; c.shadowBlur = 18 * u; c.globalAlpha = .9 * q; c.beginPath();
+        if (fx != null) { c.moveTo(fx, B.y0 - pad); c.lineTo(fx, B.y1 + pad); } else { c.moveTo(B.x0 - pad, fy); c.lineTo(B.x1 + pad, fy); } c.stroke(); c.restore();
+      }
+    }
+    if (o.edge > 0) mapEdge(c, gs, o.edge * u, o.edgeColor, q);
+    if (o.flash && k >= 1) { const f = clamp(1 - (t - o.at - o.dur) / .5); if (f > 0) mapEdge(c, gs, 5 * u, '#FFFFFF', f * q, 22 * u); }
+  },
+});
+
+definePreset('mapHighlight', {
+  label: 'Map Highlight', about: 'singles out a territory (country or union of provinces): a glowing outline that pulses and an optional light wash inside; "the important part", "the heartland", a battle zone',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'highlight', 'focus', 'territory', 'emphasis', 'glow', 'outline', 'pulse', 'core', 'zone'],
+    params: { width: { min: 1, max: 14 }, wash: { min: 0, max: 1 }, pulse: { min: 0, max: 3 } }, assets: [{ param: 'units', type: 'geo' }], layers: ['overlay'] },
+  defaults: { name: 'Thailand', units: [], color: '#FFF3A6', width: 4, wash: .35, pulse: 1, out: null, outDur: .4, ease: 'easeOut', dur: .5 },
+  run(t, o) {
+    const gs = mapUnits(o, 'mapHighlight'), c = mapCtx(), u = US(), k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(k, q); if (a <= 0) return;
+    const p = o.pulse > 0 ? .5 + .5 * Math.sin((t - o.at) * Math.PI * 2 * .8 * o.pulse) : 1;
+    if (o.wash > 0) { c.save(); mapTrace(c, gs); c.globalAlpha = o.wash * a * (.75 + .25 * p); c.fillStyle = o.color; c.fill(); c.restore(); }
+    mapEdge(c, gs, o.width * u, o.color, a, (10 + 16 * p) * u);
   },
 });
 

@@ -44,8 +44,13 @@ const TARGETS = [
   // mapRegion, mapSprite, captionBar, mapBase 'satellite', mapView blur, routeDraw glow: the style-test plan is their fixture
   // (compile: node tools/compile_plan.mjs --manifest=tools/fixtures/plans/magellan_style.json --allow-experimental)
   { name: 'map_style', story: '_plan_magellan_style', times: [1.5, 7.2, 12] },
+  // map documentary kit (mapRegion units, mapTransfer, mapHighlight, mapPin, satellite globe, sticker, dateCard,
+  // chapterBadge): the Siam showcase plan is its fixture. Compile both formats first:
+  // node tools/compile_plan.mjs --manifest=tools/fixtures/plans/siam_colonial.json --allow-experimental [--aspect=16:9]
+  { name: 'map_doc_kit', story: '_plan_siam_colonial', byAspect: { '16:9': '_plan_siam_colonial_16x9' }, times: [3, 9, 15, 23.5, 29.5, 35] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
+  ...['sticker', 'dateCard', 'chapterBadge'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
 ];
 const only = args.only ? String(args.only).split(',') : null;

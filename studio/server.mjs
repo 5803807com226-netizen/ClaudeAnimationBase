@@ -88,7 +88,9 @@ async function stepDirect(id, mode) {
 // the project's sound and finishing settings go into the manifest before every compile (so changing them needs no new direction)
 function applySettings(P, m) {
   const M = rj(m), A = { ...(M.audio || {}) };
-  if (P.narration?.file) A.narration = { measured: false, ...A.narration, file: P.narration.file }; else delete A.narration;
+  if (P.narration?.file) A.narration = { measured: false, ...A.narration, file: P.narration.file, ...(P.narration.timing ? { timing: P.narration.timing, measured: !!P.narration.measured } : {}) }; else delete A.narration;
+  // a measured voice (one cue per shot, tools/tts.py) drives the cuts: shot i starts at cue i, the last ends after its cue
+  if (P.narration?.timing && M.shots?.length) { M.shots.forEach((s, i) => { s.say ??= [i + 1, i + 1]; }); M.shots.at(-1).end = null; }
   if (P.music?.file) A.music = { gain: .22, duck: .7, ...(A.music || {}), file: P.music.file }; else delete A.music;
   if (P.sfx === false) A.sfx = false; else delete A.sfx;
   M.audio = A; M.subtitles = P.subtitles !== false; M.polish = P.polish !== false;
@@ -133,6 +135,14 @@ async function stepArt(id, mode) {
   await run('node', ['tools/validate_assets.mjs', `--story=${st}`]);
 }
 const hasRealArt = id => { const r = spawnSync('node', ['tools/validate_assets.mjs', `--story=_plan_${id}`], { cwd: ROOT, encoding: 'utf8' }); return r.status === 0; };
+// Thai narration from the shots' narration lines (tools/tts.py): one cue per shot, measured timing
+async function stepVoice(id, engine = 'auto') {
+  const m = PDIR(id) + 'manifest.json'; if (!existsSync(m)) throw new Error('no manifest: direct the story first');
+  await run(PY(), ['tools/tts.py', `--manifest=${m}`, `--out=${PDIR(id)}narration`, `--engine=${engine}`]);
+  const P = rj(PDIR(id) + 'project.json');
+  P.narration = { file: resolve(PDIR(id) + 'narration.wav'), timing: resolve(PDIR(id) + 'narration.srt'), measured: engine !== 'silence', tts: engine };
+  wj(PDIR(id) + 'project.json', P); log('narration ready: the cuts now follow the voice (compile again to re-time the shots)');
+}
 async function stepPreview(id) {
   const P = rj(PDIR(id) + 'project.json'), M = rj(PDIR(id) + 'manifest.json'); if (!M) throw new Error('no manifest');
   const times = M.shots.map(s => +((s.start + s.end) / 2).toFixed(2)), real = hasRealArt(id);
@@ -156,6 +166,7 @@ function autoSteps(id, opts) {
     ...(P.footage?.length ? [['footage plates', () => stepFootage(id)]] : []),
     ['Opus Director', () => stepDirect(id, opts.mode || 'opus')],
     ['compile', () => stepCompile(id)],
+    ...(opts.voice ? [['Thai narration', () => stepVoice(id, opts.voice)], ['compile (timed to the voice)', () => stepCompile(id)]] : []),
     ['artwork', () => stepArt(id, opts.art || 'gen')],
     ['preview', () => stepPreview(id)],
     ...(opts.review ? [['Opus review', () => stepReview(id)], ['compile', () => stepCompile(id)], ['artwork', () => stepArt(id, opts.art || 'gen')], ['preview', () => stepPreview(id)]] : []),
@@ -196,7 +207,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req);
       const steps = { direct: [['Opus Director', () => stepDirect(id, b.mode)]], compile: [['compile', () => stepCompile(id)]], footage: [['footage plates', () => stepFootage(id)]],
         art: [['artwork: ' + (b.mode || 'gen'), () => stepArt(id, b.mode)]], preview: [['preview', () => stepPreview(id)]], review: [['Opus review', () => stepReview(id)], ['compile', () => stepCompile(id)], ['preview', () => stepPreview(id)]],
-        render: [['final render', () => stepRender(id)]], auto: autoSteps(id, b) }[act];
+        render: [['final render', () => stepRender(id)]], voice: [['Thai narration', () => stepVoice(id, b.engine)], ['compile (timed to the voice)', () => stepCompile(id)]], auto: autoSteps(id, b) }[act];
       if (!steps) return send(res, 404, { error: 'unknown action' });
       startJob(`${act} · ${id}`, steps); return send(res, 200, { ok: true });
     }

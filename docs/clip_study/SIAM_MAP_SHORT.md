@@ -25,15 +25,10 @@ The reference Short is a map documentary.
 | SFX on motion, music under the voice | `compile_plan` auto SFX, `audio.music` |
 | 90 s length, per-scene render, re-render failed | `tools/pipeline.mjs` |
 
-## Missing (in order of impact on this kind of clip)
+## Missing items: status (11 Oct 2026)
 
-| # | Missing | Where it shows | Size | Needs from you |
-|---|---|---|---|---|
-| 1 | **Historical and partial territories**, with a "territory changes hands" animation (an area turns from yellow to blue, with the year) | the whole second half: 1893, 1904, 1909 cessions | large | source for the historical borders (polygons with references; the compiler rejects unsourced map data) |
-| 2 | **Stickers pinned to places**: flags, a treaty document, a cannon, a red X, a question mark, an axe | almost every shot | medium | the artwork: flags as PNG (public domain), icons generated on ComfyUI |
-| 3 | **Date card** (day / Thai month / year calendar) and **chapter badge** (number in a circle + title) | chapters 1–3 | small | – |
-| 4 | **Satellite texture on the globe** (today the globe is flat colour) | 12–15 s | medium | – |
-| 5 | **Region highlight**: a lighter inner area, a glowing outline, a pulse | "ส่วนสำคัญ", "แกนกลางของประเทศ" | small | – |
-| 6 | **Thai narration voice** (no text-to-speech in the system) | the whole clip | depends | choice of TTS or a recorded voice |
-| 7 | **Cartoon character sticker** (e.g. King Rama V) | 40–45 s | small (engine) + art | the character artwork |
-| 8 | **Brighter "stylised" satellite look** (turquoise shallow seas, more saturation) | throughout | small | – |
+All 8 have been added as presets (see [../MAP_DOC_KIT.md](../MAP_DOC_KIT.md)).
+- **Built:** historical territories and transfers, map stickers and flags, date card, chapter badge, satellite globe, region highlight, vivid satellite and Thai narration (`tools/tts.py`).
+- **Showcase:** `tools/fixtures/plans/siam_colonial.json`, 40 s. See its [frames](siam_colonial_sheet.jpg).
+- **Not tested here:** the Edge and Windows voices, which are blocked or unavailable in the cloud.
+- **Still needed:** character art such as King Rama V. Use `sticker` with `image` and a PNG made on ComfyUI.

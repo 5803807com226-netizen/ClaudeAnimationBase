@@ -1,0 +1,1657 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "siam_colonial",
+ "aspect": "9:16",
+ "fps": 24,
+ "target_seconds": 40,
+ "tolerance_seconds": 1,
+ "mode": "motion_only",
+ "_comment": "Preset showcase after the reference map-documentary Short (EARTHLY): sourced territorial changes of Siam 1893-1909 drawn as unions of modern provinces, flags and stickers pinned to places, date cards, chapter badges, satellite globe. Timing provisional (no voice).",
+ "strategy": {
+  "name": "historical_map_documentary",
+  "look": "documentary",
+  "background": "#0E2235",
+  "ai_video": "forbidden"
+ },
+ "data": {
+  "bangkok": {
+   "lonlat": [
+    100.5,
+    13.75
+   ],
+   "source": "modern coordinates of Bangkok",
+   "confidence": "high"
+  },
+  "paknam": {
+   "lonlat": [
+    100.59,
+    13.6
+   ],
+   "source": "modern coordinates of Samut Prakan (Paknam), mouth of the Chao Phraya",
+   "confidence": "high"
+  },
+  "gulf_entry": {
+   "coords": [
+    [
+     101.2,
+     11.2
+    ],
+    [
+     100.9,
+     12.6
+    ],
+    [
+     100.59,
+     13.6
+    ]
+   ],
+   "source": "schematic approach through the Gulf of Thailand to the river mouth",
+   "confidence": "schematic"
+  },
+  "label_china": {
+   "lonlat": [
+    104.5,
+    24.6
+   ],
+   "source": "label anchor inside modern China",
+   "confidence": "n/a"
+  },
+  "pin_burma": {
+   "lonlat": [
+    96.0,
+    21.0
+   ],
+   "source": "pin anchor inside modern Myanmar (British Burma)",
+   "confidence": "n/a"
+  },
+  "pin_indochina": {
+   "lonlat": [
+    105.6,
+    16.4
+   ],
+   "source": "pin anchor inside modern Laos/Vietnam (French Indochina)",
+   "confidence": "n/a"
+  },
+  "pin_siam": {
+   "lonlat": [
+    100.8,
+    15.6
+   ],
+   "source": "pin anchor inside modern Thailand",
+   "confidence": "n/a"
+  },
+  "label_1893": {
+   "lonlat": [
+    103.4,
+    19.6
+   ],
+   "source": "label anchor inside the 1893 cession area",
+   "confidence": "n/a"
+  },
+  "label_1907": {
+   "lonlat": [
+    103.4,
+    13.4
+   ],
+   "source": "label anchor inside the 1907 cession area",
+   "confidence": "n/a"
+  },
+  "label_1909": {
+   "lonlat": [
+    101.6,
+    5.6
+   ],
+   "source": "label anchor inside the 1909 cession area",
+   "confidence": "n/a"
+  },
+  "route_britain_burma": {
+   "coords": [
+    [
+     -0.1,
+     51.5
+    ],
+    [
+     -5.6,
+     36.0
+    ],
+    [
+     32.3,
+     31.3
+    ],
+    [
+     32.55,
+     29.97
+    ],
+    [
+     43.4,
+     12.6
+    ],
+    [
+     79.85,
+     6.93
+    ],
+    [
+     96.2,
+     16.8
+    ]
+   ],
+   "source": "London-Gibraltar-Port Said-Suez-Bab-el-Mandeb-Colombo-Rangoon (Suez route, opened 1869); lines between ports schematic",
+   "confidence": "schematic"
+  },
+  "route_france_saigon": {
+   "coords": [
+    [
+     5.37,
+     43.3
+    ],
+    [
+     32.3,
+     31.3
+    ],
+    [
+     32.55,
+     29.97
+    ],
+    [
+     43.4,
+     12.6
+    ],
+    [
+     79.85,
+     6.93
+    ],
+    [
+     103.8,
+     1.29
+    ],
+    [
+     106.7,
+     10.8
+    ]
+   ],
+   "source": "Marseille-Port Said-Suez-Bab-el-Mandeb-Colombo-Singapore-Saigon (Suez route); lines between ports schematic",
+   "confidence": "schematic"
+  },
+  "british_burma": {
+   "units": [
+    "Myanmar"
+   ],
+   "source": "British Burma (annexation completed 1885), drawn with the modern Myanmar border",
+   "confidence": "medium",
+   "note": "modern border as an approximation"
+  },
+  "british_malaya": {
+   "units": [
+    "MYS/Pulau Pinang",
+    "MYS/Perak",
+    "MYS/Selangor",
+    "MYS/Negeri Sembilan",
+    "MYS/Melaka",
+    "MYS/Pahang",
+    "MYS/Johor",
+    "MYS/Kuala Lumpur",
+    "MYS/Putrajaya"
+   ],
+   "source": "British-controlled Malay states and Straits Settlements before 1909, drawn with modern Malaysian state borders",
+   "confidence": "medium",
+   "note": "approximation; Johor came under formal British advice in 1914"
+  },
+  "french_indochina_core": {
+   "units": [
+    "Vietnam",
+    "KHM/Kaôh Kong",
+    "KHM/Kep",
+    "KHM/Krong Preah Sihanouk",
+    "KHM/Krâchéh",
+    "KHM/Kâmpóng Cham",
+    "KHM/Kâmpóng Chhnang",
+    "KHM/Kâmpóng Spœ",
+    "KHM/Kâmpóng Thum",
+    "KHM/Kâmpôt",
+    "KHM/Kândal",
+    "KHM/Môndól Kiri",
+    "KHM/Phnom Penh",
+    "KHM/Pouthisat",
+    "KHM/Prey Vêng",
+    "KHM/Rôtânôkiri",
+    "KHM/Stœng Trêng",
+    "KHM/Svay Rieng",
+    "KHM/Takêv"
+   ],
+   "source": "French Cochinchina, Annam, Tonkin and the Cambodian protectorate (1863) before 1893, drawn with modern borders",
+   "confidence": "medium",
+   "note": "approximation with modern provinces"
+  },
+  "siam_core": {
+   "units": [
+    "Thailand"
+   ],
+   "source": "the territory Siam kept, drawn with the modern Thailand border",
+   "confidence": "high"
+  },
+  "cession_1893": {
+   "units": [
+    "LAO/Attapu",
+    "LAO/Bokeo",
+    "LAO/Bolikhamxai",
+    "LAO/Houaphan",
+    "LAO/Khammouan",
+    "LAO/Louang Namtha",
+    "LAO/Louangphrabang",
+    "LAO/Oudômxai",
+    "LAO/Phôngsali",
+    "LAO/Saravan",
+    "LAO/Savannakhét",
+    "LAO/Vientiane",
+    "LAO/Vientiane [prefecture]",
+    "LAO/Xiangkhoang",
+    "LAO/Xékong"
+   ],
+   "source": "Franco-Siamese Treaty of 3 October 1893: Siam renounced the territories on the left (east) bank of the Mekong; drawn as the modern Lao provinces east of the Mekong",
+   "confidence": "medium",
+   "note": "modern province borders approximate the treaty line; Champasak is drawn with 1904"
+  },
+  "cession_1904": {
+   "units": [
+    "LAO/Xaignabouri",
+    "LAO/Champasak",
+    "KHM/Preah Vihéar"
+   ],
+   "source": "Franco-Siamese Convention of 13 February 1904: the right-bank territories of Luang Prabang (Sayaboury) and Champasak, Melou Prey and Tonlé Repou; drawn as modern Xaignabouri, Champasak and Preah Vihear",
+   "confidence": "medium",
+   "note": "approximation with modern provinces"
+  },
+  "cession_1907": {
+   "units": [
+    "KHM/Batdâmbâng",
+    "KHM/Siemréab",
+    "KHM/Bântéay Méanchey",
+    "KHM/Otdar Mean Chey",
+    "KHM/Krong Pailin"
+   ],
+   "source": "Franco-Siamese Treaty of 23 March 1907: Battambang, Siem Reap and Sisophon; drawn as the modern Cambodian provinces covering them",
+   "confidence": "medium",
+   "note": "approximation with modern provinces"
+  },
+  "cession_1909": {
+   "units": [
+    "MYS/Kedah",
+    "MYS/Perlis",
+    "MYS/Kelantan",
+    "MYS/Terengganu"
+   ],
+   "source": "Anglo-Siamese Treaty of 10 March 1909: Kedah, Perlis, Kelantan and Terengganu",
+   "confidence": "high",
+   "note": "modern state borders"
+  }
+ },
+ "shots": [
+  {
+   "id": "K1",
+   "start": 0,
+   "end": 6,
+   "purpose": "hook: Siam between the two empires",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         101,
+         12
+        ],
+        "zoom": 7.5
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         101,
+         13.5
+        ],
+        "zoom": 9
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.3,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "br",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_burma",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0.3,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "bm",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_malaya",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0.5,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "fr",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "french_indochina_core",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0.7,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0.9000000000000001,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "c93",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1893",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c04",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1904",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c07",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1907",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c09",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1909",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "l_cn",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_china",
+       "field": "lonlat"
+      },
+      "text": "จีน",
+      "at": 0.6,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 40,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "p_gb",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "pin_burma",
+       "field": "lonlat"
+      },
+      "at": 1.6,
+      "flag": "gb",
+      "size": 96
+     }
+    },
+    {
+     "id": "p_fr",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "pin_indochina",
+       "field": "lonlat"
+      },
+      "at": 1.9,
+      "flag": "fr",
+      "size": 96
+     }
+    },
+    {
+     "id": "p_th",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "pin_siam",
+       "field": "lonlat"
+      },
+      "at": 2.2,
+      "flag": "th",
+      "size": 96
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.pop",
+     "params": {
+      "text": "ทำไม[สยาม]ถึง\nไม่เคยเป็นเมืองขึ้น?",
+      "at": 0.2,
+      "y": 0.13,
+      "maxLines": 2,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 84
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ตะวันตกคือ[อังกฤษ] ตะวันออกคือ[ฝรั่งเศส]",
+      "at": 2.6,
+      "end": 5.8
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "ทดสอบพรีเซ็ต · สารคดีแผนที่",
+      "at": 0,
+      "x": 0.76,
+      "y": 0.03,
+      "maxLines": 1,
+      "safe": false,
+      "avoid": false,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 24,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      }
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "ทำไมสยามถึงไม่เคยเป็นเมืองขึ้น ทั้งที่ตะวันตกคืออังกฤษ ตะวันออกคือฝรั่งเศส"
+  },
+  {
+   "id": "K2",
+   "start": 6,
+   "end": 12,
+   "purpose": "19th century: the satellite globe turns from Europe to Asia",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "orthographic",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         25,
+         32
+        ],
+        "zoom": 1.05
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         88,
+         18
+        ],
+        "zoom": 1.12
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.2,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "name": "United Kingdom",
+      "color": "#D8433A",
+      "at": 0.2,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "fra",
+     "cap": "mapRegion",
+     "params": {
+      "name": "France",
+      "color": "#3E6FD0",
+      "at": 0.4,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "r_uk",
+     "cap": "routeDraw",
+     "params": {
+      "coords": {
+       "$data": "route_britain_burma",
+       "field": "coords"
+      },
+      "at": 0.6,
+      "dur": 4.4,
+      "color": "#FFFFFF",
+      "width": 4,
+      "dash": [
+       14,
+       10
+      ],
+      "head": "dot"
+     }
+    },
+    {
+     "id": "r_fr",
+     "cap": "routeDraw",
+     "params": {
+      "coords": {
+       "$data": "route_france_saigon",
+       "field": "coords"
+      },
+      "at": 0.9,
+      "dur": 4.4,
+      "color": "#FFFFFF",
+      "width": 4,
+      "dash": [
+       14,
+       10
+      ],
+      "head": "dot"
+     }
+    },
+    {
+     "id": "ship",
+     "cap": "mapSprite",
+     "params": {
+      "coords": {
+       "$data": "route_britain_burma",
+       "field": "coords"
+      },
+      "at": 0.6,
+      "dur": 4.4,
+      "icon": "ship",
+      "size": 46
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.pop",
+     "params": {
+      "text": "ศตวรรษที่ 19",
+      "at": 0.2,
+      "y": 0.11,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 84
+      }
+     }
+    },
+    {
+     "id": "sub",
+     "cap": "type.slide",
+     "params": {
+      "text": "[ยุคล่าอาณานิคม]",
+      "at": 0.6,
+      "y": 0.165,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFD43B",
+       "highlight": "#FFD43B",
+       "size": 44,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 6
+       }
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ชาติยุโรปแข่งกัน[ยึดดินแดน]ทั่วโลก",
+      "at": 0.4,
+      "end": 5.8
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "ทดสอบพรีเซ็ต · สารคดีแผนที่",
+      "at": 0,
+      "x": 0.76,
+      "y": 0.03,
+      "maxLines": 1,
+      "safe": false,
+      "avoid": false,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 24,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      }
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "ในศตวรรษที่สิบเก้า ชาติยุโรปแข่งกันยึดดินแดนไปทั่วโลก"
+  },
+  {
+   "id": "K3",
+   "start": 12,
+   "end": 19,
+   "purpose": "reason 1: open trade (Bowring Treaty, 18 April 1855)",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.6,
+         13.2
+        ],
+        "zoom": 22
+       }
+      ],
+      [
+       7,
+       {
+        "center": [
+         100.6,
+         13.5
+        ],
+        "zoom": 26
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.3,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "number": 1,
+      "text": "ยอม[เปิดการค้า]",
+      "at": 0.2
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "day": 18,
+      "month": 4,
+      "year": 1855,
+      "era": "ce",
+      "at": 0.8
+     }
+    },
+    {
+     "id": "doc",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "at": 1.6,
+      "icon": "document",
+      "size": 110,
+      "dx": 70,
+      "dy": -60
+     }
+    },
+    {
+     "id": "p_gb",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "at": 2.0,
+      "flag": "gb",
+      "size": 80,
+      "dx": -80,
+      "dy": -70
+     }
+    },
+    {
+     "id": "ship",
+     "cap": "mapSprite",
+     "params": {
+      "coords": {
+       "$data": "gulf_entry",
+       "field": "coords"
+      },
+      "at": 0.4,
+      "dur": 3.5,
+      "icon": "ship",
+      "size": 54
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ปี 1855 สยามทำ[สนธิสัญญา]การค้ากับอังกฤษ",
+      "at": 0.4,
+      "end": 6.8
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "ทดสอบพรีเซ็ต · สารคดีแผนที่",
+      "at": 0,
+      "x": 0.76,
+      "y": 0.03,
+      "maxLines": 1,
+      "safe": false,
+      "avoid": false,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 24,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      }
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "ข้อแรก สยามยอมเปิดการค้า ปีหนึ่งพันแปดร้อยห้าสิบห้า สยามทำสนธิสัญญาการค้ากับอังกฤษ"
+  },
+  {
+   "id": "K4",
+   "start": 19,
+   "end": 26,
+   "purpose": "reason 3: give up some land (1893: gunboats at Paknam, the left bank of the Mekong goes to France)",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         102.5,
+         15
+        ],
+        "zoom": 10
+       }
+      ],
+      [
+       7,
+       {
+        "center": [
+         103,
+         16
+        ],
+        "zoom": 11
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.3,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "br",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_burma",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "bm",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_malaya",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "fr",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "french_indochina_core",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c04",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1904",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c07",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1907",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c09",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1909",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "t93",
+     "cap": "mapTransfer",
+     "params": {
+      "units": {
+       "$data": "cession_1893",
+       "field": "units"
+      },
+      "from": "#E8C547",
+      "to": "#3E6FD0",
+      "dir": "right",
+      "at": 2.2,
+      "dur": 1.6
+     }
+    },
+    {
+     "id": "l93",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_1893",
+       "field": "lonlat"
+      },
+      "text": "1893",
+      "at": 3.9,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 56,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "number": 3,
+      "text": "ยอม[สละบางส่วน]",
+      "at": 0.2
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "day": 13,
+      "month": 7,
+      "year": 1893,
+      "era": "ce",
+      "at": 0.6
+     }
+    },
+    {
+     "id": "alarm",
+     "cap": "mapPin",
+     "params": {
+      "lonlat": {
+       "$data": "paknam",
+       "field": "lonlat"
+      },
+      "at": 1.0,
+      "glyph": "!",
+      "size": 70,
+      "dx": 0,
+      "dy": -60
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ปี 1893 [เรือรบฝรั่งเศส]บุกถึงปากน้ำ",
+      "at": 0.4,
+      "end": 3.6
+     }
+    },
+    {
+     "id": "cap2",
+     "cap": "captionBar",
+     "params": {
+      "text": "สยามต้องยอมยก[ฝั่งซ้ายแม่น้ำโขง]",
+      "at": 3.7,
+      "end": 6.8
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "ข้อสาม ยอมสละบางส่วน ปีหนึ่งพันแปดร้อยเก้าสิบสาม เรือรบฝรั่งเศสบุกถึงปากน้ำ สยามต้องยอมยกฝั่งซ้ายแม่น้ำโขง"
+  },
+  {
+   "id": "K5",
+   "start": 26,
+   "end": 33,
+   "purpose": "more land given up: 1904, 1907 to France, 1909 to Britain",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         102.5,
+         13.5
+        ],
+        "zoom": 9
+       }
+      ],
+      [
+       7,
+       {
+        "center": [
+         101.5,
+         11
+        ],
+        "zoom": 9.6
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.3,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "br",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_burma",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "bm",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_malaya",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "fr",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "french_indochina_core",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c93",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1893",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "t04",
+     "cap": "mapTransfer",
+     "params": {
+      "units": {
+       "$data": "cession_1904",
+       "field": "units"
+      },
+      "from": "#E8C547",
+      "to": "#3E6FD0",
+      "dir": "right",
+      "at": 0.4,
+      "dur": 1.0
+     }
+    },
+    {
+     "id": "t07",
+     "cap": "mapTransfer",
+     "params": {
+      "units": {
+       "$data": "cession_1907",
+       "field": "units"
+      },
+      "from": "#E8C547",
+      "to": "#3E6FD0",
+      "dir": "right",
+      "at": 2.0,
+      "dur": 1.0
+     }
+    },
+    {
+     "id": "l07",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_1907",
+       "field": "lonlat"
+      },
+      "text": "1907",
+      "at": 3.0,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 52,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "t09",
+     "cap": "mapTransfer",
+     "params": {
+      "units": {
+       "$data": "cession_1909",
+       "field": "units"
+      },
+      "from": "#E8C547",
+      "to": "#D8433A",
+      "dir": "down",
+      "at": 4.0,
+      "dur": 1.0
+     }
+    },
+    {
+     "id": "l09",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_1909",
+       "field": "lonlat"
+      },
+      "text": "1909",
+      "at": 5.0,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 52,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "big",
+     "cap": "type.impact",
+     "params": {
+      "text": "1909",
+      "at": 5.2,
+      "y": 0.13,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 120
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "แม้สยามยังต้อง[สละดินแดน]อีกหลายครั้ง",
+      "at": 0.4,
+      "end": 6.8
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "ทดสอบพรีเซ็ต · สารคดีแผนที่",
+      "at": 0,
+      "x": 0.76,
+      "y": 0.03,
+      "maxLines": 1,
+      "safe": false,
+      "avoid": false,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 24,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      }
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "แม้สยามยังต้องสละดินแดนอีกหลายครั้ง จนถึงปีหนึ่งพันเก้าร้อยเก้า"
+  },
+  {
+   "id": "K6",
+   "start": 33,
+   "end": 40,
+   "purpose": "the point: keep the heartland",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         101.5,
+         13
+        ],
+        "zoom": 9
+       }
+      ],
+      [
+       7,
+       {
+        "center": [
+         101,
+         14
+        ],
+        "zoom": 10.5
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0,
+      "saturate": 1.3,
+      "brightness": 1.06,
+      "contrast": 1.05
+     }
+    },
+    {
+     "id": "br",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_burma",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "bm",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "british_malaya",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "fr",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "french_indochina_core",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c93",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1893",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c04",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1904",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c07",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1907",
+       "field": "units"
+      },
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "c09",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "cession_1909",
+       "field": "units"
+      },
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "hl",
+     "cap": "mapHighlight",
+     "params": {
+      "units": {
+       "$data": "siam_core",
+       "field": "units"
+      },
+      "at": 0.6,
+      "dur": 0.6
+     }
+    },
+    {
+     "id": "axe",
+     "cap": "sticker",
+     "params": {
+      "icon": "axe",
+      "x": 0.5,
+      "y": 0.42,
+      "size": 170,
+      "at": 1.4,
+      "out": 3.4
+     }
+    },
+    {
+     "id": "q",
+     "cap": "sticker",
+     "params": {
+      "glyph": "✓",
+      "x": 0.66,
+      "y": 0.47,
+      "size": 90,
+      "at": 4.4
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.pop",
+     "params": {
+      "text": "ยอมเสีย[แขนขา]\nเพื่อรักษา[หัวใจ]",
+      "at": 3.6,
+      "y": 0.13,
+      "maxLines": 2,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 84
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "สยามเลือกรักษา[แกนกลางของประเทศ]",
+      "at": 0.4,
+      "end": 6.8
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "ทดสอบพรีเซ็ต · สารคดีแผนที่",
+      "at": 0,
+      "x": 0.76,
+      "y": 0.03,
+      "maxLines": 1,
+      "safe": false,
+      "avoid": false,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 24,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      }
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   },
+   "narration": "ยอมเสียแขนขา เพื่อรักษาหัวใจ สยามเลือกรักษาแกนกลางของประเทศเอาไว้"
+  }
+ ],
+ "subtitles": false
+}

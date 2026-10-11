@@ -379,6 +379,7 @@ function renderProject() {
     </div>
     <label>เรื่องราว / ไอเดีย / ข้อมูล (ภาษาไทย)</label><textarea id="f-story" placeholder="เล่าเรื่องที่อยากทำเป็นคลิป ใส่ข้อเท็จจริงที่ต้องการให้ถูกต้อง">${esc(P.story)}</textarea>
     <label>คำสั่งเพิ่มเติมถึงผู้กำกับ (ไม่บังคับ)</label><input id="f-notes" value="${esc(P.notes)}" placeholder="เช่น โทนอบอุ่น สีส้ม-มิ้นต์ มีส้มเป็นตัวเดินเรื่อง">
+    <div class="muted small" style="margin-top:8px">เสียงพากย์: ใส่ไฟล์ของคุณเอง หรือเว้นว่างแล้วกด "สร้างเสียงพากย์ไทย" (Edge: pip install edge-tts ต้องต่อเน็ต · หรือเสียงไทยของ Windows แบบออฟไลน์) ${P.narration?.tts ? `· ตอนนี้ใช้เสียงที่สร้างอัตโนมัติ (${esc(P.narration.tts)}) ถ้าแก้คำบรรยาย ให้สร้างเสียงใหม่` : ''}</div>
     <div class="row"><div><label>ไฟล์เสียงพากย์ (ไม่บังคับ)</label><input id="f-narr" value="${esc(P.narration?.file)}" placeholder="D:\\voice\\narration.wav"></div>
       <div><label>เพลงประกอบ (ไม่บังคับ · หรี่ลงเองตอนมีเสียงพากย์)</label><input id="f-music" value="${esc(P.music?.file)}" placeholder="D:\\music\\bed.mp3"></div></div>
     <div class="bar"><label class="chk"><input type="checkbox" id="f-subs" ${P.subtitles === false ? '' : 'checked'}> ซับไตเติลไฮไลต์ตามเสียง</label>
@@ -394,6 +395,7 @@ function renderProject() {
       <label class="chk"><input type="checkbox" id="o-test"> ทดสอบโดยไม่ใช้ AI</label>
       <label class="chk"><input type="checkbox" id="o-mock" ${HEALTH?.items?.find(x => x.id === 'comfy')?.ok ? '' : 'checked'}> ภาพ MOCK (ไม่ใช้ ComfyUI · ใช้ทดสอบเท่านั้น)</label>
       <label class="chk"><input type="checkbox" id="o-review" checked> ให้ Opus ตรวจงานแล้วแก้ 1 รอบ</label>
+      <label class="chk"><input type="checkbox" id="o-voice" ${P.narration?.file && !P.narration?.tts ? '' : 'checked'}> สร้างเสียงพากย์ไทยอัตโนมัติ</label>
       <label class="chk"><input type="checkbox" id="o-render"> เรนเดอร์วิดีโอตอนจบ</label></div>
     <div class="muted small" style="margin-top:6px">ลำดับ: ${P.footage?.length ? 'เตรียมฟุตเทจ → ' : ''}Opus กำกับ → ตรวจแผน → สร้างภาพ → พรีวิว → (Opus ตรวจงาน) → (เรนเดอร์) · หยุดทันทีถ้าขั้นไหนมีปัญหา</div>
     <details style="margin-top:10px"><summary class="muted">ทำทีละขั้น</summary><div class="bar">
@@ -401,6 +403,7 @@ function renderProject() {
       <button class="b" onclick="act('compile')">ตรวจแผน</button>${P.footage?.length ? `<button class="b" onclick="act('footage')">เตรียมฟุตเทจ</button>` : ''}
       <button class="b" onclick="act('art',{mode:'preflight'})">เช็ค ComfyUI</button><button class="b" onclick="act('art',{mode:'dry'})">ดู prompt ภาพ</button>
       <button class="b teal" onclick="act('art',{mode:'gen'})">สร้างภาพ</button><button class="b" onclick="act('art',{mode:'mock'})">ภาพ MOCK</button><button class="b" onclick="act('art',{mode:'validate'})">ตรวจภาพ</button>
+      <button class="b" onclick="act('voice',{engine:'auto'})">สร้างเสียงพากย์ไทย</button>
       <button class="b" onclick="act('preview')">พรีวิว</button><button class="b" onclick="act('review')">Opus ตรวจงาน</button><button class="b dark" onclick="act('render')">เรนเดอร์วิดีโอ</button></div></details></div>
   <div class="card"><h2><span class="n">3</span>ผลงานของผู้กำกับ</h2>
     ${d ? `<div><b class="k" style="font-size:18px">${esc(d.title)}</b> <span class="tag">${esc(d.style?.treatment || '')}</span><span class="tag">look ${esc(typeof d.style?.look === 'string' ? d.style.look : d.style?.look?.style || '')}</span></div>
@@ -416,14 +419,14 @@ function renderProject() {
 const clipRow = (c = {}) => `<div class="clip"><input class="c-path" value="${esc(c.path)}" placeholder="D:\\clips\\boat.mp4"><input class="c-name" value="${esc(c.name)}" placeholder="boat"><input class="c-desc" value="${esc(c.description)}" placeholder="หัวเรือหางยาว ทะเล ภูเขา"><input class="c-start" value="${esc(c.start ?? '')}" placeholder="0"><input class="c-end" value="${esc(c.end ?? '')}" placeholder="4"><button class="b sm" onclick="this.parentNode.remove()">✕</button></div>`;
 function projectForm() {
   return { id: CUR || $('#f-id').value.trim(), title: $('#f-title').value, story: $('#f-story').value, aspect: $('#f-asp').value, seconds: +$('#f-sec').value, style: $('#f-style').value,
-    notes: $('#f-notes').value, narration: { file: $('#f-narr').value.trim() || undefined }, music: { file: $('#f-music').value.trim() || undefined },
+    notes: $('#f-notes').value, narration: (f => f && f === VIEW.project.narration?.file ? VIEW.project.narration : { file: f || undefined })($('#f-narr').value.trim()), music: { file: $('#f-music').value.trim() || undefined },
     subtitles: $('#f-subs').checked, sfx: $('#f-sfx').checked, polish: $('#f-polish').checked,
     footage: $$('.clip').map(r => ({ path: r.querySelector('.c-path').value.trim(), name: r.querySelector('.c-name').value.trim(), description: r.querySelector('.c-desc').value,
       start: +r.querySelector('.c-start').value || 0, end: +r.querySelector('.c-end').value || undefined })).filter(c => c.path && c.name) };
 }
 async function saveProject() { try { VIEW = await api('/api/project', 'POST', projectForm()); const was = CUR; CUR = VIEW.project.id; await refreshState(); toast('บันทึกแล้ว'); if (!was) location.hash = '#projects/' + CUR; else renderProject(); } catch (e) { alert(e.message); } }
 async function act(a, data = {}) { try { await api('/api/project', 'POST', projectForm()); await api(`/api/project/${CUR}/${a}`, 'POST', data); startLog(); toast('เริ่มงานแล้ว'); } catch (e) { alert(e.message); } }
-function autoProject() { act('auto', { mode: $('#o-test').checked ? 'test' : 'opus', art: $('#o-mock').checked ? 'mock' : 'gen', review: $('#o-review').checked && !$('#o-test').checked, render: $('#o-render').checked }); }
+function autoProject() { act('auto', { mode: $('#o-test').checked ? 'test' : 'opus', art: $('#o-mock').checked ? 'mock' : 'gen', review: $('#o-review').checked && !$('#o-test').checked, render: $('#o-render').checked, voice: $('#o-voice').checked ? ($('#o-test').checked ? 'silence' : 'auto') : null }); }
 async function saveNarr() { const M = VIEW.manifest; $$('.narr').forEach(t => M.shots[+t.dataset.i].narration = t.value); VIEW = await api(`/api/project/${CUR}/manifest`, 'PUT', M); toast('บันทึกแล้ว'); renderProject(); }
 
 // ---------- job bar ----------
