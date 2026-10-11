@@ -60,7 +60,7 @@ function areaHint(n) {
 }
 const allowExp = !!(args['allow-experimental'] || M.allow_experimental);
 const warnings = [];
-// artwork: illustrations the story needs (watercolour people, places), made by tools/gen_assets.mjs from these prompts
+// artwork: illustrations the story needs (people in vector style, their poses, vehicles), made by tools/gen_assets.mjs from these prompts
 //   "artwork": { "assets": "assets/stories/<id>/", "style": "<shared style>", "negative": "...", "seed": 7,
 //                "items": { "<name>": { "prompt": "...", "size": [null, 1100], "character": "<name>", "engine": "zimage" } } }
 // A figure layer names one with "art": "<name>". Missing files are generated before rendering (job.assets), never drawn.
@@ -110,9 +110,11 @@ function checkLayer(L, len, prov, errors, subs) {
   let params;
   try { params = resolveData(L.params || {}, prov, `${L.id}.params`); } catch (e) { return errors.push(`${L.id}: ${e}`); }
   // a figure's artwork: an item of the manifest's `artwork` (made by tools/gen_assets.mjs before rendering)
-  if (params.art != null) {
-    if (!ART.items[params.art]) errors.push(`${L.id}.art: no artwork item "${params.art}" (the manifest's artwork.items has: ${Object.keys(ART.items).join(', ') || 'none'})`);
-    else { params.image = ART.dir + params.art + ".png"; ART.used.add(params.art); }
+  // (art → image; a second pose artArrive → imageArrive: any art<Name> → image<Name>)
+  for (const k of Object.keys(params).filter(k => /^art([A-Z]\w*)?$/.test(k) && params[k] != null)) {
+    const n = params[k], ik = 'image' + k.slice(3);
+    if (!ART.items[n]) errors.push(`${L.id}.${k}: no artwork item "${n}" (the manifest's artwork.items has: ${Object.keys(ART.items).join(', ') || 'none'})`);
+    else { params[ik] = ART.dir + n + '.png'; ART.used.add(n); if (!existsSync(params[ik])) ART.missing.add(n); }
   }
   if (GEO_AREAS && cap.assets?.some(a => a.type === 'geo')) for (const n of [...(Array.isArray(params.units) && params.units.length ? params.units : params.name != null ? [params.name] : [])])
     if (!GEO_AREAS.has(n)) errors.push(`${L.id}: blocked:unknown_area "${n}" (countries: Natural Earth English names; provinces "<ISO3>/<name>"; closest: ${areaHint(n)})`);
@@ -126,10 +128,8 @@ function checkLayer(L, len, prov, errors, subs) {
     if (S.enum && !S.enum.includes(v)) errors.push(`${L.id}.${k}: ${JSON.stringify(v)} not in ${S.enum.join('|')}`);
     if (t === 'number' && ((S.min != null && v < S.min) || (S.max != null && v > S.max))) errors.push(`${L.id}.${k}: ${v} outside ${S.min ?? ''}..${S.max ?? ''}`);
   }
-  if (typeof params.image === 'string' && !existsSync(params.image)) {
-    if (params.art != null && ART.items[params.art]) ART.missing.add(params.art);   // made by the art step before rendering
-    else errors.push(`${L.id}.image: no file ${params.image} (paths are relative to the repository root)`);
-  }
+  if (typeof params.image === 'string' && !existsSync(params.image) && !(params.art != null && ART.items[params.art]))   // artwork is made by the art step before rendering
+    errors.push(`${L.id}.image: no file ${params.image} (paths are relative to the repository root)`);
   const at = typeof params.at === 'number' ? params.at : 0, dur = params.dur ?? (cap.kind === 'collage' ? 0 : cap.params.dur?.default ?? 0);   // collage motions may run on (walk, sway)
   if (at > len) errors.push(`${L.id}: starts at ${at} s, after the shot ends (${len.toFixed(2)} s)`);
   else if (at + dur > len + .05) warnings.push(`${L.id}: its move (${at}+${dur} s) runs past the shot end (${len.toFixed(2)} s) and will be cut`);

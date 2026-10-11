@@ -440,10 +440,12 @@
        "field": "coords"
       },
       "art": "german_infantry",
-      "color": "#4A4446",
       "count": 3,
       "height": 72,
-      "dur": 1.7
+      "dur": 1.7,
+      "artArrive": "german_infantry_charge",
+      "artStep": "german_infantry_step",
+      "color": "#4A4446"
      }
     },
     {
@@ -1448,10 +1450,12 @@
        "field": "coords"
       },
       "art": "german_infantry",
-      "color": "#4A4446",
       "count": 3,
       "height": 72,
-      "dur": 2.0
+      "dur": 2.0,
+      "artArrive": "german_infantry_charge",
+      "artStep": "german_infantry_step",
+      "color": "#4A4446"
      }
     },
     {
@@ -2365,10 +2369,12 @@
        "field": "coords"
       },
       "art": "soviet_infantry",
-      "color": "#B3302B",
       "count": 3,
       "height": 72,
-      "dur": 1.8
+      "dur": 1.8,
+      "artArrive": "soviet_infantry_charge",
+      "artStep": "soviet_infantry_step",
+      "color": "#B3302B"
      }
     },
     {
@@ -2616,66 +2622,99 @@
  "_comment": "Directed by Opus in Motion Studio from a sourced story (Nazi Germany's war in Europe 1939-1945), map documentary, 30 s. Render: Motion Studio > เรนเดอร์ > แผนช็อตตัวอย่าง > คอมไพล์, then เรนเดอร์. Borders are modern (approximations), no Nazi symbols.",
  "artwork": {
   "assets": "assets/stories/nazi_war_30/",
-  "style": "loose watercolor illustration hand-painted on textured cold-press paper, soft transparent washes, visible brush strokes and pigment blooms, muted earthy palette with ink outlines, 1940s historical documentary book illustration, half-length figure",
-  "negative": "swastika, nazi symbol, insignia, emblem, flag, armband, medal, badge, photo, photorealistic, 3d render, gore, blood, weapon pointed at viewer",
+  "style": "clean flat vector illustration of real people with realistic human proportions and anatomy, crisp shapes, subtle cel shading, limited muted historical palette, editorial documentary infographic style, full body, dynamic natural pose",
+  "negative": "cartoon, chibi, caricature, exaggerated proportions, watercolor, painterly, photo, photorealistic, 3d render, swastika, nazi symbol, insignia, emblem, flag, armband, medal, badge, gore, blood, weapon pointed at viewer",
   "seed": 1939,
   "items": {
    "polish_soldier": {
-    "prompt": "a young Polish infantry soldier of 1939 in an olive-khaki wool uniform and a round steel helmet, rifle slung on his shoulder, looking toward the horizon with a determined face",
+    "prompt": "a young Polish infantry soldier of 1939 in an olive-khaki wool uniform and a round steel helmet, kneeling behind cover and aiming his rifle to the left, determined face",
     "size": [
      null,
      1100
-    ],
-    "character": "polish_soldier"
+    ]
    },
    "paris_civilians": {
-    "prompt": "Parisian civilians in June 1940, a mother in a long coat holding her young son's hand and a small suitcase, worried faces, walking away",
+    "prompt": "Parisian civilians fleeing in June 1940, a mother in a long coat pulling her young son by the hand while carrying a suitcase, walking fast, looking back over her shoulder, worried",
     "size": [
      null,
      1100
     ]
    },
    "soviet_soldier": {
-    "prompt": "a Soviet soldier at Stalingrad in winter 1943, quilted padded jacket, fur hat with ear flaps, snow on his shoulders, tired but resolute face, rifle held upright",
+    "prompt": "a Soviet soldier at Stalingrad in winter 1943 in a quilted padded jacket and fur hat with ear flaps, advancing through snow, leaning forward with his rifle held across his chest, resolute face",
     "size": [
      null,
      1100
     ]
    },
    "allied_soldier": {
-    "prompt": "an Allied soldier wading ashore at Normandy in June 1944, steel helmet with camouflage netting, rifle held above the water, sea spray around his legs",
+    "prompt": "an Allied soldier landing at Normandy in June 1944, steel helmet with camouflage netting, wading ashore through knee-deep water, holding his rifle above his head with both hands",
     "size": [
      null,
      1100
     ]
    },
    "war_refugees": {
-    "prompt": "war refugees in 1945, an old man and a young woman carrying bundles, walking together, worn coats and scarves, weary faces",
+    "prompt": "war refugees in 1945, an old man with a walking stick and a young woman carrying a bundle on her back, walking together slowly, weary faces",
     "size": [
      null,
      1100
     ]
    },
    "german_infantry": {
-    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, rifle on the shoulder, marching, full body side view facing right",
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, marching with a rifle on the shoulder, full body side view facing right",
     "size": [
      null,
      600
-    ]
+    ],
+    "character": "german_infantry"
    },
    "soviet_infantry": {
-    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, rifle held forward, advancing, full body side view facing right",
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, marching with a rifle, full body side view facing right",
     "size": [
      null,
      600
-    ]
+    ],
+    "character": "soviet_infantry"
    },
    "bomber_plane": {
-    "prompt": "a 1940 twin-engine propeller bomber airplane in plain grey-green paint with no markings, seen from the side flying to the right, wings visible",
+    "prompt": "a 1940 twin-engine propeller bomber airplane in plain grey-green paint with no markings, seen from the side flying to the right",
     "size": [
      900
     ],
     "negative": "roundel, cross, swastika, markings, numbers"
+   },
+   "german_infantry_charge": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, charging forward with his rifle held ready, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "german_infantry"
+   },
+   "soviet_infantry_charge": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, charging forward with his rifle held ready, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "soviet_infantry"
+   },
+   "german_infantry_step": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, mid-stride with the other leg forward, rifle on the shoulder, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "german_infantry"
+   },
+   "soviet_infantry_step": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, mid-stride with the other leg forward, rifle held, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "soviet_infantry"
    }
   }
  }

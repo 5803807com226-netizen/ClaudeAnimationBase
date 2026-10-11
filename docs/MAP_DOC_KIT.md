@@ -46,9 +46,9 @@ The compiler checks every area name against the catalog. When a name is wrong, i
 | `sapi` | A Thai voice installed in Windows | Offline |
 | `silence` | — | Test only |
 
-## People in watercolour (`artwork` + `figure`)
+## People as vector illustrations (`artwork` + `figure`)
 
-A map story shows the people it is about as watercolour illustrations, never as icons and never drawn in code:
+A map story shows the people it is about as vector illustrations of real people (realistic proportions, in the pose the narration describes). They are never icons or cartoons, and never drawn in code:
 
 1. The manifest declares them once: `"artwork": { "assets": "assets/stories/<id>/", "style": "...", "negative": "...", "items": { "<name>": { "prompt": "...", "size": [null, 1100] } } }`.
 2. A `figure` layer shows one: `{ "cap": "figure", "params": { "at": 0.6, "art": "<name>", "x": 0.24, "y": 0.82, "height": 540 } }`. It rises in from the bottom edge, breathes, and sits on a paper edge with a soft shadow. Per-format values (`{"9:16": …, "16:9": …}`) re-frame it.
@@ -59,12 +59,12 @@ Prompts describe people and clothing only. Every negative guards against text, f
 
 ## Tokens on the map (`mapTroops`, `mapBomber`)
 
-These are small watercolour cut-outs from the same `artwork` items, acting on the map. The art is a side view facing right, and a token turns to face its direction of travel.
+These are small cut-outs from the same `artwork` items (vector, real proportions), acting on the map. The art is a side view facing right, and a token turns to face its direction of travel.
 
 - `mapTroops` shows an army on the move.
   - A wedge of `count` soldiers (default 3) marches along sourced `coords`.
-  - The soldiers step and sway, with dust at their feet and a ring in the side's colour under them.
-  - On arrival, a pulse ring plays in that colour.
+  - The soldiers walk as a flip-book of two whole-figure stride frames (`art`, `artStep`: no rig, nothing cut apart), sway gently, kick up dust, and have a ring in the side's colour under them.
+  - On arrival, they switch to the `artArrive` pose (charging, aiming, a flag) with a small hop, and a pulse ring plays in that colour.
   - Map labels keep off its start and end points.
 - `mapBomber` shows an air raid.
   - The aircraft flies at `altitude`, with its shadow on the ground.

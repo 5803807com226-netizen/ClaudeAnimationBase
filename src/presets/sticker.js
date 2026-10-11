@@ -253,11 +253,11 @@ function chapterLine(t, o) {
   c.restore(); stkBlit(g);
 }
 
-// a person or a scene in watercolour (an imported or generated PNG cut-out, never drawn here) beside the map: it rises in
+// a person or a scene (a vector illustration of real people: an imported or generated PNG cut-out, never drawn here) beside the map: it rises in
 // from the frame edge, breathes, and sits on a paper edge with a soft shadow; leaves the way it came
 definePreset('figure', {
-  label: 'Figure Illustration', about: 'a watercolour illustration of the people in the story (soldiers, townspeople, a leader) as a cut-out PNG beside the map or the scene: rises in from the bottom edge (or slides from the side), breathes gently, white paper edge and soft shadow; the artwork comes from the manifest\'s artwork items (gen_assets, local ComfyUI), never drawn in code',
-  meta: { version: '1.0.0', category: 'sticker', tags: ['figure', 'illustration', 'watercolor', 'watercolour', 'people', 'soldier', 'civilian', 'character', 'portrait', 'cutout', 'artwork', 'image'], camera: 'screen', layers: ['screen'],
+  label: 'Figure Illustration', about: 'an illustration of the people in the story (soldiers, townspeople, a leader; vector style, real proportions, the pose the narration describes) as a cut-out PNG beside the map or the scene: rises in from the bottom edge (or slides from the side), breathes gently, white paper edge and soft shadow; the artwork comes from the manifest\'s artwork items (gen_assets, local ComfyUI), never drawn in code',
+  meta: { version: '1.0.0', category: 'sticker', tags: ['figure', 'illustration', 'vector', 'people', 'pose', 'soldier', 'civilian', 'character', 'portrait', 'cutout', 'artwork', 'image'], camera: 'screen', layers: ['screen'],
     params: { from: { enum: ['bottom', 'left', 'right'] }, height: { min: 100, max: 1900 }, x: { min: 0, max: 1 }, y: { min: 0, max: 1 }, edge: { min: 0, max: 20 } },
     assets: [{ param: 'image', type: 'image' }] },
   defaults: { image: '', art: null, x: .26, y: .84, height: 640, from: 'bottom', flip: false, edge: 6, shadow: true, breathe: 1, out: null, outDur: .45, ease: 'easeOut', dur: .7 },
@@ -278,7 +278,7 @@ definePreset('figure', {
   },
 });
 
-// map tokens: small watercolour cut-outs (artwork items, never drawn here) acting on the map. The art faces RIGHT
+// map tokens: small cut-outs (artwork items: vector illustrations of real people and vehicles, never drawn here) acting on the map. The art faces RIGHT
 // (side view); a token turns to face the way it moves. Effects (dust, bombs, blasts, smoke) are drawn: they are motion.
 const mapRoutePos = (R, g) => { let i = 1; while (i < R.P.length - 1 && R.d[i] < g) i++; const f = R.d[i] > R.d[i - 1] ? clamp((g - R.d[i - 1]) / (R.d[i] - R.d[i - 1])) : 0; return [lerp(R.P[i - 1][0], R.P[i][0], f), lerp(R.P[i - 1][1], R.P[i][1], f)]; };
 function mapTokenImg(c, im, x, y, h, face, rot = 0, alpha = 1) {   // bottom-centre anchored at (x, y)
@@ -288,10 +288,10 @@ function mapTokenImg(c, im, x, y, h, face, rot = 0, alpha = 1) {   // bottom-cen
 const mapRand = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
 
 definePreset('mapTroops', {
-  label: 'Map Troops', about: 'an army on the move: a small group of watercolour soldier cut-outs marches along a sourced route (an advance, an invasion, a retreat), stepping and swaying, dust at their feet, a ring in their side\'s colour under them; on arrival a pulse ring in that colour. art: an artwork item (side view, facing right)',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'troops', 'army', 'soldiers', 'invasion', 'advance', 'attack', 'march', 'retreat', 'war', 'military', 'token', 'watercolor'],
+  label: 'Map Troops', about: 'an army on the move: a small group of soldier cut-outs (vector illustrations of real people) marches along a sourced route (an advance, an invasion, a retreat), whole-figure frames like a flip-book (art and artStep alternate: no rig, nothing cut apart), a gentle sway, dust at their feet, a ring in their side\'s colour under them; on arrival they switch to a third pose (artArrive: charging, aiming, raising a flag) with a small hop and a pulse ring in that colour. art / artArrive: artwork items (side view, facing right)',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'troops', 'army', 'soldiers', 'invasion', 'advance', 'attack', 'march', 'retreat', 'war', 'military', 'token', 'vector', 'pose'],
     params: { count: { min: 1, max: 5 }, height: { min: 30, max: 220 } }, assets: [{ param: 'coords', type: 'route' }, { param: 'image', type: 'image' }], layers: ['overlay'] },
-  defaults: { coords: [[13.4, 52.5], [21, 52.2]], image: '', art: null, color: '#4A4446', count: 3, height: 74, spacing: 1, progress: [0, 1], arrive: true, out: null, outDur: .4, ease: 'ease', dur: 2 },
+  defaults: { coords: [[13.4, 52.5], [21, 52.2]], image: '', art: null, imageStep: '', artStep: null, imageArrive: '', artArrive: null, color: '#4A4446', count: 3, height: 74, spacing: 1, progress: [0, 1], arrive: true, out: null, outDur: .4, ease: 'ease', dur: 2 },
   run(t, o) {
     const im = STICKER_IMG[artPath(o.image)], q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1; if (q <= 0 || t < o.at - .3) return;
     const c = mapCtx(), u = US(), R = routeOf(o.coords), k = presetK(t, o), h = o.height * u, appear = clamp((t - o.at + .3) / .3);
@@ -311,7 +311,12 @@ definePreset('mapTroops', {
         const a = ((t * 2.2 + j / 3 + i * .37) % 1), dx = -dir * a * h * .5, r = h * (.06 + a * .14);
         c.save(); c.globalAlpha *= (1 - a) * .35; c.fillStyle = '#C9B79A'; c.beginPath(); c.arc(x + dx - dir * h * .1, y - r * .6 - a * h * .1, r, 0, TAU); c.fill(); c.restore();
       }
-      if (im) mapTokenImg(c, im, x, y - step * h * .06, h * sc, dir, (moving ? Math.sin(ph) * .06 : 0) * dir);
+      // on arrival: the second pose, swapped in with a small hop (staggered through the group)
+      const arr = o.imageArrive && k >= 1 ? STICKER_IMG[artPath(o.imageArrive)] : null, ta = t - (o.at + o.dur) - i * .08, hop = arr && ta > 0 && ta < .3 ? Math.sin(ta / .3 * Math.PI) * h * .12 : 0;
+      // walking: two whole-figure frames (art, artStep) alternate like a flip-book: no rig, nothing cut apart
+      const stepIm = o.imageStep ? STICKER_IMG[artPath(o.imageStep)] : null, walkIm = moving && stepIm && Math.floor((t - o.at) * 4 + i * .5) % 2 ? stepIm : im;
+      const pic = arr && ta > 0 ? arr : walkIm;
+      if (pic) mapTokenImg(c, pic, x, y - step * h * .06 - hop, h * sc, dir, (moving ? Math.sin(ph) * .06 : 0) * dir);
     }
     c.restore();
     if (o.arrive && k >= 1) {   // arrived: one pulse ring in the side's colour
@@ -322,8 +327,8 @@ definePreset('mapTroops', {
 });
 
 definePreset('mapBomber', {
-  label: 'Map Bomber', about: 'an air raid: a watercolour aircraft cut-out flies along a sourced route at altitude (its shadow on the ground below), drops bombs over the target stretch (drop: [from, to] of the route), each bomb falls and bursts (flash, shock ring, smoke). art: an artwork item (side view, facing right)',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'plane', 'aircraft', 'bomber', 'air raid', 'bombing', 'blitz', 'attack', 'explosion', 'war', 'token', 'watercolor'],
+  label: 'Map Bomber', about: 'an air raid: an aircraft cut-out (vector illustration) flies along a sourced route at altitude (its shadow on the ground below), drops bombs over the target stretch (drop: [from, to] of the route), each bomb falls and bursts (flash, shock ring, smoke). art: an artwork item (side view, facing right)',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'plane', 'aircraft', 'bomber', 'air raid', 'bombing', 'blitz', 'attack', 'explosion', 'war', 'token', 'vector'],
     params: { bombs: { min: 0, max: 12 }, width: { min: 40, max: 400 }, altitude: { min: 0, max: 400 } }, assets: [{ param: 'coords', type: 'route' }, { param: 'image', type: 'image' }], layers: ['overlay'] },
   defaults: { coords: [[8, 50], [2.35, 48.86]], image: '', art: null, width: 130, altitude: 120, bombs: 5, drop: [.62, .95], fall: .55, blast: '#FFB347', smoke: '#5A5550', out: null, outDur: .4, ease: 'linear', dur: 2.4 },
   run(t, o) {
