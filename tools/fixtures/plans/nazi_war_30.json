@@ -384,6 +384,31 @@
      }
     },
     {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 0.5,
+      "art": "polish_soldier",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
      "id": "date",
      "cap": "dateCard",
      "params": {
@@ -989,6 +1014,31 @@
      }
     },
     {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 3.0,
+      "art": "paris_civilians",
+      "x": {
+       "9:16": 0.76,
+       "16:9": 0.86,
+       "4:5": 0.83
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": true
+     }
+    },
+    {
      "id": "date",
      "cap": "dateCard",
      "params": {
@@ -1525,6 +1575,31 @@
      }
     },
     {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 1.2,
+      "art": "soviet_soldier",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
      "id": "date",
      "cap": "dateCard",
      "params": {
@@ -1773,6 +1848,31 @@
       "color": "#FFFFFF",
       "align": "center",
       "box": true
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 1.8,
+      "art": "allied_soldier",
+      "x": {
+       "9:16": 0.76,
+       "16:9": 0.86,
+       "4:5": 0.83
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": true
      }
     },
     {
@@ -2197,6 +2297,31 @@
      }
     },
     {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 0.6,
+      "art": "war_refugees",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
      "id": "title",
      "cap": "type.reveal",
      "params": {
@@ -2251,5 +2376,49 @@
  "audio": {},
  "subtitles": true,
  "polish": true,
- "_comment": "Directed by Opus in Motion Studio from a sourced story (Nazi Germany's war in Europe 1939-1945), map documentary, 30 s. Render: Motion Studio > เรนเดอร์ > แผนช็อตตัวอย่าง > คอมไพล์, then เรนเดอร์. Borders are modern (approximations), no Nazi symbols."
+ "_comment": "Directed by Opus in Motion Studio from a sourced story (Nazi Germany's war in Europe 1939-1945), map documentary, 30 s. Render: Motion Studio > เรนเดอร์ > แผนช็อตตัวอย่าง > คอมไพล์, then เรนเดอร์. Borders are modern (approximations), no Nazi symbols.",
+ "artwork": {
+  "assets": "assets/stories/nazi_war_30/",
+  "style": "loose watercolor illustration hand-painted on textured cold-press paper, soft transparent washes, visible brush strokes and pigment blooms, muted earthy palette with ink outlines, 1940s historical documentary book illustration, half-length figure",
+  "negative": "swastika, nazi symbol, insignia, emblem, flag, armband, medal, badge, photo, photorealistic, 3d render, gore, blood, weapon pointed at viewer",
+  "seed": 1939,
+  "items": {
+   "polish_soldier": {
+    "prompt": "a young Polish infantry soldier of 1939 in an olive-khaki wool uniform and a round steel helmet, rifle slung on his shoulder, looking toward the horizon with a determined face",
+    "size": [
+     null,
+     1100
+    ],
+    "character": "polish_soldier"
+   },
+   "paris_civilians": {
+    "prompt": "Parisian civilians in June 1940, a mother in a long coat holding her young son's hand and a small suitcase, worried faces, walking away",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "soviet_soldier": {
+    "prompt": "a Soviet soldier at Stalingrad in winter 1943, quilted padded jacket, fur hat with ear flaps, snow on his shoulders, tired but resolute face, rifle held upright",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "allied_soldier": {
+    "prompt": "an Allied soldier wading ashore at Normandy in June 1944, steel helmet with camouflage netting, rifle held above the water, sea spray around his legs",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "war_refugees": {
+    "prompt": "war refugees in 1945, an old man and a young woman carrying bundles, walking together, worn coats and scarves, weary faces",
+    "size": [
+     null,
+     1100
+    ]
+   }
+  }
+ }
 }

@@ -15,6 +15,8 @@ function stkCtx(o, name) {
 }
 const stkBlit = g => { flushBrush(); push(); resetMatrix(); translate(-W / 2, -H / 2); image(g, 0, 0); pop(); };
 const STICKER_IMG = {};   // path → loaded image (filled before the first frame)
+// a figure's artwork path, with the page's ?assets=<dir> override (mock stand-ins, another art folder): the file name is kept
+const artPath = p => { const q = new URLSearchParams(location.search).get('assets'); return q && p ? q.replace(/\{scene\}/g, '').replace(/\/?$/, '/') + p.split('/').pop() : p; };
 function stickerPreload(paths) {
   const want = [...new Set(paths)].filter(p => p && !STICKER_IMG[p]); if (!want.length) return;
   (window.PRELOAD = window.PRELOAD || []).push(async () => {
@@ -250,6 +252,31 @@ function chapterLine(t, o) {
   c.globalAlpha = .9 * q; c.fillStyle = o.color; c.fillRect(x0, Y + px * .5, tw * kl, Math.max(2, .06 * px));   // the underline, in the chapter colour
   c.restore(); stkBlit(g);
 }
+
+// a person or a scene in watercolour (an imported or generated PNG cut-out, never drawn here) beside the map: it rises in
+// from the frame edge, breathes, and sits on a paper edge with a soft shadow; leaves the way it came
+definePreset('figure', {
+  label: 'Figure Illustration', about: 'a watercolour illustration of the people in the story (soldiers, townspeople, a leader) as a cut-out PNG beside the map or the scene: rises in from the bottom edge (or slides from the side), breathes gently, white paper edge and soft shadow; the artwork comes from the manifest\'s artwork items (gen_assets, local ComfyUI), never drawn in code',
+  meta: { version: '1.0.0', category: 'sticker', tags: ['figure', 'illustration', 'watercolor', 'watercolour', 'people', 'soldier', 'civilian', 'character', 'portrait', 'cutout', 'artwork', 'image'], camera: 'screen', layers: ['screen'],
+    params: { from: { enum: ['bottom', 'left', 'right'] }, height: { min: 100, max: 1900 }, x: { min: 0, max: 1 }, y: { min: 0, max: 1 }, edge: { min: 0, max: 20 } },
+    assets: [{ param: 'image', type: 'image' }] },
+  defaults: { image: '', art: null, x: .26, y: .84, height: 640, from: 'bottom', flip: false, edge: 6, shadow: true, breathe: 1, out: null, outDur: .45, ease: 'easeOut', dur: .7 },
+  run(t, o) {
+    const im = STICKER_IMG[artPath(o.image)]; if (!im) return;
+    const k = presetK(t, o), q = o.out != null ? clamp((t - o.out) / o.outDur) : 0, e = Math.min(k, 1 - q); if (e <= 0) return;
+    const { g, c } = stkCtx(o, 'figure'), u = US(), h = o.height * u, w = h * im.width / im.height, X = o.x * W, Y = o.y * H;
+    const enter = 1 - easeOut(e), dx = o.from === 'left' ? -enter * (X + w) : o.from === 'right' ? enter * (W - X + w) : 0, dy = o.from === 'bottom' ? enter * (H - Y + h) : 0;
+    const br = 1 + .012 * o.breathe * Math.sin((t - o.at) * 1.7);
+    // the cut-out's paper edge: its silhouette in white, a little larger, under it (with the soft shadow)
+    if (!STK_G.figTmp || STK_G.figTmp.width !== Math.ceil(w + 4 * o.edge * u) || STK_G.figTmp.height !== Math.ceil(h + 4 * o.edge * u)) { STK_G.figTmp = document.createElement('canvas'); STK_G.figTmp.width = Math.ceil(w + 4 * o.edge * u); STK_G.figTmp.height = Math.ceil(h + 4 * o.edge * u); }
+    const T = STK_G.figTmp, x = T.getContext('2d'), m = 2 * o.edge * u; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, T.width, T.height);
+    if (o.edge > 0) { for (let a = 0; a < 16; a++) x.drawImage(im.canvas || im.elt, m + Math.cos(a / 16 * TAU) * o.edge * u, m + Math.sin(a / 16 * TAU) * o.edge * u, w, h); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#FBF7EE'; x.fillRect(0, 0, T.width, T.height); x.globalCompositeOperation = 'source-over'; }
+    x.drawImage(im.canvas || im.elt, m, m, w, h);
+    c.save(); c.translate(X + dx, Y + dy); c.scale((o.flip ? -1 : 1) * br, br); c.globalAlpha = Math.min(1, e * 1.4);
+    if (o.shadow) { c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 22 * u; c.shadowOffsetY = 10 * u; }
+    c.drawImage(T, -T.width / 2, -T.height + m); c.restore(); stkBlit(g);
+  },
+});
 
 // pinned to a place on the map (drawn by mapView with the other map layers, so it stays on the place)
 definePreset('mapPin', {

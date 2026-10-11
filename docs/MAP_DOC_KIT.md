@@ -45,3 +45,14 @@ The compiler checks every area name against the catalog. When a name is wrong, i
 | `edge` | `pip install edge-tts`; needs internet | Neural voices: th-TH-PremwadeeNeural (female, default), th-TH-NiwatNeural (male). Check the service's terms before commercial use |
 | `sapi` | A Thai voice installed in Windows | Offline |
 | `silence` | — | Test only |
+
+## People in watercolour (`artwork` + `figure`)
+
+A map story shows the people it is about as watercolour illustrations, never as icons and never drawn in code:
+
+1. The manifest declares them once: `"artwork": { "assets": "assets/stories/<id>/", "style": "...", "negative": "...", "items": { "<name>": { "prompt": "...", "size": [null, 1100] } } }`.
+2. A `figure` layer shows one: `{ "cap": "figure", "params": { "at": 0.6, "art": "<name>", "x": 0.24, "y": 0.82, "height": 540 } }`. It rises in from the bottom edge, breathes, and sits on a paper edge with a soft shadow. Per-format values (`{"9:16": …, "16:9": …}`) re-frame it.
+3. `compile_plan.mjs` turns the used items into a `SCENES.<id>_art` entry with `gen` blocks and sets `job.assets`. The pipeline (and Motion Studio's art step) runs `node tools/gen_assets.mjs --story=_plan_<id>` on the local ComfyUI before rendering. That run removes the background, sizes and validates each image. Missing artwork is listed at compile time, not blocked.
+4. In the cloud, only `--mock` stand-ins exist (`out/mock_assets/...`, used with `--assets=`). They test placement and are never the artwork.
+
+Prompts describe people and clothing only. Every negative guards against text, flags, insignia, and Nazi or hate symbols.

@@ -48,7 +48,7 @@ const TARGETS = [
   // chapterBadge): the Siam showcase plan is its fixture. Compile both formats first:
   // node tools/compile_plan.mjs --manifest=tools/fixtures/plans/siam_colonial.json --allow-experimental [--aspect=16:9]
   // mapArrow, mapLabel box / label placement, dateCard ticker, chapterBadge line, captionBar lines, mapBase physical tiles
-  { name: 'map_war', story: '_plan_nazi_war_30', byAspect: { '16:9': '_plan_nazi_war_30_16x9' }, times: [2.4, 10.2, 13.5, 21.5, 24.5] },
+  { name: 'map_war', story: '_plan_nazi_war_30', byAspect: { '16:9': '_plan_nazi_war_30_16x9' }, times: [2.4, 10.2, 13.5, 17, 21.5, 24.5] },   // + figure (art: --assets=out/mock_assets/_plan_nazi_war_30/nazi_war_30_art/ in the cloud)
   { name: 'map_doc_kit', story: '_plan_siam_colonial', byAspect: { '16:9': '_plan_siam_colonial_16x9' }, times: [3, 9, 15, 23.5, 29.5, 35] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
