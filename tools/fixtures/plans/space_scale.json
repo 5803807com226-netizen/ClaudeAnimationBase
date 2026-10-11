@@ -1,0 +1,486 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "space_scale",
+ "aspect": "9:16",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 26,
+ "tolerance_seconds": 2,
+ "strategy": {
+  "name": "space and scale explainer",
+  "look": "documentary",
+  "background": "#04060C"
+ },
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Demo of the space/scale kit (globe in space: stars + atmosphere; tilted map; teardrop pin; depthProfile; mapObjectRow; galaxy with the Sun's orbit; starfield warp). Facts: Challenger Deep ~10,935 m (2021 survey estimate), Everest 8,849 m; Indonesia (118E,5N) to Colombia (77.5W,7N) ~17,800 km great circle, computed from the coordinates = ~11 x Thailand's 1,640 km; the Sun takes ~230 million years to orbit the Milky Way; Andromeda is ~2.5 million light-years away.",
+ "data": {
+  "mariana": {
+   "lonlat": [
+    142.2,
+    11.35
+   ],
+   "source": "story: ร่องลึกมาเรียนา (Challenger Deep)",
+   "confidence": "high"
+  },
+  "pac_w": {
+   "lonlat": [
+    118,
+    5
+   ],
+   "source": "story: ฝั่งอินโดนีเซีย",
+   "confidence": "medium",
+   "note": "west shore of the Pacific near 5N"
+  },
+  "pac_e": {
+   "lonlat": [
+    -77.5,
+    7
+   ],
+   "source": "story: ฝั่งโคลอมเบีย",
+   "confidence": "medium",
+   "note": "east shore of the Pacific near 7N"
+  }
+ },
+ "shots": [
+  {
+   "id": "S01",
+   "start": 0,
+   "end": 5,
+   "narration": "มหาสมุทรแปซิฟิก ใหญ่ที่สุดในโลก",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "hook",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -150,
+         0
+        ],
+        "zoom": 0.85
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         -165,
+         8
+        ],
+        "zoom": 0.95
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "satellite",
+      "coastWidth": 1,
+      "stars": true,
+      "atmosphere": true,
+      "space": "#04060C"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "[แปซิฟิก] ใหญ่แค่ไหน?",
+      "at": 0.8,
+      "x": 0.5,
+      "y": 0.2,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 92,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.9,
+      "text": "มหาสมุทรแปซิฟิก\nใหญ่ที่สุดในโลก",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S02",
+   "start": 5,
+   "end": 10.5,
+   "narration": "กว้างราว 11 เท่าของความยาวประเทศไทย",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "width",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 5.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -165,
+         8
+        ],
+        "zoom": 0.95
+       }
+      ],
+      [
+       1.2,
+       {
+        "center": [
+         -160,
+         6
+        ],
+        "zoom": 0.86
+       }
+      ],
+      [
+       5.5,
+       {
+        "center": [
+         -160,
+         6
+        ],
+        "zoom": 0.88
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "satellite",
+      "coastWidth": 1,
+      "stars": true,
+      "atmosphere": true,
+      "space": "#04060C"
+     }
+    },
+    {
+     "id": "row",
+     "cap": "mapObjectRow",
+     "params": {
+      "at": 1.0,
+      "from": {
+       "$data": "pac_w",
+       "field": "lonlat"
+      },
+      "to": {
+       "$data": "pac_e",
+       "field": "lonlat"
+      },
+      "count": 11,
+      "size": 70,
+      "color": "#FFD84D",
+      "dur": 2.4
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.2,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ความกว้าง]",
+      "size": 62,
+      "color": "#2F67B1",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 5.4,
+      "text": "กว้างราว 11 เท่า\nของความยาวประเทศไทย",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S03",
+   "start": 10.5,
+   "end": 15,
+   "narration": "จุดที่ลึกที่สุดคือร่องลึกมาเรียนา",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "where",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -160,
+         6
+        ],
+        "zoom": 0.88
+       }
+      ],
+      [
+       1.6,
+       {
+        "center": [
+         142.2,
+         13
+        ],
+        "zoom": 3.6
+       }
+      ],
+      [
+       4.5,
+       {
+        "center": [
+         142.2,
+         13
+        ],
+        "zoom": 3.8
+       }
+      ]
+     ],
+     "tilt": 0,
+     "tiltTo": 32,
+     "tiltBg": "#0E1838"
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "satellite",
+      "coastWidth": 1,
+      "stars": true,
+      "atmosphere": true,
+      "space": "#04060C"
+     }
+    },
+    {
+     "id": "pin",
+     "cap": "mapPin",
+     "params": {
+      "at": 1.4,
+      "lonlat": {
+       "$data": "mariana",
+       "field": "lonlat"
+      },
+      "style": "drop",
+      "glyph": "!",
+      "size": 80,
+      "color": "#E5322D"
+     }
+    },
+    {
+     "id": "lbl",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.8,
+      "text": "ร่องลึกมาเรียนา",
+      "lonlat": {
+       "$data": "mariana",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": 60,
+      "size": 40,
+      "weight": 800,
+      "font": "display",
+      "style": "marker",
+      "angle": -3,
+      "align": "center"
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.2,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[จุดลึกสุด]",
+      "size": 62,
+      "color": "#2F67B1",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "จุดที่ลึกที่สุด\nคือร่องลึกมาเรียนา",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S04",
+   "start": 15,
+   "end": 21,
+   "narration": "ลึกราว 10,935 เมตร เอาเอเวอเรสต์ลงไปยังจมมิด",
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "depth",
+   "layers": [
+    {
+     "id": "depth",
+     "cap": "depthProfile",
+     "params": {
+      "at": 0,
+      "depth": 10935,
+      "label": "ร่องลึกมาเรียนา",
+      "items": [
+       {
+        "label": "เอเวอเรสต์ 8,849 ม.",
+        "height": 8849,
+        "shape": "mountain"
+       }
+      ],
+      "dur": 1.4
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 5.9,
+      "text": "ลึกราว 10,935 เมตร\nเอเวอเรสต์ยังจมมิด",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S05",
+   "start": 21,
+   "end": 26,
+   "narration": "ส่วนดวงอาทิตย์ ใช้เวลาราว 230 ล้านปี โคจรรอบทางช้างเผือกหนึ่งรอบ",
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "galaxy",
+   "layers": [
+    {
+     "id": "gal",
+     "cap": "galaxy",
+     "params": {
+      "at": 0,
+      "tilt": 64,
+      "orbit": 0.55,
+      "orbitText": "ดวงอาทิตย์",
+      "zoom": 1.1,
+      "zoomTo": 1.35,
+      "dur": 5
+     }
+    },
+    {
+     "id": "warp",
+     "cap": "starfield",
+     "params": {
+      "at": 3.6,
+      "speed": 0.4,
+      "warp": 1,
+      "warpAt": 0.2,
+      "warpDur": 1.4,
+      "bg": null,
+      "dur": 0.4
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.9,
+      "text": "ดวงอาทิตย์ใช้เวลา\nราว 230 ล้านปี\nต่อหนึ่งรอบกาแล็กซี",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  }
+ ]
+}

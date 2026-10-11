@@ -368,9 +368,9 @@ definePreset('mapBomber', {
 
 // pinned to a place on the map (drawn by mapView with the other map layers, so it stays on the place)
 definePreset('mapPin', {
-  label: 'Map Pin Sticker', about: 'a sticker pinned to a place: a national flag (on a card or a pole), an icon (treaty document, cannon, axe, crown, coin), a glyph (? ! ✕ ✓) or an imported PNG; pops in and bobs gently, stays on the place while the camera moves',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'flag', 'country', 'colonial power', 'pin', 'sticker', 'icon', 'treaty', 'question', 'cross', 'battle', 'image'],
-    params: { flag: { enum: [null, ...Object.keys(FLAGS)] }, icon: { enum: [null, ...Object.keys(STICKER_ICONS)] }, style: { enum: ['card', 'pole'] }, size: { min: 12, max: 400 }, bob: { min: 0, max: 3 } },
+  label: 'Map Pin Sticker', about: 'a sticker pinned to a place: a national flag (on a card, a pole or in a teardrop map marker with a pulse ring: style drop), an icon (treaty document, cannon, axe, crown, coin), a glyph (? ! ✕ ✓) or an imported PNG; pops in and bobs gently, stays on the place while the camera moves',
+  meta: { version: '1.1.0', category: 'map', tags: ['map', 'flag', 'country', 'colonial power', 'pin', 'sticker', 'icon', 'treaty', 'question', 'cross', 'battle', 'image', 'marker', 'location', 'teardrop'],
+    params: { flag: { enum: [null, ...Object.keys(FLAGS)] }, icon: { enum: [null, ...Object.keys(STICKER_ICONS)] }, style: { enum: ['card', 'pole', 'drop'] }, size: { min: 12, max: 400 }, bob: { min: 0, max: 3 } },
     assets: [{ param: 'lonlat', type: 'place' }], layers: ['overlay'] },
   defaults: { lonlat: [0, 0], dx: 0, dy: 0, style: 'card', size: 90, bob: 1, flag: null, icon: null, glyph: null, image: null, color: null, ink: '#FFFFFF', card: true, out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
@@ -378,12 +378,22 @@ definePreset('mapPin', {
     const u = US(), size = o.size * u, x = p[0] + o.dx * u, y = p[1] + o.dy * u + Math.sin((t - o.at) * 3.2) * 3 * o.bob * u;
     if (o.out == null || t < o.out + (o.outDur || .3)) {   // its box, for the whole shot: map labels keep off it (map.js mapPlaceLabels)
       if (o.style === 'pole' && o.flag) mapObstacle(p[0] - 6 * u, p[1] - size * 1.25, size * 1.05, size * 1.25 + 6 * u);
+      else if (o.style === 'drop') mapObstacle(p[0] - size * .5, p[1] - size * 1.45, size, size * 1.45);
       else mapObstacle(p[0] + o.dx * u - size * .55, p[1] + o.dy * u - size * .55, size * 1.1, size * 1.1);
     }
     const s = stickerPop(t, o) * stickerOut(t, o); if (s <= .001) return;
     const c = mapCtx();
     c.save();
-    if (o.style === 'pole' && o.flag) {   // a flag on a pole planted in the place
+    if (o.style === 'drop') {   // a teardrop map marker: its tip on the place, a pulse ring spreading from it, the sticker (flag, icon, glyph, PNG) inside the head
+      const r = size * .5, d = size * .95, th = Math.acos(r / d), pk = ((t - o.at) * .9) % 1;
+      c.globalAlpha = (1 - pk) * .7 * Math.min(1, s); c.strokeStyle = o.color || '#E5322D'; c.lineWidth = 3 * u; c.beginPath(); c.ellipse(p[0], p[1], r * 1.6 * pk, r * .55 * pk, 0, 0, TAU); c.stroke(); c.globalAlpha = 1;
+      c.translate(p[0], p[1]); c.scale(s, s); c.translate(-p[0], -p[1]); const cy = p[1] - d;
+      c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 4 * u; c.fillStyle = o.color || '#E5322D';
+      c.beginPath(); c.arc(p[0], cy, r, Math.PI / 2 + th, Math.PI / 2 - th); c.lineTo(p[0], p[1]); c.closePath(); c.fill(); c.shadowColor = 'transparent';
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(p[0], cy, r * .74, 0, TAU); c.fill();
+      if (o.flag || o.icon || o.glyph || o.image) { c.save(); c.beginPath(); c.arc(p[0], cy, r * .74, 0, TAU); c.clip(); c.translate(p[0], cy); drawSticker(c, { ...o, card: false }, size * (o.flag ? .9 : .7)); c.restore(); }
+      else { c.fillStyle = o.color || '#E5322D'; c.beginPath(); c.arc(p[0], cy, r * .3, 0, TAU); c.fill(); }
+    } else if (o.style === 'pole' && o.flag) {   // a flag on a pole planted in the place
       const h = size * 1.15, F = FLAGS[o.flag], fh = size * (F?.ratio || .66) * .8;
       c.strokeStyle = '#3A3A44'; c.lineWidth = 4 * u; c.lineCap = 'round'; c.globalAlpha = Math.min(1, s);
       c.beginPath(); c.moveTo(p[0], p[1]); c.lineTo(p[0], p[1] - h * s); c.stroke();

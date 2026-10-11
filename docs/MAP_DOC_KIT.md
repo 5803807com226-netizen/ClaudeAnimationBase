@@ -90,3 +90,39 @@ These presets came out of a study of a "why is it called…" map short. Each one
 | `mapBase` `rivers: true` | Natural Earth 1:10m rivers (`src/geo/rivers_10m.js`) |
 
 Artwork items may set `"opaque": true` for a whole picture (no cut-out) and `"style"` to replace the shared style. The demo is `tools/fixtures/plans/bangkok_name.json`.
+
+## Explainer kit 2 (`mapFlagFill`, `mapMeasure`, `mapCompare`, `mapRiver`, `mapZone`, `mapLine`, `mapSpread`, `mapInset`, `yearRuler`, `gauge`, clouds)
+
+Studied from map shorts on borders, growth, size and war.
+
+| Preset | What it does |
+|---|---|
+| `mapFlagFill` | A territory painted in its flag (`flag`), waving gently |
+| `mapMeasure` | A distance line with ticks and arrowheads between two sourced places, the value in a tag |
+| `mapCompare` | A territory's outline slides over the sphere onto another place at its TRUE size |
+| `mapRiver` | A named Natural Earth river glows and its name runs along it |
+| `mapZone` | A soft, feathered region from sourced `coords`, with a name |
+| `mapLine` | A neon or dashed line (equator, border, route), its name written along it |
+| `mapSpread` | Something spreading over a territory from a point |
+| `mapInset` | A round close-up (opaque artwork) tied to a place |
+| `yearRuler` | A tilted year track, the marker slides to the year (screen) |
+| `gauge` | A dial from safe to danger (screen) |
+| `weather` `kind: "clouds"` | Soft clouds drifting over the frame |
+
+The demo is `tools/fixtures/plans/thailand_size.json`.
+
+## Space and scale kit (`depthProfile`, `galaxy`, `starfield`, `mapObjectRow`, teardrop `mapPin`, tilted map, globe in space)
+
+Studied from three shorts: the Pacific and the Mariana Trench, the Sun's orbit around the Milky Way, and a journey to Andromeda.
+
+| Preset | What it does |
+|---|---|
+| `mapBase` `stars: true` / `atmosphere: true` | On a globe: a starry sky behind it (drifting as it turns) and a glowing rim |
+| `mapView` `tilt` / `tiltTo`, `spin` / `spinTo` | The whole map leans back like a sheet in 3D over `tiltBg` (one bold moment per video) |
+| `mapPin` `style: "drop"` | A teardrop map marker (flag, icon, glyph or PNG inside) with a pulse ring at its tip |
+| `mapObjectRow` | Copies of a thing line up between two places, one after another, with a running count |
+| `depthProfile` | A side cut through the sea: surface, trench, depth arrow and value, objects stacked to scale (screen) |
+| `galaxy` | A seeded spiral galaxy, tilted and turning, an optional body on its orbit with a trail and its name (screen) |
+| `starfield` | Stars at depth drifting past; `warp` turns them into streaks (a journey); `bg: null` lays them over another layer (screen) |
+
+These are motion graphics (particles and shapes), not story artwork: a real place, person or object is still a generated PNG. The demo is `tools/fixtures/plans/space_scale.json`.

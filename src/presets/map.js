@@ -87,10 +87,10 @@ const mapPt = ll => { const p = MAP.proj(ll); return p && Number.isFinite(p[0]) 
 const mapVisible = ll => !MAP.proj.clipAngle || !MAP.proj.clipAngle() || d3.geoDistance(ll, [-MAP.proj.rotate()[0], -MAP.proj.rotate()[1]]) < Math.PI / 2 - .01;
 
 definePreset('mapView', {
-  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside',
+  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside. tilt / tiltTo (degrees): the whole map leans back like a sheet in 3D over a plain backdrop (tiltBg), spin / spinTo turns it; for a bold "look at this" moment',
   meta: { version: '1.0.0', category: 'camera', tags: ['map', 'camera', 'geography', 'travel', 'zoom', 'pan', 'globe', 'documentary'],
-    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 } }, camera: 'camera', layers: ['camera'] },
-  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, dur: 4 },
+    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 }, tilt: { min: -70, max: 70 }, spin: { min: -45, max: 45 }, tiltScale: { min: .5, max: 3 } }, camera: 'camera', layers: ['camera'] },
+  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, tilt: 0, tiltTo: null, spin: 0, spinTo: null, tiltScale: 1.25, tiltBg: '#2340C8', dur: 4 },
   run(t, o, inner) {
     const viewAt = tt => {
       if (o.keys) {   // [[t, {center, zoom, rot?}], ...] in shot time, each segment eased
@@ -120,7 +120,13 @@ definePreset('mapView', {
       const x = MAP.tmp.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(MAP.ctx.canvas, 0, 0);
       MAP.ctx.save(); MAP.ctx.clearRect(0, 0, W, H); MAP.ctx.filter = `blur(${blurPx.toFixed(1)}px)`; MAP.ctx.drawImage(MAP.tmp, 0, 0); MAP.ctx.restore();
     }
-    flushBrush(); push(); resetMatrix(); translate(-W / 2, -H / 2); image(MAP.g, 0, 0); pop();
+    flushBrush(); push(); resetMatrix();
+    const tl = o.tilt || o.tiltTo ? lerp(o.tilt || 0, o.tiltTo ?? o.tilt ?? 0, presetK(t, o)) : 0, sp = o.spin || o.spinTo ? lerp(o.spin || 0, o.spinTo ?? o.spin ?? 0, presetK(t, o)) : 0;
+    if (tl || sp) {   // the map as a sheet in 3D: leaned back by tilt (degrees), turned by spin, over a plain backdrop
+      noStroke(); fill(o.tiltBg); rect(-W, -H, 2 * W, 2 * H); drawingContext.disable(drawingContext.DEPTH_TEST);   // the leaned-back half must not hide behind the backdrop
+      translate(0, H * .04 * Math.sin(tl * Math.PI / 180)); rotateX(tl * Math.PI / 180); rotateZ(sp * Math.PI / 180); scale(o.tiltScale);
+    }
+    translate(-W / 2, -H / 2); image(MAP.g, 0, 0); pop(); if (tl || sp) drawingContext.enable(drawingContext.DEPTH_TEST);
     MAP.proj = null;
   },
 });
@@ -167,6 +173,21 @@ function mapRivers(c, o) {
   c.restore();
 }
 
+// deep space, full frame: a navy gradient (never flat black: the frame stays full-bleed), two soft nebula glows and
+// seeded stars in three sizes; shift (px) slides the stars sideways by depth (parallax). Shared by the globe and space.js.
+function spaceSky(c, shift = 0) {
+  const u = US(), g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#13204A'); g.addColorStop(.55, '#0E1838'); g.addColorStop(1, '#0D1736');
+  c.save(); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (const [fx, fy, r, col] of [[.22, .18, .55, 'rgba(120,80,190,.22)'], [.8, .78, .6, 'rgba(40,140,170,.18)']]) {
+    const n = c.createRadialGradient(fx * W, fy * H, 0, fx * W, fy * H, r * Math.max(W, H)); n.addColorStop(0, col); n.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = n; c.fillRect(0, 0, W, H); }
+  for (let i = 0; i < 700; i++) { const z = .3 + mapRand(i, 11) * .7, x = ((mapRand(i, 12) * W - shift * z) % W + W) % W, y = mapRand(i, 13) * H, big = i < 120;
+    c.globalAlpha = (big ? .45 : .25) + .55 * mapRand(i, 14) * z; c.fillStyle = mapRand(i, 15) > .85 ? '#FFE9C4' : '#FFFFFF';
+    c.beginPath(); c.arc(x, y, (big ? .7 + z * 1.6 : .45 + z * .5) * u, 0, TAU); c.fill(); }
+  c.restore();
+}
+// the starry sky behind a globe, drifting a little as the globe turns
+function mapStars(c, o) { spaceSky(c, MAP.proj.rotate()[0] * 2); }
+
 // the old-map finish: parchment tone (multiply), paper grain, a brown graticule and a dark edge, all inside the frame
 function mapAntique(c, o) {
   const u = US();
@@ -187,17 +208,23 @@ function mapAntique(c, o) {
 }
 
 definePreset('mapBase', {
-  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera)',
+  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera); on a globe, stars: true puts it in space and atmosphere: true gives it a glowing rim',
   meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
     params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical', 'antique'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
     assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
-  defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
+  defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, stars: false, atmosphere: false, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
     saturate: 1, brightness: 1, contrast: 1, space: '#0E2235' },
   run(t, o) {
+    if (o.stars && MAP.proj.clipAngle && MAP.proj.clipAngle()) mapStars(mapCtx(), o);   // the globe in space
     if (o.style !== 'antique') mapBaseDraw(t, o);
     else { mapBaseDraw(t, { ...o, style: 'physical', aged: true }); }   // antique: the physical raster aged (sepia, softer)…
     if (o.rivers) mapRivers(mapCtx(), o);
     if (o.style === 'antique') mapAntique(mapCtx(), o);                   // …then paper, a faint graticule and a vignette over it
+    if (o.atmosphere && MAP.proj.clipAngle && MAP.proj.clipAngle()) {      // a thin glowing atmosphere around the globe
+      const c = mapCtx(), [tx, ty] = MAP.proj.translate(), r = MAP.proj.scale(), g = c.createRadialGradient(tx, ty, r * .97, tx, ty, r * 1.12);
+      g.addColorStop(0, 'rgba(120,190,255,0)'); g.addColorStop(.25, 'rgba(120,190,255,.55)'); g.addColorStop(1, 'rgba(120,190,255,0)');
+      c.save(); c.fillStyle = g; c.beginPath(); c.arc(tx, ty, r * 1.12, 0, TAU); c.arc(tx, ty, r * .97, 0, TAU, true); c.fill(); c.restore();
+    }
   },
 });
 

@@ -103,12 +103,13 @@ definePreset('mapPhoto', {
 
 // ---- screen effects ----
 definePreset('weather', {
-  label: 'Weather', about: 'snow, rain or drifting dust over the whole frame (a season, a storm, a harsh land): seeded particles in three depths, wind slant, fades in and out',
+  label: 'Weather', about: 'snow, rain, drifting dust or soft clouds over the whole frame (a season, a storm, a harsh land; clouds drifting over a satellite map from high above): seeded, in depths, wind slant, fades in and out',
   meta: { version: '1.0.0', category: 'fx', tags: ['weather', 'snow', 'rain', 'dust', 'winter', 'storm', 'cold', 'atmosphere', 'particles'], camera: 'screen', layers: ['screen'],
-    params: { kind: { enum: ['snow', 'rain', 'dust'] }, density: { min: 0, max: 3 }, wind: { min: -2, max: 2 } } },
+    params: { kind: { enum: ['snow', 'rain', 'dust', 'clouds'] }, density: { min: 0, max: 3 }, wind: { min: -2, max: 2 } } },
   defaults: { kind: 'snow', density: 1, wind: .3, color: null, out: null, outDur: .6, ease: 'ease', dur: .6 },
   run(t, o) {
     const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(presetK(t, o), q); if (a <= 0) return;
+    if (o.kind === 'clouds') return weatherClouds(t, o, a);
     const { g, c } = stkCtx(o, 'weather'), u = US(), n = Math.round((o.kind === 'rain' ? 140 : 110) * o.density), col = o.color || { snow: '#FFFFFF', rain: '#CFE3FF', dust: '#E6D2A8' }[o.kind];
     c.save(); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
     for (let i = 0; i < n; i++) {
@@ -122,6 +123,18 @@ definePreset('weather', {
   },
   demo: { bg: '#2E5E7E', after: [['weather', { at: .2, kind: 'snow', density: 1.2 }]] },
 });
+
+// clouds: big soft blurred puffs drifting slowly with the wind (cached sprite, a few depths)
+function weatherClouds(t, o, a) {
+  const { g, c } = stkCtx(o, 'weather'), u = US();
+  if (!STK_G.cloud) { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); x.filter = 'blur(18px)'; x.fillStyle = '#FFFFFF';
+    for (const [cx, cy, r] of [[128, 140, 60], [90, 150, 46], [168, 150, 50], [120, 110, 44], [150, 120, 38]]) { x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.fill(); } STK_G.cloud = cv; }
+  const n = Math.round(7 * o.density);
+  c.save();
+  for (let i = 0; i < n; i++) { const z = .5 + mapRand(i, 4) * .5, s = (360 + mapRand(i, 5) * 380) * u * z, x = ((mapRand(i, 6) * (W + s) + t * o.wind * 40 * u * z) % (W + s) + (W + s)) % (W + s) - s, y = mapRand(i, 7) * H - s * .3;
+    c.globalAlpha = a * .55 * z; c.drawImage(STK_G.cloud, x, y, s, s * .7); }
+  c.restore(); stkBlit(g);
+}
 
 definePreset('spyglass', {
   label: 'Spyglass View', about: 'the frame becomes a telescope view: a round lens opens over black, a scene (artwork item, opaque picture) drifts gently inside with a lens vignette and a glint; an optional speech bubble pops (what someone sees and says: "land!")',

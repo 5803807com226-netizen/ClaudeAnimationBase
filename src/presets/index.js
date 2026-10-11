@@ -23,6 +23,10 @@ const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16'
   timeline: ['9:16', '16:9', '4:5'], iconGrid: ['9:16', '16:9', '4:5'], callout: ['9:16', '16:9', '4:5'],
   // map documentary kit (fixture: aspect_test target map_doc_kit, the Siam showcase plan; production formats) and stickers (their gallery demos)
   mapTransfer: ['9:16', '16:9'], mapHighlight: ['9:16', '16:9'], mapPin: ['9:16', '16:9'], mapArrow: ['9:16', '16:9', '4:5'], figure: ['9:16', '16:9', '4:5'], mapTroops: ['9:16', '16:9', '4:5'], mapBomber: ['9:16', '16:9', '4:5'], mapGlow: ['9:16', '16:9', '4:5'], mapSwarm: ['9:16', '16:9', '4:5'], mapNote: ['9:16', '16:9', '4:5'], mapPhoto: ['9:16', '16:9', '4:5'], weather: ['9:16', '16:9', '4:5'], spyglass: ['9:16', '16:9', '4:5'],
+  // explainer kit 2 (aspect_test map_explainer2 + preset demos)
+  mapSpread: ['9:16', '16:9', '4:5'], mapZone: ['9:16', '16:9', '4:5'], mapLine: ['9:16', '16:9', '4:5'], mapRiver: ['9:16', '16:9', '4:5'], mapMeasure: ['9:16', '16:9', '4:5'], mapCompare: ['9:16', '16:9', '4:5'], mapFlagFill: ['9:16', '16:9', '4:5'], mapInset: ['9:16', '16:9', '4:5'], yearRuler: ['9:16', '16:9', '4:5'], gauge: ['9:16', '16:9', '4:5'],
+  // space and scale kit (aspect_test space_scale + preset demos)
+  depthProfile: ['9:16', '16:9', '4:5'], galaxy: ['9:16', '16:9', '4:5'], starfield: ['9:16', '16:9', '4:5'], mapObjectRow: ['9:16', '16:9', '4:5'],
   sticker: ['9:16', '16:9', '4:5'], dateCard: ['9:16', '16:9', '4:5'], chapterBadge: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;
