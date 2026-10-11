@@ -185,7 +185,13 @@ function mapHiTiles(c, X, Hm) {
 // beyond the raster's latitude limit (±82°) a globe shows a flat polar cap, the mean of the raster's edge row, blended
 // in over the last 3° (sampling the clamped edge row would streak toward the pole)
 function mapCaps(X) {
-  if (!X.caps) { const [IW, IH] = X.R.size, row = y => { const m = [0, 0, 0]; for (let i = 0; i < IW; i++) for (let k = 0; k < 3; k++) m[k] += X.px[(y * IW + i) * 4 + k] / IW; return m; }; X.caps = [row(1), row(IH - 2)]; }
+  if (!X.caps) {   // the edge row's most common colour (the polar sea in the north, the ice sheet in the south), not its mean
+    const [IW, IH] = X.R.size, row = y => { const bins = new Map(); let best = null;
+      for (let i = 0; i < IW; i++) { const j = (y * IW + i) * 4, key = (X.px[j] >> 4) << 8 | (X.px[j + 1] >> 4) << 4 | X.px[j + 2] >> 4, b = bins.get(key) || { n: 0, s: [0, 0, 0] };
+        b.n++; for (let k = 0; k < 3; k++) b.s[k] += X.px[j + k]; bins.set(key, b); if (!best || b.n > best.n) best = b; }
+      return best.s.map(v => v / best.n); };
+    X.caps = [row(1), row(IH - 2)];
+  }
   return X.caps;
 }
 const MAP_CAP = (lat, L) => clamp((Math.abs(lat) * 180 / Math.PI - (L - 3)) / 3, 0, 1);
@@ -315,10 +321,10 @@ definePreset('mapMarker', {
 });
 
 definePreset('mapLabel', {
-  label: 'Map Label', about: 'live text (Thai-safe) pinned to [lon, lat] with an offset; fades and rises in, optional fade out',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'label', 'text', 'place name', 'date', 'caption', 'thai'],
+  label: 'Map Label', about: 'live text (Thai-safe) pinned to [lon, lat] with an offset; fades and rises in, optional fade out. box: the text on a dark rounded tag (boxColor), the most readable on a busy map',
+  meta: { version: '1.1.0', category: 'map', tags: ['map', 'label', 'text', 'place name', 'date', 'caption', 'thai', 'tag'],
     params: { font: { enum: ['body', 'display'] }, align: { enum: ['left', 'center', 'right'] }, size: { min: 12, max: 160 } }, layers: ['text'] },
-  defaults: { text: '', lonlat: [0, 0], dx: 18, dy: -16, size: 52, weight: 600, font: 'body', color: '#2B2A3A', halo: '#F6EFE2', align: 'left', out: null, outDur: .35, ease: 'easeOut', dur: .5 },
+  defaults: { text: '', lonlat: [0, 0], dx: 18, dy: -16, size: 52, weight: 600, font: 'body', color: '#2B2A3A', halo: '#F6EFE2', box: false, boxColor: 'rgba(16,16,22,.78)', align: 'left', out: null, outDur: .35, ease: 'easeOut', dur: .5 },
   run(t, o) {
     const c = mapCtx(), k = presetK(t, o), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(k, q);
     if (a <= 0 || !o.text || !mapVisible(o.lonlat)) return;
@@ -328,7 +334,10 @@ definePreset('mapLabel', {
     // stay readable: the text box is slid inside the frame margins (never clipped by the edge), the pin stays put
     const tw = c.measureText(o.text).width, x0 = { left: 0, center: -tw / 2, right: -tw }[o.align];
     const x = clamp(p[0] + o.dx * u + x0, m, W - m - tw) - x0, y = clamp(p[1] + o.dy * u + (1 - k) * 14 * u, m + o.size * TS(), H - m);
-    if (o.halo) { c.lineWidth = Math.max(3, o.size * .16) * u; c.strokeStyle = o.halo; c.lineJoin = 'round'; c.strokeText(o.text, x, y); }
+    if (o.box) {   // a rounded tag behind the text, with a soft shadow
+      const px = o.size * TS(), padX = px * .42, bx = x + x0 - padX, by = y - px * 1.02, bw = tw + padX * 2, bh = px * 1.42;
+      c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 3 * u; c.fillStyle = o.boxColor; c.beginPath(); c.roundRect(bx, by, bw, bh, bh * .3); c.fill(); c.restore();
+    } else if (o.halo) { c.lineWidth = Math.max(3, o.size * .16) * u; c.strokeStyle = o.halo; c.lineJoin = 'round'; c.strokeText(o.text, x, y); }
     c.fillStyle = o.color; c.fillText(o.text, x, y); c.restore();
   },
 });

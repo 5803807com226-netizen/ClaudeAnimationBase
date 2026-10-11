@@ -323,10 +323,10 @@
       "dy": 40,
       "size": 34,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -379,8 +379,8 @@
       "weight": 800,
       "font": "display",
       "color": "#F2C14E",
-      "halo": "#111111",
-      "align": "center"
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -388,8 +388,8 @@
      "cap": "dateCard",
      "params": {
       "at": 0.2,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 1,
       "month": 9,
@@ -403,10 +403,10 @@
      "params": {
       "at": 0.3,
       "x": 0.06,
-      "y": 0.07,
-      "number": 1,
+      "y": 0.075,
+      "number": null,
       "text": "[ยึดดินแดน]",
-      "size": 50,
+      "size": 62,
       "color": "#8C2A2A",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -437,13 +437,12 @@
      "params": {
       "at": 0.1,
       "end": 2.9,
-      "text": "1 กันยายน 1939 เยอรมนีบุก[โปแลนด์]",
+      "text": "1 กันยายน 1939\nเยอรมนีบุกโปแลนด์",
       "y": 0.86,
-      "size": 46,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -604,10 +603,10 @@
       "dy": 40,
       "size": 32,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -623,10 +622,10 @@
       "dy": 40,
       "size": 32,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -649,25 +648,26 @@
      "cap": "dateCard",
      "params": {
       "at": 0.3,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 3,
       "month": 9,
       "year": 1939,
-      "era": "ce"
+      "era": "ce",
+      "from": 1939
      }
     },
     {
      "id": "badge",
      "cap": "chapterBadge",
      "params": {
-      "at": 0,
+      "at": -1,
       "x": 0.06,
-      "y": 0.07,
-      "number": 1,
+      "y": 0.075,
+      "number": null,
       "text": "[ยึดดินแดน]",
-      "size": 50,
+      "size": 62,
       "color": "#8C2A2A",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -698,13 +698,12 @@
      "params": {
       "at": 0.1,
       "end": 3.4,
-      "text": "สองวันต่อมา [อังกฤษ]และ[ฝรั่งเศส]ประกาศสงคราม",
+      "text": "สองวันต่อมา\nอังกฤษและฝรั่งเศสประกาศสงคราม",
       "y": 0.86,
-      "size": 46,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -850,12 +849,12 @@
       "dy": -30,
       "size": 28,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
+      "font": "display",
+      "color": "#FFFFFF",
       "align": "center",
       "out": 2.4,
-      "outDur": 0.4
+      "outDur": 0.4,
+      "box": true
      }
     },
     {
@@ -890,12 +889,12 @@
       "dy": 0,
       "size": 28,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
+      "font": "display",
+      "color": "#FFFFFF",
       "align": "center",
       "out": 2.4,
-      "outDur": 0.4
+      "outDur": 0.4,
+      "box": true
      }
     },
     {
@@ -931,8 +930,8 @@
       "weight": 800,
       "font": "display",
       "color": "#F2C14E",
-      "halo": "#111111",
-      "align": "center"
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -948,10 +947,10 @@
       "dy": 40,
       "size": 34,
       "weight": 700,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -976,25 +975,26 @@
      "cap": "dateCard",
      "params": {
       "at": 2.4,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 14,
       "month": 6,
       "year": 1940,
-      "era": "ce"
+      "era": "ce",
+      "from": 1939
      }
     },
     {
      "id": "badge",
      "cap": "chapterBadge",
      "params": {
-      "at": 0,
+      "at": -1,
       "x": 0.06,
-      "y": 0.07,
-      "number": 1,
+      "y": 0.075,
+      "number": null,
       "text": "[ยึดดินแดน]",
-      "size": 50,
+      "size": 62,
       "color": "#8C2A2A",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -1025,13 +1025,12 @@
      "params": {
       "at": 0.1,
       "end": 4.6,
-      "text": "ปี 1940 [เนเธอร์แลนด์] [เบลเยียม] [ฝรั่งเศส]ถูกบุก ปารีสถูกยึด",
+      "text": "ปี 1940 เนเธอร์แลนด์ เบลเยียม\nและฝรั่งเศสถูกบุก\nปารีสถูกยึด",
       "y": 0.86,
-      "size": 44,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -1176,10 +1175,10 @@
       },
       "size": 40,
       "weight": 800,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -1216,13 +1215,14 @@
      "cap": "dateCard",
      "params": {
       "at": 0.4,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 22,
       "month": 6,
       "year": 1941,
-      "era": "ce"
+      "era": "ce",
+      "from": 1940
      }
     },
     {
@@ -1231,10 +1231,10 @@
      "params": {
       "at": 0.2,
       "x": 0.06,
-      "y": 0.07,
-      "number": 2,
+      "y": 0.075,
+      "number": null,
       "text": "[แนวรบตะวันออก]",
-      "size": 50,
+      "size": 62,
       "color": "#B3302B",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -1265,13 +1265,12 @@
      "params": {
       "at": 0.1,
       "end": 3.5,
-      "text": "มิถุนายน 1941 เยอรมนีหันไปบุก[สหภาพโซเวียต]",
+      "text": "มิถุนายน 1941\nเยอรมนีหันไปบุกสหภาพโซเวียต",
       "y": 0.86,
-      "size": 46,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -1446,10 +1445,10 @@
       "dy": 46,
       "size": 38,
       "weight": 800,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -1464,11 +1463,11 @@
       },
       "dy": 86,
       "size": 26,
-      "weight": 600,
-      "font": "body",
-      "color": "#D9D3C4",
-      "halo": "#111111",
-      "align": "center"
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -1494,25 +1493,26 @@
      "cap": "dateCard",
      "params": {
       "at": 1.6,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 2,
       "month": 2,
       "year": 1943,
-      "era": "ce"
+      "era": "ce",
+      "from": 1941
      }
     },
     {
      "id": "badge",
      "cap": "chapterBadge",
      "params": {
-      "at": 0,
+      "at": -1,
       "x": 0.06,
-      "y": 0.07,
-      "number": 2,
+      "y": 0.075,
+      "number": null,
       "text": "[แนวรบตะวันออก]",
-      "size": 50,
+      "size": 62,
       "color": "#B3302B",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -1543,13 +1543,12 @@
      "params": {
       "at": 0.1,
       "end": 4.5,
-      "text": "ที่[สตาลินกราด] กองทัพเยอรมันยอมจำนน คือ[จุดเปลี่ยน]ของสงคราม",
+      "text": "ที่[สตาลินกราด]\nกองทัพเยอรมันยอมจำนน\nคือ[จุดเปลี่ยน]ของสงคราม",
       "y": 0.86,
-      "size": 44,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -1725,10 +1724,10 @@
       "dy": -44,
       "size": 38,
       "weight": 800,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -1736,13 +1735,14 @@
      "cap": "dateCard",
      "params": {
       "at": 0.4,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 6,
       "month": 6,
       "year": 1944,
-      "era": "ce"
+      "era": "ce",
+      "from": 1943
      }
     },
     {
@@ -1751,10 +1751,10 @@
      "params": {
       "at": 0.2,
       "x": 0.06,
-      "y": 0.07,
-      "number": 3,
+      "y": 0.075,
+      "number": null,
       "text": "[จุดจบ]",
-      "size": 50,
+      "size": 62,
       "color": "#2F67B1",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -1785,13 +1785,12 @@
      "params": {
       "at": 0.1,
       "end": 3.9,
-      "text": "6 มิถุนายน 1944 [สัมพันธมิตร]ยกพลขึ้นบกที่[นอร์มังดี]",
+      "text": "6 มิถุนายน 1944\nสัมพันธมิตรยกพลขึ้นบกที่นอร์มังดี",
       "y": 0.86,
-      "size": 44,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -1958,10 +1957,10 @@
       "dy": 44,
       "size": 38,
       "weight": 800,
-      "font": "body",
-      "color": "#F7F3EA",
-      "halo": "#111111",
-      "align": "center"
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -1986,25 +1985,26 @@
      "cap": "dateCard",
      "params": {
       "at": 1.4,
-      "x": 0.82,
-      "y": 0.1,
+      "x": 0.93,
+      "y": 0.09,
       "size": 170,
       "day": 8,
       "month": 5,
       "year": 1945,
-      "era": "ce"
+      "era": "ce",
+      "from": 1944
      }
     },
     {
      "id": "badge",
      "cap": "chapterBadge",
      "params": {
-      "at": 0,
+      "at": -1,
       "x": 0.06,
-      "y": 0.07,
-      "number": 3,
+      "y": 0.075,
+      "number": null,
       "text": "[จุดจบ]",
-      "size": 50,
+      "size": 62,
       "color": "#2F67B1",
       "textColor": "#F7F3EA",
       "highlight": "#F2C14E"
@@ -2035,13 +2035,12 @@
      "params": {
       "at": 0.1,
       "end": 3.8,
-      "text": "โซเวียตยึด[เบอร์ลิน] 8 พฤษภาคม 1945 เยอรมนี[ยอมจำนน]",
+      "text": "โซเวียตยึดเบอร์ลิน\n8 พฤษภาคม 1945\nเยอรมนี[ยอมจำนน]",
       "y": 0.86,
-      "size": 44,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }
@@ -2129,9 +2128,9 @@
       "size": 44,
       "weight": 800,
       "font": "display",
-      "color": "#EDE6D6",
-      "halo": "#111111",
-      "align": "center"
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
      }
     },
     {
@@ -2159,13 +2158,12 @@
      "params": {
       "at": 0.1,
       "end": 4.4,
-      "text": "สงครามที่เริ่มจาก[การยึดดินแดน] จบลงด้วยความสูญเสียของ[ทุกฝ่าย]",
+      "text": "สงครามที่เริ่มจากการยึดดินแดน\nจบลงด้วย[ความสูญเสียของทุกฝ่าย]",
       "y": 0.86,
-      "size": 44,
+      "size": 50,
       "maxWidth": 0.9,
       "accent": "#F2C14E",
-      "stroke": "#000000",
-      "font": "body",
+      "font": "display",
       "weight": 700
      }
     }

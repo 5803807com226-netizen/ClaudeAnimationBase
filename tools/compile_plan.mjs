@@ -110,7 +110,7 @@ function checkLayer(L, len, prov, errors, subs) {
     const S = cap.params[k];
     if (!S) { errors.push(`${L.id}: blocked:invalid_param "${k}" (not a parameter of ${cap.id}; has ${Object.keys(cap.params).join(', ')})`); continue; }
     const t = typeOf(v);
-    if (S.type === 'number' && t !== 'number') errors.push(`${L.id}.${k}: expected number, got ${t}`);
+    if (S.type === 'number' && t !== 'number' && v !== null) errors.push(`${L.id}.${k}: expected number, got ${t}`);
     else if (S.type === 'boolean' && t !== 'boolean') errors.push(`${L.id}.${k}: expected boolean, got ${t}`);
     else if (S.type === 'color' && t !== 'color' && v !== null) errors.push(`${L.id}.${k}: expected #rrggbb colour, got ${JSON.stringify(v)}`);
     if (S.enum && !S.enum.includes(v)) errors.push(`${L.id}.${k}: ${JSON.stringify(v)} not in ${S.enum.join('|')}`);

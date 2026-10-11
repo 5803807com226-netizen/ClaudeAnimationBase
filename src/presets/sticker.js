@@ -145,12 +145,14 @@ definePreset('sticker', {
 });
 
 const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const TH_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 definePreset('dateCard', {
-  label: 'Date Card', about: 'a tear-off calendar card that pops in: Thai month in a red header, the day large, the year below (era ce = ค.ศ. or be = พ.ศ., or none); for dates in history',
-  meta: { version: '1.0.0', category: 'sticker', tags: ['date', 'calendar', 'day', 'year', 'history', 'timeline', 'event', 'documentary'], camera: 'screen', layers: ['screen'],
-    params: { day: { min: 1, max: 31 }, month: { min: 1, max: 12 }, era: { enum: ['ce', 'be', 'none'] }, size: { min: 60, max: 600 } } },
-  defaults: { x: .84, y: .12, size: 150, day: 18, month: 4, year: 1855, era: 'none', header: '#D7312E', out: null, outDur: .3, ease: 'backOut', dur: .45 },
+  label: 'Date Card', about: 'a date in history. style ticker (default): an accent bar grows, the year rolls in like an odometer (from the previous date\'s year with `from`), the day and full Thai month slide out beside it; style calendar: a tear-off calendar card (Thai month in a red header, the day large). era ce = ค.ศ., be = พ.ศ., none',
+  meta: { version: '1.1.0', category: 'sticker', tags: ['date', 'calendar', 'day', 'year', 'history', 'timeline', 'event', 'documentary', 'odometer', 'counter'], camera: 'screen', layers: ['screen'],
+    params: { style: { enum: ['ticker', 'calendar'] }, day: { min: 0, max: 31 }, month: { min: 0, max: 12 }, era: { enum: ['ce', 'be', 'none'] }, size: { min: 60, max: 600 }, align: { enum: ['right', 'left'] } } },
+  defaults: { style: 'ticker', x: .93, y: .1, size: 150, day: 18, month: 4, year: 1855, from: null, era: 'none', align: 'right', header: '#D7312E', accent: '#F2C14E', color: '#FFFFFF', out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
+    if (o.style !== 'calendar') return dateTicker(t, o);
     const s = stickerPop(t, o) * stickerOut(t, o); if (s <= .001) return;
     const { g, c } = stkCtx(o, 'dateCard'), u = US(), w = o.size * u, h = w * 1.12, hh = h * .3, r = w * .1;
     c.save(); c.translate(o.x * W, o.y * H); c.rotate((1 - clamp((t - o.at) / o.dur)) * .2); c.scale(s, s);
@@ -164,15 +166,48 @@ definePreset('dateCard', {
     T(eraTxt + yr, h / 2 - (h - hh) * .17, w * .14, '#6F6A78', 700);
     c.restore(); stkBlit(g);
   },
-  demo: { bg: '#2E5E7E', after: [['dateCard', { at: .3, x: .5, y: .45, size: 300, day: 13, month: 7, year: 1893, era: 'ce' }]] },
+  demo: { bg: '#2E5E7E', after: [['dateCard', { at: .3, x: .9, y: .3, size: 200, day: 13, month: 7, year: 1893, from: 1855, era: 'ce' }], ['dateCard', { at: .3, style: 'calendar', x: .5, y: .62, size: 260, day: 13, month: 7, year: 1893, era: 'ce' }]] },
 });
 
+// the ticker date: [day month] over [YEAR] beside an accent bar, right (or left) aligned on x. The year's digits roll up
+// like an odometer and lock in from left to right; with `from` (the last date's year) only the changed digits roll.
+function dateTicker(t, o) {
+  const q = stickerOut(t, o), k = clamp((t - o.at) / .9); if (k <= 0 || q <= 0) return;
+  const { g, c } = stkCtx(o, 'dateCard'), u = US(), S = o.size / 150, yr = o.era === 'be' ? o.year + 543 : o.year, era = { ce: 'ค.ศ.', be: 'พ.ศ.', none: '' }[o.era];
+  const big = 96 * S, small = 36 * S, bar = 7 * S * u, gap = 18 * S * u, R = o.align !== 'left', X = o.x * W, Y = o.y * H;
+  c.save(); c.globalAlpha = q; c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u;
+  // the accent bar grows downward
+  const bh = (big + small * 1.25) * TS() * easeOut(clamp(k / .35)); c.fillStyle = o.accent; c.fillRect(R ? X - bar : X, Y, bar, bh);
+  const tx = R ? X - bar - gap : X + bar + gap; c.textAlign = R ? 'right' : 'left'; c.textBaseline = 'alphabetic';
+  // year: each digit a reel. The odometer runs from `from` (or 10 years before) to the year; digit i settles last-first
+  const ys = String(yr), fy = String(o.from != null ? (o.era === 'be' ? o.from + 543 : o.from) : yr - 10).padStart(ys.length, '0').slice(-ys.length);
+  c.font = fontCss({ font: 'display', weight: 800, size: big }); const dw = c.measureText('0').width, yh = big * TS(), base = Y + small * 1.25 * TS() + yh * .86;
+  const yw = dw * ys.length, x0 = R ? tx - yw : tx;
+  c.save(); c.beginPath(); c.rect(x0 - 4 * u, base - yh * .95, yw + 8 * u, yh * 1.12); c.clip(); c.textAlign = 'center'; c.fillStyle = o.color;
+  for (let i = 0; i < ys.length; i++) {
+    const a = +fy[i], b = +ys[i], steps = (b - a + 10) % 10, kk = easeOut(clamp((k - .15 - i * .07) / .55)), pos = steps * kk;
+    const d0 = Math.floor(pos), f = pos - d0;
+    for (const [dd, off] of [[d0, 0], [d0 + 1, 1]]) { const ch = String((a + dd) % 10); c.globalAlpha = q * (off ? f : 1 - f * .3); c.fillText(ch, x0 + dw * (i + .5), base + (off - f) * yh * .9); }
+  }
+  c.restore();
+  if (era) { c.font = fontCss({ font: 'display', weight: 600, size: small * .8 }); c.fillStyle = o.color; c.globalAlpha = q * .8 * clamp((k - .5) / .3); c.fillText(era, R ? x0 - 10 * u : x0 + yw + 10 * u, base); c.textAlign = R ? 'right' : 'left'; }
+  // day and month slide out from behind the bar
+  if (o.day || o.month) {
+    const txt = [o.day || '', o.month ? TH_MONTHS_FULL[(o.month - 1 + 12) % 12] : ''].filter(Boolean).join(' '), m = easeOut(clamp((k - .25) / .45));
+    c.save(); c.beginPath(); R ? c.rect(0, Y - small, tx + 2 * u, small * 2.2 * TS()) : c.rect(tx - 2 * u, Y - small, W, small * 2.2 * TS()); c.clip();
+    c.globalAlpha = q * m; c.fillStyle = o.accent; c.font = fontCss({ font: 'display', weight: 700, size: small }); c.textAlign = R ? 'right' : 'left';
+    c.fillText(txt, tx + (R ? 1 : -1) * (1 - m) * 80 * u, Y + small * TS() * .95); c.restore();
+  }
+  c.restore(); stkBlit(g);
+}
+
 definePreset('chapterBadge', {
-  label: 'Chapter Badge', about: 'a numbered chapter title: the number in a coloured disc pops, the title slides in beside it (left aligned); for "reason 1, 2, 3" or parts of a story',
-  meta: { version: '1.0.0', category: 'sticker', tags: ['chapter', 'number', 'list', 'step', 'reason', 'part', 'title', 'explainer'], camera: 'screen', layers: ['screen'],
+  label: 'Chapter Badge', about: 'a chapter title (left aligned). With a number: the number in a coloured disc pops, the title slides in beside it ("reason 1, 2, 3"). number null: no number, a coloured bar grows and the title is revealed from behind it, underlined by a thin line (parts of a story)',
+  meta: { version: '1.1.0', category: 'sticker', tags: ['chapter', 'number', 'list', 'step', 'reason', 'part', 'title', 'explainer'], camera: 'screen', layers: ['screen'],
     params: { size: { min: 20, max: 160 } } },
   defaults: { x: .07, y: .12, number: 1, text: '', size: 54, color: '#FFD43B', ink: '#22202A', textColor: '#FFFFFF', stroke: '#1A1A1A', highlight: '#FFD43B', out: null, outDur: .3, ease: 'backOut', dur: .45 },
   run(t, o) {
+    if (o.number == null || o.number === '') return chapterLine(t, o);
     const q = stickerOut(t, o), s = stickerPop(t, o) * q; if (s <= .001) return;
     const { g, c } = stkCtx(o, 'chapterBadge'), u = US(), d = o.size * u * 1.25, X = o.x * W + d / 2, Y = o.y * H;
     c.save(); c.translate(X, Y); c.scale(s, s); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 4 * u;
@@ -186,8 +221,28 @@ definePreset('chapterBadge', {
       c.lineJoin = 'round'; c.lineWidth = 9 * u; c.strokeStyle = o.stroke; c.strokeText(txt, x, Y + d * .04); c.fillStyle = hl ? o.highlight : o.textColor; c.fillText(txt, x, Y + d * .04); x += c.measureText(txt).width; }
     c.restore(); stkBlit(g);
   },
-  demo: { bg: '#2E5E7E', after: [['chapterBadge', { at: .3, x: .08, y: .3, number: 1, text: 'ยอม[เปิดการค้า]' }], ['chapterBadge', { at: .6, x: .08, y: .5, number: 2, text: 'ปฏิรูป[ประเทศ]' }]] },
+  demo: { bg: '#2E5E7E', after: [['chapterBadge', { at: .3, x: .08, y: .3, number: 1, text: 'ยอม[เปิดการค้า]' }], ['chapterBadge', { at: .6, x: .08, y: .5, number: null, text: 'ปฏิรูป[ประเทศ]', color: '#D7312E' }]] },
 });
+
+// a chapter title without a number: a bar in the chapter colour grows, the title is wiped in from behind it, a thin
+// line underlines it; leaves by wiping back
+function chapterLine(t, o) {
+  const q = stickerOut(t, o), k = clamp((t - o.at) / .8); if (k <= 0 || q <= 0) return;
+  const { g, c } = stkCtx(o, 'chapterBadge'), u = US(), px = o.size * .82 * TS(), X = o.x * W, Y = o.y * H, bar = .16 * px;
+  const parts = String(o.text).split(/(\[[^\]]*\])/).filter(Boolean);
+  c.save(); c.font = fontCss({ font: 'display', weight: 700, size: o.size * .82 }); c.textBaseline = 'middle'; c.textAlign = 'left';
+  const tw = parts.reduce((a, p) => a + c.measureText(p[0] === '[' ? p.slice(1, -1) : p).width, 0);
+  const kb = easeOut(clamp(k / .3)) * q, kt = easeOut(clamp((k - .18) / .5)) * q, kl = easeOut(clamp((k - .35) / .5)) * q;
+  c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 12 * u; c.shadowOffsetY = 3 * u;
+  c.fillStyle = o.color; c.fillRect(X, Y - px * .62 * kb, bar, px * 1.24 * kb);   // the bar grows from its middle
+  const x0 = X + bar + .35 * px;
+  c.save(); c.beginPath(); c.rect(X + bar, Y - px, (tw + .5 * px) * kt, px * 2); c.clip();
+  let x = x0 - (1 - kt) * .6 * px;
+  for (const p of parts) { const hl = p[0] === '[' && p.at(-1) === ']', txt = hl ? p.slice(1, -1) : p; c.fillStyle = hl ? o.highlight : o.textColor; c.fillText(txt, x, Y + px * .04); x += c.measureText(txt).width; }
+  c.restore();
+  c.globalAlpha = .85; c.fillStyle = o.textColor; c.fillRect(x0, Y + px * .62, tw * kl, Math.max(2, .045 * px));   // the underline
+  c.restore(); stkBlit(g);
+}
 
 // pinned to a place on the map (drawn by mapView with the other map layers, so it stays on the place)
 definePreset('mapPin', {
