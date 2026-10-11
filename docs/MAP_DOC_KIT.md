@@ -11,6 +11,8 @@ Presets for history, geography and politics explainers in the style of map-docum
 | `mapHighlight` | map | Singles out a territory: a glowing outline that pulses, and a light wash inside |
 | `mapPin` | map | Pins a sticker to a place, on a card or a pole: a flag, an icon, a glyph or a PNG |
 | `mapBase` satellite | map | Works on the globe too (`projection: "orthographic"`, with a limb shade). `saturate`, `brightness` and `contrast` give the vivid style |
+| `mapBase` physical | map | Clean atlas relief (Natural Earth II + 1:10m lakes, no labels), the sharpest style. Both raster styles draw sharp tiles on close shots, flat or globe (`tools/geo_raster_hi.py`; tiles load on demand and the frame is redrawn, so every rendered frame is final) |
+| `mapRegion` / `mapTransfer` `blend` | map | `tint` (default): a see-through overlay that keeps the terrain visible; `solid`: opaque paint with a drop shadow |
 | `sticker` | screen | A die-cut sticker that pops in: a flag, an icon, a glyph or a PNG (a character, an object) |
 | `dateCard` | screen | A tear-off calendar card: Thai month, day, and year in `ce`, `be` or `none` |
 | `chapterBadge` | screen | A numbered chapter: the number in a disc, then the title with a `[keyword]` |

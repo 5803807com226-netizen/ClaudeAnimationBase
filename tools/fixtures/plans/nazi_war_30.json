@@ -256,10 +256,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -493,10 +490,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -757,10 +751,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -1088,10 +1079,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -1330,10 +1318,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -1612,10 +1597,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -1856,10 +1838,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.5,
-      "brightness": 0.8,
-      "contrast": 1.1,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
@@ -2109,10 +2088,7 @@
      "cap": "mapBase",
      "params": {
       "dataset": "land50",
-      "style": "satellite",
-      "saturate": 0.3,
-      "brightness": 0.7,
-      "contrast": 1.05,
+      "style": "physical",
       "coastWidth": 1,
       "space": "#0B0C10"
      }
