@@ -52,19 +52,21 @@ function compositeType() {
 }
 
 // Lay text out in lines no wider than maxWidth (px), breaking only between words (or at explicit \n).
+// [keyword] marks a highlight: the brackets are not drawn and those units get hl: true (drawn in style.highlight).
 function layout(text, st, maxWidth = W * .86) {
   const c = typeLayer(); c.save(); c.font = fontCss(st);
   const size = (st.size || 80) * TS(), lh = size * (st.lineHeight || 1.3), lines = [];
   for (const para of text.split('\n')) {
     let line = [], lw = 0;
     const flush = () => { while (line.length && !line[line.length - 1].text.trim()) lw -= line.pop().w; lines.push({ units: line, w: lw }); line = []; lw = 0; };
-    for (const wd of words(para)) {
+    const segs = para.split(/(\[[^\]]*\])/).filter(Boolean).map(x => x[0] === '[' && x.at(-1) === ']' ? { t: x.slice(1, -1), hl: true } : { t: x, hl: false });
+    for (const { wd, hl } of segs.flatMap(sg => words(sg.t).map(wd => ({ wd, hl: sg.hl })))) {
       const w = c.measureText(wd).width;
       if (lw + w > maxWidth && line.length && wd.trim()) flush();
       if (!line.length && !wd.trim()) continue;   // no space at the start of a line
       const g = graphemes(wd), gx = []; let acc = '';
       for (const ch of g) { gx.push(c.measureText(acc).width); acc += ch; }
-      line.push({ text: wd, x: lw, w, g, gx, space: !wd.trim() }); lw += w;
+      line.push({ text: wd, x: lw, w, g, gx, space: !wd.trim(), ...(hl ? { hl: true } : {}) }); lw += w;
     }
     flush();
   }

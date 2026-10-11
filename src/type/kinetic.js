@@ -35,11 +35,11 @@ const TYPE_PRESETS = {
     const st = it.style, stag = it.stagger ?? .08, d = it.unitDur ?? .45, byChar = it.by === 'char'; let i = 0;
     for (const l of L.lines) for (const u of l.units) {
       if (u.space) continue;
-      const parts = byChar ? u.g.map((g, j) => ({ s: g, x: u.x + u.gx[j], w: (u.gx[j + 1] ?? u.w) - u.gx[j] })) : [{ s: u.text, x: u.x, w: u.w }];
+      const parts = byChar ? u.g.map((g, j) => ({ s: g, x: u.x + u.gx[j], w: (u.gx[j + 1] ?? u.w) - u.gx[j] })) : [{ s: u.text, x: u.x, w: u.w }], col = u.hl ? st.highlight || '#FFD43B' : undefined;
       for (const p of parts) {
         const s0 = it.at + i++ * stag, k = seg(t, s0, s0 + d); if (t < s0) continue;
         const sc = backOut(k) * (1 + .08 * spring(t, s0 + d, 7, 20)), r = (hash(i * 7.1 + it.at) - .5) * .16 * (1 - easeOut(k));
-        drawText(c, p.s, X - l.w / 2 + p.x + p.w / 2, Y + l.y + (ex.dy || 0) - (1 - easeOut(k)) * L.size * .35, st, { s: sc * ex.s, rot: r, alpha: seg(t, s0, s0 + .08) * ex.alpha });
+        drawText(c, p.s, X - l.w / 2 + p.x + p.w / 2, Y + l.y + (ex.dy || 0) - (1 - easeOut(k)) * L.size * .35, st, { s: sc * ex.s, rot: r, alpha: seg(t, s0, s0 + .08) * ex.alpha, color: col });
       }
     }
   },
@@ -59,7 +59,7 @@ const TYPE_PRESETS = {
       for (const u of l.units) {
         if (u.space) continue;
         const s0 = it.bar ? Math.max(it.at + .1 + i++ * stag, uncover(u.x + u.w - l.w / 2)) : it.at + .1 + i++ * stag, k = typeEase(it.ease || 'expo')(seg(t, s0, s0 + d)); if (t < s0) continue;
-        drawText(c, u.text, X - l.w / 2 + u.x + u.w / 2 + dir[0] * (1 - k) * l.w * .5, Y + l.y + (ex.dy || 0) + dir[1] * (1 - k) * L.lh, st, { s: ex.s, alpha: ex.alpha });
+        drawText(c, u.text, X - l.w / 2 + u.x + u.w / 2 + dir[0] * (1 - k) * l.w * .5, Y + l.y + (ex.dy || 0) + dir[1] * (1 - k) * L.lh, st, { s: ex.s, alpha: ex.alpha, color: u.hl ? st.highlight || '#FFD43B' : undefined });
       }
       c.restore();
     }
@@ -80,7 +80,7 @@ const TYPE_PRESETS = {
       c.lineWidth = 4 * TS(); c.beginPath(); c.ellipse(X, Y, w * (1 + .5 * q), h * (1 + .8 * q), 0, 0, TAU); c.stroke(); c.restore();
     }
     for (const l of L.lines) for (const u of l.units) if (!u.space)
-      drawText(c, u.text, X + (u.x + u.w / 2 - l.w / 2) * sc + shx, Y + l.y * sc + (ex.dy || 0) + shy, st, { sx: sc * (1 + sq) * ex.s, sy: sc * (1 - sq) * ex.s, alpha: seg(t, it.at, it.at + .06) * ex.alpha });
+      drawText(c, u.text, X + (u.x + u.w / 2 - l.w / 2) * sc + shx, Y + l.y * sc + (ex.dy || 0) + shy, st, { sx: sc * (1 + sq) * ex.s, sy: sc * (1 - sq) * ex.s, alpha: seg(t, it.at, it.at + .06) * ex.alpha, color: u.hl ? st.highlight || '#FFD43B' : undefined });
   },
   // Word Highlight: the line is on screen; each word, at its moment, gets a marker swipe behind it and pops slightly.
   // Word moments come from wordTimes(), or it.words: [t, ...]. keep: highlights stay (default) or fade after the word.
