@@ -1,0 +1,1066 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "bangkok_name",
+ "aspect": "9:16",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 31,
+ "tolerance_seconds": 2,
+ "strategy": {
+  "name": "bright explainer map",
+  "look": "documentary",
+  "background": "#0B0C10"
+ },
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Demo of the explainer-map kit (marker / neon labels, glow, swarm, handwritten note, antique map, photo cards, spyglass). Facts: Bangkok (Bang Kok) was a riverside town on maps of the 17th century (e.g. 'Bancok'); Ayutthaya fell in 1767 and the capital moved to Thonburi; in 1782 the capital moved to the east bank and was named Krung Thep. 'Bang Makok' (olive village) is one popular theory of the name, said as such.",
+ "data": {
+  "bangkok": {
+   "lonlat": [
+    100.494,
+    13.752
+   ],
+   "source": "story: กรุงเทพฯ ริมแม่น้ำเจ้าพระยา (เกาะรัตนโกสินทร์)",
+   "confidence": "high"
+  },
+  "thonburi": {
+   "lonlat": [
+    100.488,
+    13.742
+   ],
+   "source": "story: ราชธานีที่ธนบุรี ฝั่งตะวันตกของแม่น้ำ",
+   "confidence": "medium",
+   "note": "a point on the west bank"
+  },
+  "ayutthaya": {
+   "lonlat": [
+    100.568,
+    14.355
+   ],
+   "source": "story: กรุงศรีอยุธยาแตก ปี 1767",
+   "confidence": "high"
+  },
+  "bkk_area": {
+   "units": [
+    "THA/Bangkok Metropolis"
+   ],
+   "source": "story: กรุงเทพมหานคร",
+   "confidence": "medium",
+   "note": "today's province stands for the city"
+  }
+ },
+ "artwork": {
+  "assets": "assets/stories/bangkok_name/",
+  "style": "clean flat vector illustration, crisp shapes, subtle cel shading, warm limited palette, editorial explainer style",
+  "negative": "cartoon, chibi, watercolor, photo, photorealistic, 3d render, royal portrait, flag, emblem, insignia",
+  "items": {
+   "olive_tree": {
+    "prompt": "a small leafy riverside fruit tree with round green fruits, full tree, simple readable silhouette for a map token",
+    "size": [
+     null,
+     500
+    ]
+   },
+   "river_city": {
+    "prompt": "view from the deck of an old sailing ship of a riverside Siamese town with temple spires and wooden stilt houses along a wide brown river, morning light, wide landscape",
+    "size": [
+     1400
+    ],
+    "opaque": true
+   },
+   "card_river": {
+    "prompt": "long-tail boats and wooden houses on the Chao Phraya river at sunset, wide landscape scene",
+    "size": [
+     900
+    ],
+    "opaque": true
+   },
+   "card_temple": {
+    "prompt": "a riverside Thai temple with a tall white and colourful porcelain prang tower at dusk, wide landscape scene",
+    "size": [
+     900
+    ],
+    "opaque": true
+   }
+  }
+ },
+ "shots": [
+  {
+   "id": "S01",
+   "start": 0,
+   "end": 4.4,
+   "narration": "ทำไมชาวโลกเรียกเมืองนี้ว่า Bangkok แต่คนไทยเรียกกรุงเทพฯ",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "hook: one city, two names",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.4,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.2,
+         15.0
+        ],
+        "zoom": 1.8
+       }
+      ],
+      [
+       1.8,
+       {
+        "center": [
+         100.5,
+         13.85
+        ],
+        "zoom": 24
+       }
+      ],
+      [
+       4.4,
+       {
+        "center": [
+         100.5,
+         13.85
+        ],
+        "zoom": 25.5
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "glow",
+     "cap": "mapGlow",
+     "params": {
+      "at": 1.4,
+      "units": {
+       "$data": "bkk_area",
+       "field": "units"
+      },
+      "color": "#FFC94D",
+      "alpha": 0.3
+     }
+    },
+    {
+     "id": "name_en",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.0,
+      "text": "BANGKOK",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": -70,
+      "size": 56,
+      "weight": 800,
+      "font": "display",
+      "style": "marker",
+      "angle": -5,
+      "align": "center"
+     }
+    },
+    {
+     "id": "name_th",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.7,
+      "text": "กรุงเทพฯ",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": 95,
+      "size": 60,
+      "weight": 800,
+      "font": "display",
+      "style": "neon",
+      "glow": "#FFC94D",
+      "align": "center"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "ชื่อเดียว[ไม่พอ]?",
+      "at": 0.6,
+      "x": 0.5,
+      "y": 0.25,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 96,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.3,
+      "text": "ทำไมชาวโลกเรียก Bangkok\nแต่คนไทยเรียก กรุงเทพฯ",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S02",
+   "start": 4.4,
+   "end": 9.0,
+   "narration": "ย้อนไปราว 400 ปีก่อน แผนที่ของพ่อค้าต่างชาติเขียนชื่อเมืองนี้ว่า Bancok",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "old map era",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.5,
+         13.85
+        ],
+        "zoom": 25.5
+       }
+      ],
+      [
+       1.2,
+       {
+        "center": [
+         100.5,
+         14.0
+        ],
+        "zoom": 9
+       }
+      ],
+      [
+       4.6,
+       {
+        "center": [
+         100.5,
+         14.0
+        ],
+        "zoom": 9.5
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "antique",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "note",
+     "cap": "mapNote",
+     "params": {
+      "at": 1.4,
+      "text": "Bancok",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": -170,
+      "dy": -190,
+      "size": 70,
+      "color": "#3A2412",
+      "bend": 0.5,
+      "angle": -8
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.3,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ย้อนไป 400 ปี]",
+      "size": 62,
+      "color": "#8A5A2B",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.5,
+      "text": "ย้อนไปราว 400 ปีก่อน\nแผนที่ของพ่อค้าต่างชาติ\nเขียนชื่อเมืองนี้ว่า Bancok",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S03",
+   "start": 9.0,
+   "end": 13.6,
+   "narration": "ชื่อนี้มาจากบางกอก เชื่อกันว่าย่อมาจากบางมะกอก หมู่บ้านริมแม่น้ำเจ้าพระยา",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "where the name comes from (one theory)",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.5,
+         14.0
+        ],
+        "zoom": 9.5
+       }
+      ],
+      [
+       1.3,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 40
+       }
+      ],
+      [
+       4.6,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 42
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "trees",
+     "cap": "mapSwarm",
+     "params": {
+      "at": 1.2,
+      "units": {
+       "$data": "bkk_area",
+       "field": "units"
+      },
+      "art": "olive_tree",
+      "count": 9,
+      "size": 46,
+      "seed": 3,
+      "stagger": 0.14
+     }
+    },
+    {
+     "id": "note",
+     "cap": "mapNote",
+     "params": {
+      "at": 2.4,
+      "text": "บาง + มะกอก ?",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 150,
+      "dy": -210,
+      "size": 62,
+      "color": "#FFE14D",
+      "bend": -0.5,
+      "angle": -4
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ต้นกำเนิดชื่อ]",
+      "size": 62,
+      "color": "#2E8B57",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.5,
+      "text": "ชื่อนี้มาจาก บางกอก\nเชื่อกันว่าย่อจาก [บางมะกอก]\nหมู่บ้านริมแม่น้ำเจ้าพระยา",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S04",
+   "start": 13.6,
+   "end": 17.8,
+   "narration": "ปี 1767 กรุงศรีอยุธยาแตก ราชธานีย้ายมาที่ธนบุรี",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the capital comes down the river",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.2,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 42
+       }
+      ],
+      [
+       1.2,
+       {
+        "center": [
+         100.52,
+         14.05
+        ],
+        "zoom": 26
+       }
+      ],
+      [
+       4.2,
+       {
+        "center": [
+         100.52,
+         14.05
+        ],
+        "zoom": 27
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "ayut",
+     "cap": "mapPin",
+     "params": {
+      "at": 0.8,
+      "lonlat": {
+       "$data": "ayutthaya",
+       "field": "lonlat"
+      },
+      "dy": -14,
+      "size": 54,
+      "glyph": "✕",
+      "color": "#B3302B",
+      "card": true,
+      "bob": 1
+     }
+    },
+    {
+     "id": "ayut_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.0,
+      "text": "อยุธยา",
+      "lonlat": {
+       "$data": "ayutthaya",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": 50,
+      "size": 40,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "center"
+     }
+    },
+    {
+     "id": "thon",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.2,
+      "text": "ธนบุรี",
+      "lonlat": {
+       "$data": "thonburi",
+       "field": "lonlat"
+      },
+      "dx": -60,
+      "dy": 40,
+      "size": 52,
+      "weight": 800,
+      "font": "display",
+      "style": "marker",
+      "angle": 4,
+      "align": "center"
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.3,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 0,
+      "month": 0,
+      "year": 1767,
+      "era": "ce",
+      "from": 1700
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.2,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ราชธานีใหม่]",
+      "size": 62,
+      "color": "#B3302B",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.1,
+      "text": "ปี 1767 กรุงศรีอยุธยาแตก\nราชธานีย้ายลงมาที่ธนบุรี",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S05",
+   "start": 17.8,
+   "end": 22.4,
+   "narration": "ปี 1782 ย้ายราชธานีมาฝั่งตะวันออกของแม่น้ำ ตั้งชื่อใหม่ว่ากรุงเทพมหานคร",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the new name",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.52,
+         14.05
+        ],
+        "zoom": 27
+       }
+      ],
+      [
+       1.2,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 40
+       }
+      ],
+      [
+       4.6,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 42
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "glow",
+     "cap": "mapGlow",
+     "params": {
+      "at": 1.0,
+      "units": {
+       "$data": "bkk_area",
+       "field": "units"
+      },
+      "color": "#FFC94D",
+      "alpha": 0.32
+     }
+    },
+    {
+     "id": "name_th",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.8,
+      "text": "กรุงเทพมหานคร",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": -110,
+      "size": 64,
+      "weight": 800,
+      "font": "display",
+      "style": "neon",
+      "glow": "#FFC94D",
+      "align": "center"
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.3,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 0,
+      "month": 0,
+      "year": 1782,
+      "era": "ce",
+      "from": 1767
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": -1,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ราชธานีใหม่]",
+      "size": 62,
+      "color": "#B3302B",
+      "textColor": "#F7F3EA"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.5,
+      "text": "ปี 1782 ย้ายราชธานี\nมาฝั่งตะวันออกของแม่น้ำ\nตั้งชื่อใหม่ว่า [กรุงเทพมหานคร]",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S06",
+   "start": 22.4,
+   "end": 26.6,
+   "narration": "แต่เรือต่างชาติยังเรียกชื่อเดิมที่คุ้นปาก",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "what the foreigners saw and said",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.2,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 42
+       }
+      ],
+      [
+       4.2,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 44
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "lens",
+     "cap": "spyglass",
+     "params": {
+      "at": 0.1,
+      "art": "river_city",
+      "radius": 0.42,
+      "bubble": "BANGKOK!",
+      "bubbleAt": 1.6
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.1,
+      "text": "แต่เรือต่างชาติ\nยังเรียกชื่อเดิมที่คุ้นปาก",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S07",
+   "start": 26.6,
+   "end": 31.4,
+   "narration": "วันนี้ กรุงเทพฯ จึงมีสองชื่อ ชื่อไทย และชื่อที่โลกจำ",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "close: two names, one city",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.8,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         100.49,
+         13.76
+        ],
+        "zoom": 30
+       }
+      ],
+      [
+       1.4,
+       {
+        "center": [
+         100.5,
+         13.8
+        ],
+        "zoom": 24
+       }
+      ],
+      [
+       4.8,
+       {
+        "center": [
+         100.5,
+         13.8
+        ],
+        "zoom": 9.4
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10",
+      "rivers": true
+     }
+    },
+    {
+     "id": "glow",
+     "cap": "mapGlow",
+     "params": {
+      "at": 0,
+      "units": {
+       "$data": "bkk_area",
+       "field": "units"
+      },
+      "color": "#FFC94D",
+      "alpha": 0.28
+     }
+    },
+    {
+     "id": "card1",
+     "cap": "mapPhoto",
+     "params": {
+      "at": 1.2,
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "art": "card_river",
+      "dx": -190,
+      "dy": 240,
+      "width": 300,
+      "angle": -6
+     }
+    },
+    {
+     "id": "card2",
+     "cap": "mapPhoto",
+     "params": {
+      "at": 1.5,
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "art": "card_temple",
+      "dx": 190,
+      "dy": 300,
+      "width": 300,
+      "angle": 5
+     }
+    },
+    {
+     "id": "name_en",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.5,
+      "text": "BANGKOK",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": -150,
+      "size": 56,
+      "weight": 800,
+      "font": "display",
+      "style": "marker",
+      "angle": -5,
+      "align": "center"
+     }
+    },
+    {
+     "id": "name_th",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.9,
+      "text": "กรุงเทพฯ",
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "dx": 0,
+      "dy": -60,
+      "size": 60,
+      "weight": 800,
+      "font": "display",
+      "style": "neon",
+      "glow": "#FFC94D",
+      "align": "center"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.stamp",
+     "params": {
+      "text": "[สองชื่อ] หนึ่งเมือง",
+      "at": 0.4,
+      "x": 0.5,
+      "y": 0.22,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 96,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.7,
+      "text": "วันนี้ กรุงเทพฯ จึงมีสองชื่อ\nชื่อไทย และชื่อที่โลกจำ",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  }
+ ]
+}

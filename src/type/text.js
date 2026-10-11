@@ -13,11 +13,16 @@
 const FONTS = {
   display: { family: 'Kanit', fallback: ['Leelawadee UI', 'Noto Sans Thai', 'Tahoma', 'Loma', 'sans-serif'] },
   body: { family: 'Sarabun', fallback: ['Leelawadee UI', 'Noto Sans Thai', 'Tahoma', 'Loma', 'sans-serif'] },
+  hand: { family: 'Mali', fallback: ['Kanit', 'Leelawadee UI', 'Tahoma', 'cursive'] },   // handwritten notes (annotations)
+  headline: { family: 'Noto Sans Thai', fallback: ['Kanit', 'Leelawadee UI', 'Tahoma', 'sans-serif'] },   // plain, heavy, serious headlines
 };
 const THAI_RANGE = 'U+0E01-0E5B, U+200C-200D, U+25CC', LATIN_RANGE = 'U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2212';
-// The bundled open-licence fonts (assets/fonts, SIL OFL): Kanit for display, Sarabun for body text.
+// The bundled open-licence fonts (assets/fonts, SIL OFL): Kanit for display, Sarabun for body text, Noto Sans Thai for
+// headlines (style.font 'headline'), Mali for handwritten notes ('hand').
 const BUNDLED_FACES = {
   Kanit: [500, 700, 800].flatMap(w => [{ src: `assets/fonts/kanit-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/kanit-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
+  'Noto Sans Thai': [700, 800].flatMap(w => [{ src: `assets/fonts/noto-sans-thai-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/noto-sans-thai-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
+  Mali: [600].flatMap(w => [{ src: `assets/fonts/mali-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/mali-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
   Sarabun: [400, 600].flatMap(w => [{ src: `assets/fonts/sarabun-thai-${w}-normal.woff2`, weight: w, range: THAI_RANGE }, { src: `assets/fonts/sarabun-latin-${w}-normal.woff2`, weight: w, range: LATIN_RANGE }]),
 };
 
@@ -52,19 +57,21 @@ function compositeType() {
 }
 
 // Lay text out in lines no wider than maxWidth (px), breaking only between words (or at explicit \n).
+// [keyword] marks a highlight: the brackets are not drawn and those units get hl: true (drawn in style.highlight).
 function layout(text, st, maxWidth = W * .86) {
   const c = typeLayer(); c.save(); c.font = fontCss(st);
   const size = (st.size || 80) * TS(), lh = size * (st.lineHeight || 1.3), lines = [];
   for (const para of text.split('\n')) {
     let line = [], lw = 0;
     const flush = () => { while (line.length && !line[line.length - 1].text.trim()) lw -= line.pop().w; lines.push({ units: line, w: lw }); line = []; lw = 0; };
-    for (const wd of words(para)) {
+    const segs = para.split(/(\[[^\]]*\])/).filter(Boolean).map(x => x[0] === '[' && x.at(-1) === ']' ? { t: x.slice(1, -1), hl: true } : { t: x, hl: false });
+    for (const { wd, hl } of segs.flatMap(sg => words(sg.t).map(wd => ({ wd, hl: sg.hl })))) {
       const w = c.measureText(wd).width;
       if (lw + w > maxWidth && line.length && wd.trim()) flush();
       if (!line.length && !wd.trim()) continue;   // no space at the start of a line
       const g = graphemes(wd), gx = []; let acc = '';
       for (const ch of g) { gx.push(c.measureText(acc).width); acc += ch; }
-      line.push({ text: wd, x: lw, w, g, gx, space: !wd.trim() }); lw += w;
+      line.push({ text: wd, x: lw, w, g, gx, space: !wd.trim(), ...(hl ? { hl: true } : {}) }); lw += w;
     }
     flush();
   }

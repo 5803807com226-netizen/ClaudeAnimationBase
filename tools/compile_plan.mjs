@@ -25,6 +25,7 @@ import { ruleDirect } from './action/direct.mjs';
 import { copyFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename, relative } from 'node:path';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 const ASPECT_SIZE = { '9:16': [1080, 1920], '16:9': [1920, 1080] };   // production formats (4:5 stays legacy-only)
 const fail = m => { console.error('compile_plan: ' + m); process.exit(2); };
@@ -48,8 +49,22 @@ let catalog;
 if (args.catalog) catalog = JSON.parse(readFileSync(args.catalog, 'utf8'));
 else { const b = await launch(); try { catalog = await loadCatalog(b); } finally { await b.close(); } }
 const CAPS = Object.fromEntries(catalog.capabilities.map(c => [c.id, c]));
+// the areas map layers can name (catalog.geo): a wrong name is caught here, with the closest real names, so the director
+// can repair it (it would otherwise fail only when the frame is drawn)
+const GEO_AREAS = Array.isArray(catalog.geo?.countries) ? new Set([...catalog.geo.countries, ...catalog.geo.provinces]) : null;
+const fold = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9/]/g, '');
+function areaHint(n) {
+  const [iso, name] = String(n).includes('/') ? String(n).split('/') : [null, String(n)], f = fold(name), pool = [...GEO_AREAS].filter(a => iso ? a.startsWith(iso + '/') : !a.includes('/'));
+  const near = pool.filter(a => { const g = fold(a.split('/').pop()); return g.includes(f) || f.includes(g); });
+  return (near.length ? near : pool).slice(0, 8).join(', ') || 'none (no provinces for that country)';
+}
 const allowExp = !!(args['allow-experimental'] || M.allow_experimental);
 const warnings = [];
+// artwork: illustrations the story needs (people in vector style, their poses, vehicles), made by tools/gen_assets.mjs from these prompts
+//   "artwork": { "assets": "assets/stories/<id>/", "style": "<shared style>", "negative": "...", "seed": 7,
+//                "items": { "<name>": { "prompt": "...", "size": [null, 1100], "character": "<name>", "engine": "zimage" } } }
+// A figure layer names one with "art": "<name>". Missing files are generated before rendering (job.assets), never drawn.
+const ART = { dir: (M.artwork?.assets || `assets/stories/${M.project_id}/`).replace(/\/?$/, '/'), items: M.artwork?.items || {}, used: new Set(), missing: new Set() };
 if (M.capability_catalog && M.capability_catalog !== catalog.hash) warnings.push(`planned against catalog ${M.capability_catalog}, compiling against ${catalog.hash}`);
 
 // ---- timing: measured narration cues (SRT) drive shot starts when a shot gives `say: [firstCue, lastCue]` ----
@@ -94,16 +109,27 @@ function checkLayer(L, len, prov, errors, subs) {
     if (v !== undefined && !(v && typeof v === 'object' && !Array.isArray(v) && '$data' in v)) errors.push(`${L.id}.${k}: blocked:unsourced_data (use {"$data": "<id>", "field": "${k}"} with a sourced data entry)`); }
   let params;
   try { params = resolveData(L.params || {}, prov, `${L.id}.params`); } catch (e) { return errors.push(`${L.id}: ${e}`); }
+  // a figure's artwork: an item of the manifest's `artwork` (made by tools/gen_assets.mjs before rendering)
+  // (art → image; a second pose artArrive → imageArrive: any art<Name> → image<Name>)
+  for (const k of Object.keys(params).filter(k => /^art([A-Z]\w*)?$/.test(k) && params[k] != null)) {
+    const n = params[k], ik = 'image' + k.slice(3);
+    if (!ART.items[n]) errors.push(`${L.id}.${k}: no artwork item "${n}" (the manifest's artwork.items has: ${Object.keys(ART.items).join(', ') || 'none'})`);
+    else { params[ik] = ART.dir + n + '.png'; ART.used.add(n); if (!existsSync(params[ik])) ART.missing.add(n); }
+  }
+  if (GEO_AREAS && cap.assets?.some(a => a.type === 'geo')) for (const n of [...(Array.isArray(params.units) && params.units.length ? params.units : params.name != null ? [params.name] : [])])
+    if (!GEO_AREAS.has(n)) errors.push(`${L.id}: blocked:unknown_area "${n}" (countries: Natural Earth English names; provinces "<ISO3>/<name>"; closest: ${areaHint(n)})`);
   for (const [k, v] of Object.entries(params)) {
     const S = cap.params[k];
     if (!S) { errors.push(`${L.id}: blocked:invalid_param "${k}" (not a parameter of ${cap.id}; has ${Object.keys(cap.params).join(', ')})`); continue; }
     const t = typeOf(v);
-    if (S.type === 'number' && t !== 'number') errors.push(`${L.id}.${k}: expected number, got ${t}`);
+    if (S.type === 'number' && t !== 'number' && v !== null) errors.push(`${L.id}.${k}: expected number, got ${t}`);
     else if (S.type === 'boolean' && t !== 'boolean') errors.push(`${L.id}.${k}: expected boolean, got ${t}`);
     else if (S.type === 'color' && t !== 'color' && v !== null) errors.push(`${L.id}.${k}: expected #rrggbb colour, got ${JSON.stringify(v)}`);
     if (S.enum && !S.enum.includes(v)) errors.push(`${L.id}.${k}: ${JSON.stringify(v)} not in ${S.enum.join('|')}`);
     if (t === 'number' && ((S.min != null && v < S.min) || (S.max != null && v > S.max))) errors.push(`${L.id}.${k}: ${v} outside ${S.min ?? ''}..${S.max ?? ''}`);
   }
+  if (typeof params.image === 'string' && !existsSync(params.image) && !(params.art != null && ART.items[params.art]))   // artwork is made by the art step before rendering
+    errors.push(`${L.id}.image: no file ${params.image} (paths are relative to the repository root)`);
   const at = typeof params.at === 'number' ? params.at : 0, dur = params.dur ?? (cap.kind === 'collage' ? 0 : cap.params.dur?.default ?? 0);   // collage motions may run on (walk, sway)
   if (at > len) errors.push(`${L.id}: starts at ${at} s, after the shot ends (${len.toFixed(2)} s)`);
   else if (at + dur > len + .05) warnings.push(`${L.id}: its move (${at}+${dur} s) runs past the shot end (${len.toFixed(2)} s) and will be cut`);
@@ -254,9 +280,16 @@ const look = M.strategy?.look || 'classic';
 writeFileSync(`${dir}/config.js`, `// GENERATED by tools/compile_plan.mjs from ${args.manifest}. Do not edit: change the manifest and recompile.\n` +
   `const PROJECT = ${JSON.stringify({ width: w, height: h, aspect: M.aspect, duration: +total.toFixed(3), bpm: 120, offset: 0, audio: '', look, files: ['src/plan/play.js', 'plan.js'] })};\n`);
 // collage shots become SCENES entries (so tools/gen_assets.mjs and validate_assets.mjs work on the compiled story too)
-const sceneId = s => `${M.project_id}_${s.id}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+// a JS identifier (SCENES.<id> = …): a project id may start with a digit ("555"), which no identifier can
+const sceneId = s => `${M.project_id}_${s.id}`.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^(?=\d)/, 's_');
+// the artwork the figures use, as one more SCENES entry (layers with gen blocks), so the same art tools make and check it
+const artScene = ART.used.size ? { assets: ART.dir, gen: { style: M.artwork.style, negative: M.artwork.negative, seed: M.artwork.seed },
+  layers: [...ART.used].map(n => { const it = ART.items[n]; return { id: n, file: `${n}.png`, size: it.size || [null, 1100], ...(it.opaque ? { opaque: true } : {}),   // opaque: a whole picture (a photo card, a spyglass scene), no cut-out
+    gen: { engine: it.engine || 'zimage', prompt: it.prompt, negative: it.negative, seed: it.seed, character: it.character, matte: it.opaque ? 'none' : it.matte || 'chroma', ...(it.style !== undefined ? { style: it.style } : {}) } }; }) } : null;
+if (ART.missing.size) console.log(`artwork to make before rendering: ${[...ART.missing].join(', ')} (node tools/gen_assets.mjs --story=_plan_${M.project_id})`);
 writeFileSync(`${dir}/plan.js`, `// GENERATED by tools/compile_plan.mjs (${catalog.hash}). Do not edit.\n` +
   compiled.filter(s => s.collage).map(s => `SCENES.${sceneId(s)} = ${JSON.stringify(s.collage)};\n`).join('') +
+  (artScene ? `SCENES.${`${M.project_id}_art`.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^(?=\d)/, 's_')} = ${JSON.stringify(artScene)};\n` : '') +
   `const PLAN = ${JSON.stringify({ id: M.project_id, catalog: catalog.hash, background: M.strategy?.background, shots: compiled.map(s => s.collage ? { ...s, collage: undefined, scene: sceneId(s) } : s.action ? { id: s.id, start: s.start, end: s.end, action: s.action.story, layers: [] } : s) })};\nplayPlan(PLAN);\n`);
 // action shots: each is its own story (the engine scene of its motion plan), with the shot's text layers on top
 for (const s of compiled.filter(s => s.action)) buildScene(s.action.plan, { story: s.action.story,
@@ -267,6 +300,9 @@ const job = { id: M.project_id, fps: M.fps || 24, size: [w, h], aspect: M.aspect
 // sound: automatic SFX cues where the picture moves, and the music bed (ducked under the narration by tools/pipeline.mjs)
 const sfx = sfxCues(compiled, { off: args['no-sfx'] || M.audio?.sfx === false });
 if (sfx.cues.length) job.sfx = sfx.cues;
+// collage shots need their artwork BEFORE rendering: the pipeline generates what has a gen block (ComfyUI, cached) and
+// validates every layer, so missing art stops the run with a list instead of rendering blank shots
+if (compiled.some(s => s.collage) || ART.used.size) job.assets = [{ story }];
 sfx.warnings.forEach(w => console.log('warning: ' + w));
 const music = M.audio?.music;
 if (music?.file) { job.music = { gain: .22, duck: .7, ...music, file: resolve(base, music.file) }; if (!existsSync(job.music.file)) console.log(`warning: music file missing: ${job.music.file} (the video will have no music)`); }

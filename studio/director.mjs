@@ -29,7 +29,8 @@ export function systemPrompt(catalog) {
   const example = JSON.parse(readFileSync('tools/fixtures/plans/collage_demo.json', 'utf8')).shots.slice(0, 2);
   return readFileSync('studio/playbook.md', 'utf8') +
     '\n\n# EXAMPLE: two well-directed collage shots (shape and density to aim for)\n' + JSON.stringify(example) +
-    '\n\n# CAPABILITY CATALOG ' + catalog.hash + ' (verified only)\n' + JSON.stringify(compact(verified).capabilities);
+    '\n\n# CAPABILITY CATALOG ' + catalog.hash + ' (verified only)\n' + JSON.stringify(compact(verified).capabilities) +
+    (catalog.geo ? '\n\n# MAP AREAS (mapRegion / mapTransfer / mapHighlight name and units)\n' + JSON.stringify(compact(catalog).geo) : '');
 }
 
 // one Opus call: streamed (long outputs), adaptive thinking, server-side refusal fallback, cached system prompt

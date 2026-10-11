@@ -11,6 +11,10 @@ under d3.geoMercator, exactly registered with the vector layers.
     python tools/geo_raster.py --src blue_marble.jpg [--height topo.png] [--water water.png] [--width 8192]
 Output: src/geo/relief_mercator.jpg and src/geo/relief_mercator.js (bounds + source note; loaded by src/presets/map.js)
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import argparse, io, json, math, os, tarfile, urllib.request
 import numpy as np
 from PIL import Image, ImageFilter

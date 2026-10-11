@@ -11,7 +11,7 @@ It never moves, zooms or rotates a whole PNG, and it uses no AI video and no LTX
 
 | where | what |
 |---|---|
-| `tools/action/rig_analyze.py` | character image → `char_rig/1`: joints marked detected / estimated / uncertain, bones with capsule radii; templates `human`, `quadruped`, `object` |
+| `tools/action/rig_analyze.py` | character image → `char_rig/1`: joints marked detected / estimated / uncertain, bones with capsule radii; templates `human` (front view), `biped_tail` (side-view biped with a tail, e.g. a cartoon dinosaur: human skeleton + tail, rest angles kept as drawn via `keepBind`), `quadruped` and `object` (the engine cannot play these two yet). `--joints=<edited rig>` keeps hand-placed joints and re-measures the capsules |
 | `tools/action/prop_analyze.py` | prop image → `prop/1` anchors: `origin`, `grip`, `grip2`, `muzzle`, plus `hold_angle` |
 | `src/action/catalog.js` | 33 presets, each with a layer, joint mask, Thai name and parameter limits |
 | `src/action/rig.js` | segmentation, mesh skinning (mode A texture), coloured points (mode B), FK, two-bone IK |

@@ -49,7 +49,7 @@ export const cleanErrors = e => [...new Set(e)].filter(m => !/INVALID/.test(m));
 // followed character's box statistics (from STAGE_INFO), and the page's layout info.
 export function probe(page, t, cell = CELL) {
   return withTimeout(page.evaluate(async (t, cell) => {
-    T = t; if (window.prepFrame) await window.prepFrame(t); await redraw(); composite(t);
+    T = t; if (window.prepFrame) await window.prepFrame(t); if (window.drawFrame) await window.drawFrame(); else await redraw(); composite(t);
     const s = cell / Math.max(W, H), cw = Math.round(W * s), ch = Math.round(H * s), c = document.createElement('canvas');
     c.width = cw; c.height = ch; c.getContext('2d').drawImage(outC, 0, 0, cw, ch);
     // one GPU readback (toDataURL) serves both the cell and the pixel checks; under software GL (cloud, --soft-gl) each

@@ -2,6 +2,10 @@
 Z-Image output: detached grey/green specks, green spill on a fibrous torn edge, a shadow cast on the green, and (second
 case) a neutral grey shadow. Prints numbers and PASS/FAIL; writes before/after sheets to out/test/matte/.
   python tools/comfy/test_matte.py [--old <path to a previous imageops.py>]"""
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import json, subprocess, sys, os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter

@@ -1,0 +1,2721 @@
+{
+ "schema": "shot_manifest/1",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 31.8,
+ "strategy": {
+  "name": "somber documentary map",
+  "look": "documentary",
+  "background": "#0B0C10"
+ },
+ "data": {
+  "germany": {
+   "units": [
+    "Germany"
+   ],
+   "source": "story: นาซีเยอรมนี (ฝ่ายที่เริ่มการบุก)",
+   "confidence": "schematic",
+   "note": "modern Germany; the 1939 borders (Austria, Czech lands, East Prussia) are not shown"
+  },
+  "poland": {
+   "units": [
+    "Poland"
+   ],
+   "source": "story: 1 กันยายน 1939 เยอรมนีบุกโปแลนด์",
+   "confidence": "schematic",
+   "note": "modern Poland; the 1939 occupation zones are simplified to one colour"
+  },
+  "netherlands": {
+   "units": [
+    "Netherlands"
+   ],
+   "source": "story: พฤษภาคม–มิถุนายน 1940 เยอรมนีบุกเนเธอร์แลนด์",
+   "confidence": "schematic",
+   "note": "modern borders"
+  },
+  "belgium": {
+   "units": [
+    "Belgium"
+   ],
+   "source": "story: พฤษภาคม–มิถุนายน 1940 เยอรมนีบุกเบลเยียม",
+   "confidence": "schematic",
+   "note": "modern borders"
+  },
+  "france_1940": {
+   "units": [
+    "France"
+   ],
+   "source": "story: พฤษภาคม–มิถุนายน 1940 เยอรมนีบุกฝรั่งเศส ปารีสถูกยึด 14 มิถุนายน 1940",
+   "confidence": "schematic",
+   "note": "the whole of modern France is shaded; occupied and unoccupied zones are not separated"
+  },
+  "uk": {
+   "units": [
+    "United Kingdom"
+   ],
+   "source": "story: อังกฤษประกาศสงครามกับเยอรมนี 3 กันยายน 1939",
+   "confidence": "high",
+   "note": "modern United Kingdom"
+  },
+  "ussr": {
+   "units": [
+    "Russia",
+    "Ukraine",
+    "Belarus",
+    "Lithuania",
+    "Latvia",
+    "Estonia",
+    "Moldova",
+    "Georgia",
+    "Armenia",
+    "Azerbaijan",
+    "Kazakhstan",
+    "Uzbekistan",
+    "Turkmenistan",
+    "Kyrgyzstan",
+    "Tajikistan"
+   ],
+   "source": "story: 22 มิถุนายน 1941 ปฏิบัติการบาร์บารอสซา เยอรมนีบุกสหภาพโซเวียต",
+   "confidence": "medium",
+   "note": "modern successor states approximate the Soviet Union of 1941 (western border and Kaliningrad differ)"
+  },
+  "stalingrad_area": {
+   "units": [
+    "RUS/Volgograd"
+   ],
+   "source": "story: สตาลินกราด (ปัจจุบันคือโวลโกกราด รัสเซีย)",
+   "confidence": "medium",
+   "note": "the modern oblast marks the battle area"
+  },
+  "normandy": {
+   "units": [
+    "FRA/Calvados",
+    "FRA/Manche"
+   ],
+   "source": "story: 6 มิถุนายน 1944 ยกพลขึ้นบกที่ชายฝั่งนอร์มังดี ฝรั่งเศส",
+   "confidence": "medium",
+   "note": "modern departments approximate the Normandy landing coast"
+  },
+  "europe_loss": {
+   "units": [
+    "Poland",
+    "Germany",
+    "Netherlands",
+    "Belgium",
+    "France",
+    "United Kingdom",
+    "Russia",
+    "Ukraine",
+    "Belarus"
+   ],
+   "source": "story: จบลงด้วยความสูญเสียของทุกฝ่าย (countries named in the story)",
+   "confidence": "schematic",
+   "note": "modern countries stand for the sides named in the story"
+  },
+  "warsaw": {
+   "lonlat": [
+    21.01,
+    52.23
+   ],
+   "source": "story: เยอรมนีบุกโปแลนด์ (วอร์ซอ)",
+   "confidence": "high"
+  },
+  "london": {
+   "lonlat": [
+    -0.13,
+    51.51
+   ],
+   "source": "story: อังกฤษประกาศสงคราม",
+   "confidence": "medium",
+   "note": "pin on the capital stands for the country"
+  },
+  "paris": {
+   "lonlat": [
+    2.35,
+    48.86
+   ],
+   "source": "story: ปารีสถูกยึดวันที่ 14 มิถุนายน 1940",
+   "confidence": "high"
+  },
+  "stalingrad": {
+   "lonlat": [
+    44.52,
+    48.71
+   ],
+   "source": "story: กองทัพเยอรมันที่สตาลินกราดยอมจำนน 2 กุมภาพันธ์ 1943",
+   "confidence": "high"
+  },
+  "normandy_coast": {
+   "lonlat": [
+    -0.6,
+    49.35
+   ],
+   "source": "story: ยกพลขึ้นบกที่ชายฝั่งนอร์มังดี",
+   "confidence": "medium",
+   "note": "a point on the landing coast"
+  },
+  "berlin": {
+   "lonlat": [
+    13.4,
+    52.52
+   ],
+   "source": "story: เบอร์ลินถูกยึดโดยกองทัพโซเวียต",
+   "confidence": "high"
+  },
+  "ussr_label": {
+   "lonlat": [
+    40,
+    56
+   ],
+   "source": "story: สหภาพโซเวียต",
+   "confidence": "schematic",
+   "note": "label position only"
+  },
+  "europe_center": {
+   "lonlat": [
+    15,
+    50
+   ],
+   "source": "story: สงครามในยุโรป ค.ศ. 1939–1945",
+   "confidence": "schematic",
+   "note": "label position only"
+  },
+  "poland_label": {
+   "lonlat": [
+    17.8,
+    51.4
+   ],
+   "source": "story: 1 กันยายน 1939 เยอรมนีบุกโปแลนด์",
+   "confidence": "schematic",
+   "note": "label position only, inside Poland"
+  },
+  "netherlands_label": {
+   "lonlat": [
+    5.6,
+    52.2
+   ],
+   "source": "story: ปี 1940 เยอรมนีบุกเนเธอร์แลนด์",
+   "confidence": "schematic",
+   "note": "label position only, inside the Netherlands"
+  },
+  "belgium_label": {
+   "lonlat": [
+    4.6,
+    50.6
+   ],
+   "source": "story: ปี 1940 เยอรมนีบุกเบลเยียม",
+   "confidence": "schematic",
+   "note": "label position only, inside Belgium"
+  },
+  "france_label": {
+   "lonlat": [
+    2.5,
+    46.8
+   ],
+   "source": "story: ปี 1940 เยอรมนีบุกฝรั่งเศส",
+   "confidence": "schematic",
+   "note": "label position only, inside France"
+  },
+  "march_poland": {
+   "coords": [
+    [
+     13.6,
+     52.6
+    ],
+    [
+     20.6,
+     52.2
+    ]
+   ],
+   "source": "story: 1 กันยายน 1939 เยอรมนีบุกโปแลนด์",
+   "confidence": "schematic",
+   "note": "direction of the invasion only"
+  },
+  "raid_france": {
+   "coords": [
+    [
+     9.0,
+     50.6
+    ],
+    [
+     5.5,
+     49.6
+    ],
+    [
+     2.4,
+     48.9
+    ]
+   ],
+   "source": "story: ปี 1940 เยอรมนีบุกฝรั่งเศส ปารีสถูกยึด",
+   "confidence": "schematic",
+   "note": "an illustrative air raid toward Paris; not a specific mission"
+  },
+  "march_east": {
+   "coords": [
+    [
+     22.5,
+     52.3
+    ],
+    [
+     31.5,
+     54.6
+    ]
+   ],
+   "source": "story: มิถุนายน 1941 เยอรมนีหันไปบุกสหภาพโซเวียต",
+   "confidence": "schematic",
+   "note": "direction of the invasion only"
+  },
+  "march_berlin": {
+   "coords": [
+    [
+     20.8,
+     52.3
+    ],
+    [
+     13.9,
+     52.5
+    ]
+   ],
+   "source": "story: โซเวียตยึดเบอร์ลิน",
+   "confidence": "schematic",
+   "note": "direction of the Soviet advance only"
+  }
+ },
+ "shots": [
+  {
+   "id": "S01",
+   "start": 0,
+   "end": 3,
+   "narration": "1 กันยายน 1939 เยอรมนีบุกโปแลนด์",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "hook: the globe turns to Europe and Poland is swallowed by Germany's dark colour on the first date of the war",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 3,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         12,
+         46
+        ],
+        "zoom": 1.6
+       }
+      ],
+      [
+       1.7,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.4
+       }
+      ],
+      [
+       3,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.724
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "dur": 0.4,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "poland",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0.1,
+      "dur": 0.4,
+      "name": "poland",
+      "units": [
+       "Poland"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "warsaw_flag",
+     "cap": "mapPin",
+     "params": {
+      "at": 0.4,
+      "lonlat": {
+       "$data": "warsaw",
+       "field": "lonlat"
+      },
+      "dy": -10,
+      "style": "pole",
+      "size": 60,
+      "flag": "pl",
+      "bob": 1
+     }
+    },
+    {
+     "id": "warsaw_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.6,
+      "text": "วอร์ซอ",
+      "lonlat": {
+       "$data": "warsaw",
+       "field": "lonlat"
+      },
+      "dy": 40,
+      "size": 34,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "poland_taken",
+     "cap": "mapTransfer",
+     "params": {
+      "at": 1,
+      "dur": 1.4,
+      "name": "poland",
+      "units": [
+       "Poland"
+      ],
+      "from": "#2F67B1",
+      "to": "#3A3234",
+      "dir": "right",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "flash": true
+     }
+    },
+    {
+     "id": "troops",
+     "cap": "mapTroops",
+     "params": {
+      "at": 0.7,
+      "coords": {
+       "$data": "march_poland",
+       "field": "coords"
+      },
+      "art": "german_infantry",
+      "count": 3,
+      "height": 72,
+      "dur": 1.7,
+      "artArrive": "german_infantry_charge",
+      "artStep": "german_infantry_step",
+      "color": "#4A4446"
+     }
+    },
+    {
+     "id": "year",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.6,
+      "text": "1939",
+      "lonlat": {
+       "$data": "poland_label",
+       "field": "lonlat"
+      },
+      "size": 42,
+      "weight": 800,
+      "font": "display",
+      "color": "#F2C14E",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 0.5,
+      "art": "polish_soldier",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.2,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 1,
+      "month": 9,
+      "year": 1939,
+      "era": "ce"
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.3,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ยึดดินแดน]",
+      "size": 62,
+      "color": "#8C2A2A",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.reveal",
+     "params": {
+      "text": "สงครามใน[ยุโรป]",
+      "at": 0.5,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 100,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 2.9,
+      "text": "1 กันยายน 1939\nเยอรมนีบุกโปแลนด์",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S02",
+   "start": 3,
+   "end": 6.5,
+   "narration": "สองวันต่อมา อังกฤษและฝรั่งเศสประกาศสงคราม",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the Allies (blue) appear in the west and declare war on Germany",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 3.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         19,
+         52
+        ],
+        "zoom": 5.724
+       }
+      ],
+      [
+       1.3,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 4.8
+       }
+      ],
+      [
+       3.5,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 5.088
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "poland",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "poland",
+      "units": [
+       "Poland"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0.3,
+      "dur": 0.6,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "france",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0.5,
+      "dur": 0.6,
+      "name": "france_1940",
+      "units": [
+       "France"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "flag_gb",
+     "cap": "mapPin",
+     "params": {
+      "at": 0.9,
+      "lonlat": {
+       "$data": "london",
+       "field": "lonlat"
+      },
+      "dy": -10,
+      "style": "pole",
+      "size": 58,
+      "flag": "gb",
+      "bob": 1
+     }
+    },
+    {
+     "id": "flag_fr",
+     "cap": "mapPin",
+     "params": {
+      "at": 1.1,
+      "lonlat": {
+       "$data": "paris",
+       "field": "lonlat"
+      },
+      "dy": -10,
+      "style": "pole",
+      "size": 58,
+      "flag": "fr",
+      "bob": 1
+     }
+    },
+    {
+     "id": "name_uk",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1,
+      "text": "อังกฤษ",
+      "lonlat": {
+       "$data": "london",
+       "field": "lonlat"
+      },
+      "dy": 40,
+      "size": 32,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "name_fr",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.2,
+      "text": "ฝรั่งเศส",
+      "lonlat": {
+       "$data": "paris",
+       "field": "lonlat"
+      },
+      "dy": 40,
+      "size": 32,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "germany_ring",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 1.6,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#8C2A2A",
+      "width": 4,
+      "wash": 0,
+      "pulse": 1
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.3,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 3,
+      "month": 9,
+      "year": 1939,
+      "era": "ce",
+      "from": 1939
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": -1,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ยึดดินแดน]",
+      "size": 62,
+      "color": "#8C2A2A",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "[ประกาศสงคราม]",
+      "at": 1.4,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 1,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 95,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 3.4,
+      "text": "สองวันต่อมา\nอังกฤษและฝรั่งเศส\nประกาศสงคราม",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S03",
+   "start": 6.5,
+   "end": 11.2,
+   "narration": "ปี 1940 เนเธอร์แลนด์ เบลเยียม ฝรั่งเศสถูกบุก ปารีสถูกยึด",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the dark colour spreads west across three countries, one after another, until Paris falls",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.7,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         1.5,
+         50.5
+        ],
+        "zoom": 5.088
+       }
+      ],
+      [
+       1.2,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.0
+       }
+      ],
+      [
+       4.7,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.36
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "poland",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "poland",
+      "units": [
+       "Poland"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "france_before",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "france_1940",
+      "units": [
+       "France"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "nl_taken",
+     "cap": "mapTransfer",
+     "params": {
+      "at": 0.3,
+      "dur": 0.9,
+      "name": "netherlands",
+      "units": [
+       "Netherlands"
+      ],
+      "from": "#C9C2B0",
+      "to": "#3A3234",
+      "dir": "left",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "flash": true
+     }
+    },
+    {
+     "id": "nl_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.4,
+      "text": "เนเธอร์แลนด์",
+      "lonlat": {
+       "$data": "netherlands_label",
+       "field": "lonlat"
+      },
+      "dy": -30,
+      "size": 28,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "out": 2.4,
+      "outDur": 0.4,
+      "box": true
+     }
+    },
+    {
+     "id": "be_taken",
+     "cap": "mapTransfer",
+     "params": {
+      "at": 0.8,
+      "dur": 0.9,
+      "name": "belgium",
+      "units": [
+       "Belgium"
+      ],
+      "from": "#C9C2B0",
+      "to": "#3A3234",
+      "dir": "left",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "flash": true
+     }
+    },
+    {
+     "id": "be_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.9,
+      "text": "เบลเยียม",
+      "lonlat": {
+       "$data": "belgium_label",
+       "field": "lonlat"
+      },
+      "dy": 0,
+      "size": 28,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "out": 2.4,
+      "outDur": 0.4,
+      "box": true
+     }
+    },
+    {
+     "id": "fr_taken",
+     "cap": "mapTransfer",
+     "params": {
+      "at": 1.3,
+      "dur": 1.4,
+      "name": "france_1940",
+      "units": [
+       "France"
+      ],
+      "from": "#2F67B1",
+      "to": "#3A3234",
+      "dir": "left",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "flash": true
+     }
+    },
+    {
+     "id": "raid",
+     "cap": "mapBomber",
+     "params": {
+      "at": 0.9,
+      "coords": {
+       "$data": "raid_france",
+       "field": "coords"
+      },
+      "art": "bomber_plane",
+      "width": 130,
+      "altitude": 110,
+      "bombs": 4,
+      "dur": 2.4
+     }
+    },
+    {
+     "id": "year",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1.7,
+      "text": "1940",
+      "lonlat": {
+       "$data": "france_label",
+       "field": "lonlat"
+      },
+      "size": 42,
+      "weight": 800,
+      "font": "display",
+      "color": "#F2C14E",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "paris_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.6,
+      "text": "ปารีส",
+      "lonlat": {
+       "$data": "paris",
+       "field": "lonlat"
+      },
+      "dy": 40,
+      "size": 34,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "paris_loss",
+     "cap": "mapPin",
+     "params": {
+      "at": 2.8,
+      "lonlat": {
+       "$data": "paris",
+       "field": "lonlat"
+      },
+      "dy": -14,
+      "size": 54,
+      "glyph": "✕",
+      "color": "#8C2A2A",
+      "card": true,
+      "bob": 1
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 3.0,
+      "art": "paris_civilians",
+      "x": {
+       "9:16": 0.76,
+       "16:9": 0.86,
+       "4:5": 0.83
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": true
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 2.4,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 14,
+      "month": 6,
+      "year": 1940,
+      "era": "ce",
+      "from": 1939
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": -1,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[ยึดดินแดน]",
+      "size": 62,
+      "color": "#8C2A2A",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.reveal",
+     "params": {
+      "text": "[ปารีส]ถูกยึด",
+      "at": 2.9,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 1,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 98,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.6,
+      "text": "ปี 1940\nเนเธอร์แลนด์ เบลเยียม\nและฝรั่งเศสถูกบุก\nปารีสถูกยึด",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S04",
+   "start": 11.2,
+   "end": 14.8,
+   "narration": "มิถุนายน 1941 เยอรมนีหันไปบุกสหภาพโซเวียต",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the globe turns east: the Soviet Union (red) appears and becomes the new target",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 3.6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "arc": 0.2,
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         3,
+         49.2
+        ],
+        "zoom": 6.36
+       }
+      ],
+      [
+       1.5,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.4
+       }
+      ],
+      [
+       3.6,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.604
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "occupied",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "occupied_1940",
+      "units": [
+       "Poland",
+       "Netherlands",
+       "Belgium",
+       "France"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "ussr",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0.3,
+      "dur": 0.7,
+      "name": "ussr",
+      "units": [
+       "Russia",
+       "Ukraine",
+       "Belarus",
+       "Lithuania",
+       "Latvia",
+       "Estonia",
+       "Moldova",
+       "Georgia",
+       "Armenia",
+       "Azerbaijan",
+       "Kazakhstan",
+       "Uzbekistan",
+       "Turkmenistan",
+       "Kyrgyzstan",
+       "Tajikistan"
+      ],
+      "color": "#B3302B",
+      "alpha": 0.75,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "ussr_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.8,
+      "text": "สหภาพโซเวียต",
+      "lonlat": {
+       "$data": "ussr_label",
+       "field": "lonlat"
+      },
+      "size": 40,
+      "weight": 800,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "ussr_target",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 1.2,
+      "name": "ussr",
+      "units": [
+       "Russia",
+       "Ukraine",
+       "Belarus",
+       "Lithuania",
+       "Latvia",
+       "Estonia",
+       "Moldova",
+       "Georgia",
+       "Armenia",
+       "Azerbaijan",
+       "Kazakhstan",
+       "Uzbekistan",
+       "Turkmenistan",
+       "Kyrgyzstan",
+       "Tajikistan"
+      ],
+      "color": "#F2C14E",
+      "width": 5,
+      "wash": 0.12,
+      "pulse": 1.5
+     }
+    },
+    {
+     "id": "troops",
+     "cap": "mapTroops",
+     "params": {
+      "at": 0.9,
+      "coords": {
+       "$data": "march_east",
+       "field": "coords"
+      },
+      "art": "german_infantry",
+      "count": 3,
+      "height": 72,
+      "dur": 2.0,
+      "artArrive": "german_infantry_charge",
+      "artStep": "german_infantry_step",
+      "color": "#4A4446"
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.4,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 22,
+      "month": 6,
+      "year": 1941,
+      "era": "ce",
+      "from": 1940
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.2,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[แนวรบตะวันออก]",
+      "size": 62,
+      "color": "#B3302B",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "ปฏิบัติการ\n[บาร์บารอสซา]",
+      "at": 1.6,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 90,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 3.5,
+      "text": "มิถุนายน 1941\nเยอรมนีหันไป\nบุกสหภาพโซเวียต",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S05",
+   "start": 14.8,
+   "end": 19.4,
+   "narration": "ที่สตาลินกราด กองทัพเยอรมันยอมจำนน คือจุดเปลี่ยนของสงคราม",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the turn: the camera pushes deep into the east to Stalingrad, where the German army surrenders",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         31,
+         53.5
+        ],
+        "zoom": 3.604
+       }
+      ],
+      [
+       1.4,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.4
+       }
+      ],
+      [
+       4.6,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.784
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "occupied",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "occupied_1940",
+      "units": [
+       "Poland",
+       "Netherlands",
+       "Belgium",
+       "France"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "ussr",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "ussr",
+      "units": [
+       "Russia",
+       "Ukraine",
+       "Belarus",
+       "Lithuania",
+       "Latvia",
+       "Estonia",
+       "Moldova",
+       "Georgia",
+       "Armenia",
+       "Azerbaijan",
+       "Kazakhstan",
+       "Uzbekistan",
+       "Turkmenistan",
+       "Kyrgyzstan",
+       "Tajikistan"
+      ],
+      "color": "#B3302B",
+      "alpha": 0.75,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "battle",
+     "cap": "mapPin",
+     "params": {
+      "at": 0.4,
+      "lonlat": {
+       "$data": "stalingrad",
+       "field": "lonlat"
+      },
+      "dy": -16,
+      "size": 56,
+      "icon": "cannon",
+      "card": true,
+      "bob": 1
+     }
+    },
+    {
+     "id": "zone",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 0.6,
+      "name": "stalingrad_area",
+      "units": [
+       "RUS/Volgograd"
+      ],
+      "color": "#F2C14E",
+      "width": 5,
+      "wash": 0.2,
+      "pulse": 2
+     }
+    },
+    {
+     "id": "city_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.8,
+      "text": "สตาลินกราด",
+      "lonlat": {
+       "$data": "stalingrad",
+       "field": "lonlat"
+      },
+      "dy": 46,
+      "size": 38,
+      "weight": 800,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "city_today",
+     "cap": "mapLabel",
+     "params": {
+      "at": 1,
+      "text": "(ปัจจุบันคือโวลโกกราด)",
+      "lonlat": {
+       "$data": "stalingrad",
+       "field": "lonlat"
+      },
+      "dy": 86,
+      "size": 26,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "german_loss",
+     "cap": "mapPin",
+     "params": {
+      "at": 2.2,
+      "lonlat": {
+       "$data": "stalingrad",
+       "field": "lonlat"
+      },
+      "dx": 56,
+      "dy": -16,
+      "size": 50,
+      "glyph": "✕",
+      "color": "#3A3234",
+      "card": true,
+      "bob": 1
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 1.2,
+      "art": "soviet_soldier",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 1.6,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 2,
+      "month": 2,
+      "year": 1943,
+      "era": "ce",
+      "from": 1941
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": -1,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[แนวรบตะวันออก]",
+      "size": 62,
+      "color": "#B3302B",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.stamp",
+     "params": {
+      "text": "[จุดเปลี่ยน]",
+      "at": 2.6,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.8,
+      "maxLines": 1,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 106,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.5,
+      "text": "ที่[สตาลินกราด]\nกองทัพเยอรมันยอมจำนน\nคือ[จุดเปลี่ยน]ของสงคราม",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S06",
+   "start": 19.4,
+   "end": 23.4,
+   "narration": "6 มิถุนายน 1944 สัมพันธมิตรยกพลขึ้นบกที่นอร์มังดี",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the camera arcs back west across Europe to the Normandy coast, where the Allies land",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4,
+     "ease": "ease",
+     "projection": "orthographic",
+     "arc": 0.35,
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         44.5,
+         48.7
+        ],
+        "zoom": 6.784
+       }
+      ],
+      [
+       1.6,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.0
+       }
+      ],
+      [
+       4,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.42
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "occupied",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "occupied_1940",
+      "units": [
+       "Poland",
+       "Netherlands",
+       "Belgium",
+       "France"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "ussr",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "ussr",
+      "units": [
+       "Russia",
+       "Ukraine",
+       "Belarus",
+       "Lithuania",
+       "Latvia",
+       "Estonia",
+       "Moldova",
+       "Georgia",
+       "Armenia",
+       "Azerbaijan",
+       "Kazakhstan",
+       "Uzbekistan",
+       "Turkmenistan",
+       "Kyrgyzstan",
+       "Tajikistan"
+      ],
+      "color": "#B3302B",
+      "alpha": 0.75,
+      "edge": 2,
+      "shadow": true
+     }
+    },
+    {
+     "id": "landing_zone",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 2,
+      "name": "normandy",
+      "units": [
+       "FRA/Calvados",
+       "FRA/Manche"
+      ],
+      "color": "#5B9BE8",
+      "width": 5,
+      "wash": 0.3,
+      "pulse": 1.5
+     }
+    },
+    {
+     "id": "landing",
+     "cap": "mapMarker",
+     "params": {
+      "at": 2.2,
+      "lonlat": {
+       "$data": "normandy_coast",
+       "field": "lonlat"
+      },
+      "color": "#2F67B1",
+      "ring": "#F7F3EA",
+      "r": 14,
+      "pulse": true
+     }
+    },
+    {
+     "id": "coast_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.4,
+      "text": "นอร์มังดี",
+      "lonlat": {
+       "$data": "normandy_coast",
+       "field": "lonlat"
+      },
+      "dy": -44,
+      "size": 38,
+      "weight": 800,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 1.8,
+      "art": "allied_soldier",
+      "x": {
+       "9:16": 0.76,
+       "16:9": 0.86,
+       "4:5": 0.83
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": true
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 0.4,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 6,
+      "month": 6,
+      "year": 1944,
+      "era": "ce",
+      "from": 1943
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": 0.2,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[จุดจบ]",
+      "size": 62,
+      "color": "#2F67B1",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.reveal",
+     "params": {
+      "text": "[ดีเดย์]",
+      "at": 2.6,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.8,
+      "maxLines": 1,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 106,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 3.9,
+      "text": "6 มิถุนายน 1944\nสัมพันธมิตรยกพลขึ้นบก\nที่นอร์มังดี",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S07",
+   "start": 23.4,
+   "end": 27.3,
+   "narration": "โซเวียตยึดเบอร์ลิน 8 พฤษภาคม 1945 เยอรมนียอมจำนน",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "Berlin falls to the Soviet army, Germany surrenders, and every colour of conquest fades from the map",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 3.9,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -0.6,
+         49.6
+        ],
+        "zoom": 7.42
+       }
+      ],
+      [
+       1.4,
+       {
+        "center": [
+         14,
+         52.4
+        ],
+        "zoom": 6.0
+       }
+      ],
+      [
+       3.9,
+       {
+        "center": [
+         14,
+         52.4
+        ],
+        "zoom": 6.36
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "germany",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true,
+      "out": 2.9,
+      "outDur": 0.8
+     }
+    },
+    {
+     "id": "occupied",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "occupied_1940",
+      "units": [
+       "Poland",
+       "Netherlands",
+       "Belgium",
+       "France"
+      ],
+      "color": "#3A3234",
+      "alpha": 0.85,
+      "edge": 2,
+      "edgeColor": "#8C2A2A",
+      "shadow": true,
+      "out": 2.5,
+      "outDur": 0.8
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "uk",
+      "units": [
+       "United Kingdom"
+      ],
+      "color": "#2F67B1",
+      "alpha": 0.8,
+      "edge": 2,
+      "shadow": true,
+      "out": 2.9,
+      "outDur": 0.8
+     }
+    },
+    {
+     "id": "ussr",
+     "cap": "mapRegion",
+     "params": {
+      "at": 0,
+      "name": "ussr",
+      "units": [
+       "Russia",
+       "Ukraine",
+       "Belarus",
+       "Lithuania",
+       "Latvia",
+       "Estonia",
+       "Moldova",
+       "Georgia",
+       "Armenia",
+       "Azerbaijan",
+       "Kazakhstan",
+       "Uzbekistan",
+       "Turkmenistan",
+       "Kyrgyzstan",
+       "Tajikistan"
+      ],
+      "color": "#B3302B",
+      "alpha": 0.75,
+      "edge": 2,
+      "shadow": true,
+      "out": 2.9,
+      "outDur": 0.8
+     }
+    },
+    {
+     "id": "berlin",
+     "cap": "mapMarker",
+     "params": {
+      "at": 0.4,
+      "lonlat": {
+       "$data": "berlin",
+       "field": "lonlat"
+      },
+      "color": "#B3302B",
+      "ring": "#F7F3EA",
+      "r": 14,
+      "pulse": true
+     }
+    },
+    {
+     "id": "berlin_name",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.6,
+      "text": "เบอร์ลิน",
+      "lonlat": {
+       "$data": "berlin",
+       "field": "lonlat"
+      },
+      "dy": 44,
+      "size": 38,
+      "weight": 800,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "germany_ring",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 0.8,
+      "name": "germany",
+      "units": [
+       "Germany"
+      ],
+      "color": "#B3302B",
+      "width": 4,
+      "wash": 0,
+      "pulse": 1,
+      "out": 2.9,
+      "outDur": 0.8
+     }
+    },
+    {
+     "id": "troops",
+     "cap": "mapTroops",
+     "params": {
+      "at": 0.3,
+      "coords": {
+       "$data": "march_berlin",
+       "field": "coords"
+      },
+      "art": "soviet_infantry",
+      "count": 3,
+      "height": 72,
+      "dur": 1.8,
+      "artArrive": "soviet_infantry_charge",
+      "artStep": "soviet_infantry_step",
+      "color": "#B3302B"
+     }
+    },
+    {
+     "id": "date",
+     "cap": "dateCard",
+     "params": {
+      "at": 1.4,
+      "x": 0.93,
+      "y": 0.075,
+      "size": 150,
+      "day": 8,
+      "month": 5,
+      "year": 1945,
+      "era": "ce",
+      "from": 1944
+     }
+    },
+    {
+     "id": "badge",
+     "cap": "chapterBadge",
+     "params": {
+      "at": -1,
+      "x": 0.06,
+      "y": 0.075,
+      "number": null,
+      "text": "[จุดจบ]",
+      "size": 62,
+      "color": "#2F67B1",
+      "textColor": "#F7F3EA",
+      "highlight": "#F2C14E"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.stamp",
+     "params": {
+      "text": "[ยอมจำนน]\nอย่างไม่มีเงื่อนไข",
+      "at": 2,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 90,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 3.8,
+      "text": "โซเวียตยึดเบอร์ลิน\n8 พฤษภาคม 1945\nเยอรมนี[ยอมจำนน]",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "S08",
+   "start": 27.3,
+   "end": 31.8,
+   "narration": "สงครามที่เริ่มจากการยึดดินแดน จบลงด้วยความสูญเสียของทุกฝ่าย",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the closing thought: with no colours of sides left, the camera pulls back to a quiet globe, and every country of the story is outlined alike in pale mourning light",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "from": {
+      "center": [
+       14,
+       52.4
+      ],
+      "zoom": 6.36
+     },
+     "to": {
+      "center": [
+       18,
+       50
+      ],
+      "zoom": 1.5
+     },
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "physical",
+      "coastWidth": 1,
+      "space": "#0B0C10"
+     }
+    },
+    {
+     "id": "all_sides",
+     "cap": "mapHighlight",
+     "params": {
+      "at": 0.6,
+      "name": "europe_loss",
+      "units": [
+       "Poland",
+       "Germany",
+       "Netherlands",
+       "Belgium",
+       "France",
+       "United Kingdom",
+       "Russia",
+       "Ukraine",
+       "Belarus"
+      ],
+      "color": "#EDE6D6",
+      "width": 3,
+      "wash": 0.12,
+      "pulse": 0.6
+     }
+    },
+    {
+     "id": "years",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2,
+      "text": "1939–1945",
+      "lonlat": {
+       "$data": "europe_center",
+       "field": "lonlat"
+      },
+      "size": 44,
+      "weight": 800,
+      "font": "display",
+      "color": "#FFFFFF",
+      "align": "center",
+      "box": true
+     }
+    },
+    {
+     "id": "figure",
+     "cap": "figure",
+     "params": {
+      "at": 0.6,
+      "art": "war_refugees",
+      "x": {
+       "9:16": 0.24,
+       "16:9": 0.14,
+       "4:5": 0.17
+      },
+      "y": {
+       "9:16": 0.82,
+       "16:9": 0.95,
+       "4:5": 0.83
+      },
+      "height": {
+       "9:16": 540,
+       "16:9": 520,
+       "4:5": 400
+      },
+      "from": "bottom",
+      "flip": false
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.reveal",
+     "params": {
+      "text": "ความสูญเสียของ\n[ทุกฝ่าย]",
+      "at": 1.2,
+      "x": 0.5,
+      "y": 0.27,
+      "maxWidth": 0.84,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 95,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "สงครามที่เริ่มจาก\nการยึดดินแดน\nจบลงด้วย\n[ความสูญเสียของทุกฝ่าย]",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  }
+ ],
+ "project_id": "nazi_war_30",
+ "aspect": "9:16",
+ "tolerance_seconds": 2,
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Directed by Opus in Motion Studio from a sourced story (Nazi Germany's war in Europe 1939-1945), map documentary, 30 s. Render: Motion Studio > เรนเดอร์ > แผนช็อตตัวอย่าง > คอมไพล์, then เรนเดอร์. Borders are modern (approximations), no Nazi symbols.",
+ "artwork": {
+  "assets": "assets/stories/nazi_war_30/",
+  "style": "clean flat vector illustration of real people with realistic human proportions and anatomy, crisp shapes, subtle cel shading, limited muted historical palette, editorial documentary infographic style, full body, dynamic natural pose",
+  "negative": "cartoon, chibi, caricature, exaggerated proportions, watercolor, painterly, photo, photorealistic, 3d render, swastika, nazi symbol, insignia, emblem, flag, armband, medal, badge, gore, blood, weapon pointed at viewer",
+  "seed": 1939,
+  "items": {
+   "polish_soldier": {
+    "prompt": "a young Polish infantry soldier of 1939 in an olive-khaki wool uniform and a round steel helmet, kneeling behind cover and aiming his rifle to the left, determined face",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "paris_civilians": {
+    "prompt": "Parisian civilians fleeing in June 1940, a mother in a long coat pulling her young son by the hand while carrying a suitcase, walking fast, looking back over her shoulder, worried",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "soviet_soldier": {
+    "prompt": "a Soviet soldier at Stalingrad in winter 1943 in a quilted padded jacket and fur hat with ear flaps, advancing through snow, leaning forward with his rifle held across his chest, resolute face",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "allied_soldier": {
+    "prompt": "an Allied soldier landing at Normandy in June 1944, steel helmet with camouflage netting, wading ashore through knee-deep water, holding his rifle above his head with both hands",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "war_refugees": {
+    "prompt": "war refugees in 1945, an old man with a walking stick and a young woman carrying a bundle on her back, walking together slowly, weary faces",
+    "size": [
+     null,
+     1100
+    ]
+   },
+   "german_infantry": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, marching with a rifle on the shoulder, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "german_infantry"
+   },
+   "soviet_infantry": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, marching with a rifle, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "soviet_infantry"
+   },
+   "bomber_plane": {
+    "prompt": "a 1940 twin-engine propeller bomber airplane in plain grey-green paint with no markings, seen from the side flying to the right",
+    "size": [
+     900
+    ],
+    "negative": "roundel, cross, swastika, markings, numbers"
+   },
+   "german_infantry_charge": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, charging forward with his rifle held ready, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "german_infantry"
+   },
+   "soviet_infantry_charge": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, charging forward with his rifle held ready, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "soviet_infantry"
+   },
+   "german_infantry_step": {
+    "prompt": "a 1939 infantry soldier in a plain field-grey uniform and a plain steel helmet with no markings, mid-stride with the other leg forward, rifle on the shoulder, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "german_infantry"
+   },
+   "soviet_infantry_step": {
+    "prompt": "a 1945 Soviet infantry soldier in an olive-brown tunic and a plain steel helmet with no markings, mid-stride with the other leg forward, rifle held, full body side view facing right",
+    "size": [
+     null,
+     600
+    ],
+    "character": "soviet_infantry"
+   }
+  }
+ }
+}

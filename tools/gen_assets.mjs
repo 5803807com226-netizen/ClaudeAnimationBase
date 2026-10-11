@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { loadStory, checkLayer, neededWidth, neededSize } from './lib/manifest.mjs';
 import { comfyGenerate } from './comfy/client.mjs';
+process.env.PYTHONUTF8 ??= '1'; process.env.PYTHONIOENCODING ??= 'utf-8';   // Python children print UTF-8 (Windows pipes default to cp1252)
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, ...v] = a.replace(/^--/, '').split('='); return [k, v.length ? v.join('=') : true]; }));
 if (!args.story) { console.error('usage: node tools/gen_assets.mjs --story=<id> [--scene=<id>] [--mock | --engines=<file>] [--dry] [--preview]'); process.exit(1); }

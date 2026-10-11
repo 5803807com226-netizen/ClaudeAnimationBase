@@ -1,5 +1,9 @@
 """tools/test_footage.py: checks for tools/footage.py tracking on synthetic plates (no video needed).
     python tools/test_footage.py"""
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import os, sys, tempfile, json
 import numpy as np
 from PIL import Image, ImageFilter

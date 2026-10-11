@@ -1,6 +1,10 @@
 # Generates Lumo's cutout layers (transparent PNGs) into assets/characters/lumo/. These are stand-in artwork made in
 # code; an illustrator's layers with the same file names, sizes (in units) and anchors replace them without touching
 # any animation code (see src/characters/lumo.js for the anchors).  python3 tools/make_lumo_layers.py
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import os, random
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
 

@@ -15,6 +15,10 @@
           a synthetic stand-in image for TESTING the pipeline without an image model (never story artwork)
 Exit code 0 on success; errors go to stderr.
 """
+import sys as _sys
+for _s in (_sys.stdout, _sys.stderr):   # Windows: a piped stdout is cp1252 and cannot print → or Thai; always UTF-8
+    try: _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception: pass
 import argparse, hashlib, json, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter

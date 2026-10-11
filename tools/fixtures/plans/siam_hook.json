@@ -1,0 +1,894 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "siam_hook",
+ "aspect": "9:16",
+ "fps": 24,
+ "target_seconds": 15,
+ "tolerance_seconds": 1,
+ "mode": "motion_only",
+ "_comment": "Style test after the reference map-documentary Short 'ทำไมไทยถึงไม่เคยเป็นเมืองขึ้น?' (EARTHLY): its first 15 s rebuilt from engine presets only. Modern borders stand in for 19th-century ones (the engine has no historical borders yet). Timing provisional (no voice).",
+ "strategy": {
+  "name": "historical_map_documentary",
+  "look": "documentary",
+  "background": "#123A4A",
+  "ai_video": "forbidden"
+ },
+ "data": {
+  "label_china": {
+   "lonlat": [
+    104.5,
+    24.6
+   ],
+   "source": "label anchor inside the modern China outline",
+   "confidence": "n/a"
+  },
+  "label_myanmar": {
+   "lonlat": [
+    96.0,
+    21.0
+   ],
+   "source": "label anchor inside the modern Myanmar outline",
+   "confidence": "n/a"
+  },
+  "label_thailand": {
+   "lonlat": [
+    101.0,
+    15.5
+   ],
+   "source": "label anchor inside the modern Thailand outline",
+   "confidence": "n/a"
+  },
+  "label_laos": {
+   "lonlat": [
+    103.2,
+    19.3
+   ],
+   "source": "label anchor inside the modern Laos outline",
+   "confidence": "n/a"
+  },
+  "label_vietnam": {
+   "lonlat": [
+    106.6,
+    13.6
+   ],
+   "source": "label anchor inside the modern Vietnam outline",
+   "confidence": "n/a"
+  },
+  "bangkok": {
+   "lonlat": [
+    100.5,
+    13.75
+   ],
+   "source": "modern coordinates of Bangkok",
+   "confidence": "high"
+  },
+  "route_britain_burma": {
+   "coords": [
+    [
+     -0.1,
+     51.5
+    ],
+    [
+     -5.6,
+     36.0
+    ],
+    [
+     32.3,
+     31.3
+    ],
+    [
+     32.55,
+     29.97
+    ],
+    [
+     43.4,
+     12.6
+    ],
+    [
+     79.85,
+     6.93
+    ],
+    [
+     96.2,
+     16.8
+    ]
+   ],
+   "source": "London, Gibraltar, Port Said, Suez, Bab-el-Mandeb, Colombo, Rangoon: the Suez route (opened 1869); the line between ports is schematic",
+   "confidence": "schematic"
+  },
+  "route_france_saigon": {
+   "coords": [
+    [
+     5.37,
+     43.3
+    ],
+    [
+     32.3,
+     31.3
+    ],
+    [
+     32.55,
+     29.97
+    ],
+    [
+     43.4,
+     12.6
+    ],
+    [
+     79.85,
+     6.93
+    ],
+    [
+     103.8,
+     1.29
+    ],
+    [
+     106.7,
+     10.8
+    ]
+   ],
+   "source": "Marseille, Port Said, Suez, Bab-el-Mandeb, Colombo, Singapore, Saigon: the Suez route; the line between ports is schematic",
+   "confidence": "schematic"
+  },
+  "label_gulf": {
+   "lonlat": [
+    101.3,
+    10.2
+   ],
+   "source": "label anchor in the Gulf of Thailand",
+   "confidence": "n/a"
+  },
+  "label_andaman": {
+   "lonlat": [
+    95.5,
+    11.5
+   ],
+   "source": "label anchor in the Andaman Sea",
+   "confidence": "n/a"
+  },
+  "label_scs": {
+   "lonlat": [
+    112.5,
+    13.0
+   ],
+   "source": "label anchor in the South China Sea",
+   "confidence": "n/a"
+  },
+  "label_india": {
+   "lonlat": [
+    88.0,
+    24.0
+   ],
+   "source": "label anchor inside the modern India outline",
+   "confidence": "n/a"
+  }
+ },
+ "shots": [
+  {
+   "id": "H1",
+   "start": 0,
+   "end": 5,
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "the hook: Siam in yellow between British red and French blue",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         101,
+         12
+        ],
+        "zoom": 8
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         101,
+         13
+        ],
+        "zoom": 9.5
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Thailand",
+      "color": "#E8C547",
+      "at": 0.2,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "mm",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Myanmar",
+      "color": "#D8433A",
+      "at": 0.7,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "my",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Malaysia",
+      "color": "#D8433A",
+      "at": 0.8,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "la",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Laos",
+      "color": "#3E6FD0",
+      "at": 1.0,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "kh",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Cambodia",
+      "color": "#3E6FD0",
+      "at": 1.1,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "vn",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Vietnam",
+      "color": "#3E6FD0",
+      "at": 1.2,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "l_cn",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_china",
+       "field": "lonlat"
+      },
+      "text": "จีน",
+      "at": 0.6,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 40,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.pop",
+     "params": {
+      "text": "ทำไม[ไทย]ถึง\nไม่เคยเป็นเมืองขึ้น?",
+      "at": 0.3,
+      "y": 0.13,
+      "maxLines": 2,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 84
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ทั้งที่ทิศตะวันตกเป็นของ[อังกฤษ] ตะวันออกเป็นของ[ฝรั่งเศส]",
+      "at": 1.8,
+      "end": 4.8
+     }
+    },
+    {
+     "id": "l_gulf",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_gulf",
+       "field": "lonlat"
+      },
+      "text": "อ่าวไทย",
+      "at": 1.4,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_and",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_andaman",
+       "field": "lonlat"
+      },
+      "text": "ทะเลอันดามัน",
+      "at": 1.5,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_scs",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_scs",
+       "field": "lonlat"
+      },
+      "text": "ทะเลจีนใต้",
+      "at": 1.6,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_in",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_india",
+       "field": "lonlat"
+      },
+      "text": "อินเดีย",
+      "at": 1.0,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "เรื่องของโลก · ทดสอบ",
+      "at": 0,
+      "x": 0.78,
+      "y": 0.03,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 26,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      },
+      "safe": false,
+      "avoid": false
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "H2",
+   "start": 5,
+   "end": 10,
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "who owns what: labels on the colonial powers, Bangkok in the middle",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "mercator",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         101,
+         13
+        ],
+        "zoom": 9.5
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         100.8,
+         14.5
+        ],
+        "zoom": 12
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "th",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Thailand",
+      "color": "#E8C547",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "mm",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Myanmar",
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "my",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Malaysia",
+      "color": "#D8433A",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "la",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Laos",
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "kh",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Cambodia",
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "vn",
+     "cap": "mapRegion",
+     "params": {
+      "name": "Vietnam",
+      "color": "#3E6FD0",
+      "at": 0,
+      "dur": 0.01
+     }
+    },
+    {
+     "id": "l_mm",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_myanmar",
+       "field": "lonlat"
+      },
+      "text": "อังกฤษ",
+      "at": 0.4,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 52,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_la",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_laos",
+       "field": "lonlat"
+      },
+      "text": "ฝรั่งเศส",
+      "at": 1.0,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 52,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_th",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_thailand",
+       "field": "lonlat"
+      },
+      "text": "สยาม",
+      "at": 1.6,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFE36A",
+      "halo": "#151515",
+      "size": 60,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "m_bkk",
+     "cap": "mapMarker",
+     "params": {
+      "lonlat": {
+       "$data": "bangkok",
+       "field": "lonlat"
+      },
+      "at": 2.0,
+      "color": "#FFFFFF",
+      "ring": "#FFFFFF"
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "คำตอบไม่ใช่[โชคช่วย]",
+      "at": 0.3,
+      "end": 4.8
+     }
+    },
+    {
+     "id": "l_gulf",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_gulf",
+       "field": "lonlat"
+      },
+      "text": "อ่าวไทย",
+      "at": 0.2,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "l_and",
+     "cap": "mapLabel",
+     "params": {
+      "lonlat": {
+       "$data": "label_andaman",
+       "field": "lonlat"
+      },
+      "text": "ทะเลอันดามัน",
+      "at": 0.2,
+      "align": "center",
+      "dx": 0,
+      "dy": 0,
+      "color": "#FFFFFF",
+      "halo": "#151515",
+      "size": 34,
+      "weight": 700,
+      "font": "display"
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "เรื่องของโลก · ทดสอบ",
+      "at": 0,
+      "x": 0.78,
+      "y": 0.03,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 26,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      },
+      "safe": false,
+      "avoid": false
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  },
+  {
+   "id": "H3",
+   "start": 10,
+   "end": 15,
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "19th century: the globe turns from Europe to Asia while the colonial sea routes draw",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "projection": "orthographic",
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         30,
+         30
+        ],
+        "zoom": 1.05
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         85,
+         18
+        ],
+        "zoom": 1.15
+       }
+      ]
+     ],
+     "ease": "ease",
+     "blur": 1
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "flat",
+      "ocean": "#1F5F86",
+      "land": "#7FA05A",
+      "coast": "#2F4A2A",
+      "coastWidth": 1.2,
+      "shore": "#3E7FA6",
+      "graticule": false
+     }
+    },
+    {
+     "id": "uk",
+     "cap": "mapRegion",
+     "params": {
+      "name": "United Kingdom",
+      "color": "#D8433A",
+      "at": 0.2,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "fr",
+     "cap": "mapRegion",
+     "params": {
+      "name": "France",
+      "color": "#3E6FD0",
+      "at": 0.4,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "in",
+     "cap": "mapRegion",
+     "params": {
+      "name": "India",
+      "color": "#D8433A",
+      "at": 2.0,
+      "dur": 0.5
+     }
+    },
+    {
+     "id": "r_uk",
+     "cap": "routeDraw",
+     "params": {
+      "coords": {
+       "$data": "route_britain_burma",
+       "field": "coords"
+      },
+      "at": 0.6,
+      "dur": 3.6,
+      "color": "#FFFFFF",
+      "width": 4,
+      "dash": [
+       14,
+       10
+      ],
+      "head": "dot"
+     }
+    },
+    {
+     "id": "r_fr",
+     "cap": "routeDraw",
+     "params": {
+      "coords": {
+       "$data": "route_france_saigon",
+       "field": "coords"
+      },
+      "at": 0.9,
+      "dur": 3.6,
+      "color": "#FFFFFF",
+      "width": 4,
+      "dash": [
+       14,
+       10
+      ],
+      "head": "dot"
+     }
+    },
+    {
+     "id": "ship",
+     "cap": "mapSprite",
+     "params": {
+      "coords": {
+       "$data": "route_britain_burma",
+       "field": "coords"
+      },
+      "at": 0.6,
+      "dur": 3.6,
+      "icon": "ship",
+      "size": 46
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.pop",
+     "params": {
+      "text": "ศตวรรษที่ 19",
+      "at": 0.2,
+      "y": 0.11,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B",
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 12
+       },
+       "size": 84
+      }
+     }
+    },
+    {
+     "id": "cap",
+     "cap": "captionBar",
+     "params": {
+      "text": "ชาติยุโรปแข่งกัน[ยึดดินแดน]ทั่วโลก",
+      "at": 0.4,
+      "end": 4.8
+     }
+    },
+    {
+     "id": "sub",
+     "cap": "type.slide",
+     "params": {
+      "text": "[ยุคล่าอาณานิคม]",
+      "at": 0.6,
+      "y": 0.165,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFD43B",
+       "highlight": "#FFD43B",
+       "size": 44,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 6
+       }
+      }
+     }
+    },
+    {
+     "id": "wm",
+     "cap": "type.label",
+     "params": {
+      "text": "เรื่องของโลก · ทดสอบ",
+      "at": 0,
+      "x": 0.78,
+      "y": 0.03,
+      "maxLines": 1,
+      "style": {
+       "color": "#FFFFFF",
+       "size": 26,
+       "weight": 700,
+       "stroke": {
+        "color": "#1A1A1A",
+        "width": 5
+       }
+      },
+      "safe": false,
+      "avoid": false
+     }
+    }
+   ],
+   "expected_motion": {
+    "min_changed_frac": 0.01
+   }
+  }
+ ]
+}
