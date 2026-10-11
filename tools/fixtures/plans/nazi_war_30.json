@@ -427,7 +427,16 @@
        "font": "headline",
        "weight": 800,
        "size": 76,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -688,7 +697,16 @@
        "font": "headline",
        "weight": 800,
        "size": 72,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -1015,7 +1033,16 @@
        "font": "headline",
        "weight": 800,
        "size": 74,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -1255,7 +1282,16 @@
        "font": "headline",
        "weight": 800,
        "size": 68,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -1533,7 +1569,16 @@
        "font": "headline",
        "weight": 800,
        "size": 80,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -1775,7 +1820,16 @@
        "font": "headline",
        "weight": 800,
        "size": 80,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -2025,7 +2079,16 @@
        "font": "headline",
        "weight": 800,
        "size": 68,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
@@ -2148,7 +2211,16 @@
        "font": "headline",
        "weight": 800,
        "size": 72,
-       "color": "#F7F3EA"
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.55)",
+        "blur": 16,
+        "dy": 4
+       }
       }
      }
     },
