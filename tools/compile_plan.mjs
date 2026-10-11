@@ -49,6 +49,15 @@ let catalog;
 if (args.catalog) catalog = JSON.parse(readFileSync(args.catalog, 'utf8'));
 else { const b = await launch(); try { catalog = await loadCatalog(b); } finally { await b.close(); } }
 const CAPS = Object.fromEntries(catalog.capabilities.map(c => [c.id, c]));
+// the areas map layers can name (catalog.geo): a wrong name is caught here, with the closest real names, so the director
+// can repair it (it would otherwise fail only when the frame is drawn)
+const GEO_AREAS = Array.isArray(catalog.geo?.countries) ? new Set([...catalog.geo.countries, ...catalog.geo.provinces]) : null;
+const fold = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9/]/g, '');
+function areaHint(n) {
+  const [iso, name] = String(n).includes('/') ? String(n).split('/') : [null, String(n)], f = fold(name), pool = [...GEO_AREAS].filter(a => iso ? a.startsWith(iso + '/') : !a.includes('/'));
+  const near = pool.filter(a => { const g = fold(a.split('/').pop()); return g.includes(f) || f.includes(g); });
+  return (near.length ? near : pool).slice(0, 8).join(', ') || 'none (no provinces for that country)';
+}
 const allowExp = !!(args['allow-experimental'] || M.allow_experimental);
 const warnings = [];
 if (M.capability_catalog && M.capability_catalog !== catalog.hash) warnings.push(`planned against catalog ${M.capability_catalog}, compiling against ${catalog.hash}`);
@@ -95,6 +104,8 @@ function checkLayer(L, len, prov, errors, subs) {
     if (v !== undefined && !(v && typeof v === 'object' && !Array.isArray(v) && '$data' in v)) errors.push(`${L.id}.${k}: blocked:unsourced_data (use {"$data": "<id>", "field": "${k}"} with a sourced data entry)`); }
   let params;
   try { params = resolveData(L.params || {}, prov, `${L.id}.params`); } catch (e) { return errors.push(`${L.id}: ${e}`); }
+  if (GEO_AREAS && cap.assets?.some(a => a.type === 'geo')) for (const n of [...(Array.isArray(params.units) && params.units.length ? params.units : params.name != null ? [params.name] : [])])
+    if (!GEO_AREAS.has(n)) errors.push(`${L.id}: blocked:unknown_area "${n}" (countries: Natural Earth English names; provinces "<ISO3>/<name>"; closest: ${areaHint(n)})`);
   for (const [k, v] of Object.entries(params)) {
     const S = cap.params[k];
     if (!S) { errors.push(`${L.id}: blocked:invalid_param "${k}" (not a parameter of ${cap.id}; has ${Object.keys(cap.params).join(', ')})`); continue; }

@@ -23,14 +23,14 @@ Presets for history, geography and politics explainers in the style of map-docum
 
 ## Territories and sources
 
-`src/geo/admin1_10m.js` holds the provinces and states of THA, LAO, KHM, MYS, MMR and VNM, from Natural Earth 1:10m admin-1 (public domain). For other countries, rebuild it:
+`src/geo/admin1_10m.js` holds the provinces and states of every country (4,568 areas): Natural Earth 1:10m admin-1 (public domain), simplified to 0.03°, about 2.8 MB. Rebuild it with:
 
 ```
 curl -L -o ne_admin1.geojson https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson
-node tools/geo_build.mjs --admin1=ne_admin1.geojson --countries=THA,LAO,KHM,MYS,MMR,VNM,IND,CHN
+node tools/geo_build.mjs --admin1=ne_admin1.geojson --countries=all --tolerance=0.03
 ```
 
-The catalog lists every province name, so the director can only name areas that exist.
+The compiler checks every area name against the catalog. When a name is wrong, it blocks the shot and lists the closest real names, and the director repairs it.
 - A **historical territory** is a union of modern provinces given in the manifest's `data`, with its source and the note that modern borders approximate it.
 - The compiler refuses map data without a source.
 

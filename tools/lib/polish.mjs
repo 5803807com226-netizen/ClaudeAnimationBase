@@ -6,7 +6,7 @@
 //     staggered so nothing arrives together; a collage shot without a camera gets a slow push (in and out alternate);
 //     scene boil (the stop-motion life on held frames) when none is set;
 //   - between two collage shots with no transition, a transition (varied: push, slide, whip, tear);
-//   - a karaoke subtitle (type.subtitle) from the shot's narration, unless the shot already has one or `subtitles: false`.
+//   - a karaoke subtitle (type.subtitle) from the shot's narration, unless the shot already has one (or a captionBar) or `subtitles: false`.
 // Each addition uses a capability only when the catalog says it may (verified, or --allow-experimental). Every change
 // is listed in the compile report (polish). Turn it off with "polish": false in the manifest.
 //
@@ -62,7 +62,8 @@ export function polishManifest(M, { CAPS, allowExp, aspect }) {
     }
     // no subtitle when the shot already shows its narration as text (a kinetic-type shot of the same words)
     const norm = x => String(x ?? '').replace(/\s+/g, ''), said = norm(s.narration);
-    const hasSub = (s.layers || []).some(L => L.cap === 'type.subtitle' || (L.cap?.startsWith('type.') && said && norm(L.params?.text) === said));
+    // a documentary caption bar (captionBar) is the shot's subtitle too: two subtitles would stack at the bottom
+    const hasSub = (s.layers || []).some(L => L.cap === 'type.subtitle' || L.cap === 'captionBar' || (L.cap?.startsWith('type.') && said && norm(L.params?.text) === said));
     if (M.subtitles !== false && s.subtitles !== false && s.narration && !hasSub && ok('type.subtitle')) {
       (s.layers = s.layers || []).push({ id: 'subtitle', cap: 'type.subtitle', params: { text: String(s.narration), at: 0, end: r2(Math.max(.5, len - .15)) } });
       changes.push(`${s.id}: karaoke subtitle from the narration`);

@@ -36,7 +36,7 @@ export function compact(cat) {
   const p = s => [s.type, s.enum ? s.enum.join('|') : null, s.min != null || s.max != null ? `${s.min ?? ''}..${s.max ?? ''}` : null].filter(Boolean).join(' ');
   return { schema: 'capability_catalog/1-compact', hash: cat.hash, capabilities: cat.capabilities.map(c => ({ id: c.id, category: c.category, about: c.about,
     tags: c.tags, params: Object.fromEntries(Object.entries(c.params).map(([k, s]) => [k, p(s)])), assets: c.assets, status: c.status })), actions: cat.actions,
-    geo: cat.geo && { countries: 'Natural Earth English names (e.g. Thailand, Vietnam, United Kingdom)', provinces: cat.geo.provinces } };
+    geo: cat.geo && { countries: 'Natural Earth English names (e.g. Thailand, Vietnam, United Kingdom, Germany, Russia)', provinces: `"<ISO3>/<Natural Earth admin-1 name>" for every country (${cat.geo.provinces.length} areas), e.g. ${['RUS/Volgograd', 'DEU/Berlin', 'POL/Mazowieckie', 'LAO/Champasak', 'MYS/Kedah'].filter(n => cat.geo.provinces.includes(n)).join(', ')}; the compiler lists the closest names when one is wrong` } };
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('capabilities.mjs')) {

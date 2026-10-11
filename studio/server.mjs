@@ -125,16 +125,19 @@ async function stepFootage(id) {
   wj(PDIR(id) + 'project.json', P);
 }
 const mockDir = id => `out/mock_assets/${id}/`;
+// a plan needs artwork only when it has collage shots (map, typography and infographic shots are drawn by the engine)
+const needsArt = id => { const f = `src/stories/_plan_${id}/plan.js`; return existsSync(f) && /SCENES\.\w+\s*=/.test(readFileSync(f, 'utf8')); };
 async function stepArt(id, mode) {
   const st = `_plan_${id}`; if (!existsSync(`src/stories/${st}/plan.js`)) throw new Error('compile first');
   if (mode === 'preflight') return run('node', ['tools/comfy/preflight.mjs', `--engines=${ENGINES()}`]);
+  if (!needsArt(id)) return log('no artwork needed: this plan has no collage shots (the engine draws every shot)');
   if (mode === 'dry') return run('node', ['tools/gen_assets.mjs', `--story=${st}`, '--dry']);
   if (mode === 'mock') return run('node', ['tools/gen_assets.mjs', `--story=${st}`, '--mock', `--out=${mockDir(id)}`]);
   if (mode === 'validate') return run('node', ['tools/validate_assets.mjs', `--story=${st}`]);
   await run('node', ['tools/gen_assets.mjs', `--story=${st}`, `--engines=${ENGINES()}`, `--python=${PY()}`]);
   await run('node', ['tools/validate_assets.mjs', `--story=${st}`]);
 }
-const hasRealArt = id => { const r = spawnSync('node', ['tools/validate_assets.mjs', `--story=_plan_${id}`], { cwd: ROOT, encoding: 'utf8' }); return r.status === 0; };
+const hasRealArt = id => { if (!needsArt(id)) return true; const r = spawnSync('node', ['tools/validate_assets.mjs', `--story=_plan_${id}`], { cwd: ROOT, encoding: 'utf8' }); return r.status === 0; };
 // Thai narration from the shots' narration lines (tools/tts.py): one cue per shot, measured timing
 async function stepVoice(id, engine = 'auto') {
   const m = PDIR(id) + 'manifest.json'; if (!existsSync(m)) throw new Error('no manifest: direct the story first');
