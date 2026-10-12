@@ -60,8 +60,9 @@ async function health(cfg, PY) {
 }
 
 function catalog(RF) {
-  const f = 'out/capabilities.json';
-  if (!existsSync(f)) spawnSync('node', ['tools/capabilities.mjs', `--out=${f}`, ...RF()], { timeout: 180000 });
+  // refreshed when the engine changes (a new or edited preset file), like server.mjs, so new presets show up after a pull
+  const f = 'out/capabilities.json', newest = ['src/collage/collage.js', 'src/type/kinetic.js', ...readdirSync('src/presets').filter(x => x.endsWith('.js')).map(x => 'src/presets/' + x)].map(x => statSync(x).mtimeMs);
+  if (!existsSync(f) || statSync(f).mtimeMs < Math.max(...newest)) spawnSync('node', ['tools/capabilities.mjs', `--out=${f}`, ...RF()], { timeout: 180000 });
   const C = rj(f, { capabilities: [] });
   return { hash: C.hash, capabilities: C.capabilities, layers: ACTION_LAYERS,
     actions: Object.entries(ACTION_CATALOG).map(([id, a]) => ({ id, th: a.th, about: a.about, layer: a.layer, params: Object.keys(a.params || {}) })) };
