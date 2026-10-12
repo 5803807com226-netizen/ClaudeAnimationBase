@@ -10,3 +10,7 @@ NASA Image and Video Library (https://images.nasa.gov). NASA media is generally 
 - `whirlpool.jpg`: "The Two-faced Whirlpool Galaxy", NASA ID GSFC_20171208_Archive_e001925, GSFC (http://images-assets.nasa.gov/image/GSFC_20171208_Archive_e001925/GSFC_20171208_Archive_e001925~large.jpg)
 - `deep_field.jpg`: "Webb_first_deep_field_SMACS_0723", NASA ID webb_first_deep_field, STScI, NASA ESA CSA STScI (http://images-assets.nasa.gov/image/webb_first_deep_field/webb_first_deep_field~large.jpg)
 - `pillars.jpg`: "Hubble Goes High Def to Revisit the Iconic 'Pillars of Creation'", NASA ID GSFC_20171208_Archive_e000842, GSFC (http://images-assets.nasa.gov/image/GSFC_20171208_Archive_e000842/GSFC_20171208_Archive_e000842~large.jpg)
+- `blackhole_m87.jpg`: "The first image of a black hole: M87* (Event Horizon Telescope, 2019)", EHT Collaboration (CC BY 4.0) (https://cdn.eso.org/images/large/eso1907a.jpg)
+- `blackhole_sgra.jpg`: "Sagittarius A*, the black hole at the centre of the Milky Way (Event Horizon Telescope, 2022)", EHT Collaboration (CC BY 4.0) (https://cdn.eso.org/images/large/eso2208-eht-mwa.jpg)
+- `blackhole_sim.jpg`: "Hubble Helps Find Smallest Known Galaxy Containing a Supermassive Black Hole", NASA ID GSFC_20171208_Archive_e000984, GSFC (http://images-assets.nasa.gov/image/GSFC_20171208_Archive_e000984/GSFC_20171208_Archive_e000984~large.jpg)
+- `milky_way_center.jpg`: "Great Observatories Unique Views of the Milky Way", NASA ID PIA12348, JPL, NASA/JPL-Caltech/ESA/CXC/STScI (http://images-assets.nasa.gov/image/PIA12348/PIA12348~large.jpg)
