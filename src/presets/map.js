@@ -211,15 +211,40 @@ function spaceSky(c, shift = 0) {
   c.restore();
 }
 
-// the old-map finish: parchment tone (multiply), paper grain, a brown graticule and a dark edge, all inside the frame
-function mapAntique(c, o) {
-  const u = US();
-  if (!MAP.grain) {   // a small tiled paper grain (seeded, so every frame is the same)
+// a small tiled paper grain (seeded, so every frame is the same), shared by the antique and paper maps
+function mapGrain() {
+  if (!MAP.grain) {
     const g = document.createElement('canvas'); g.width = g.height = 256; const x = g.getContext('2d'), d = x.createImageData(256, 256);
     let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < d.data.length; i += 4) { const v = 128 + (r() - .5) * 70; d.data[i] = v; d.data[i + 1] = v * .96; d.data[i + 2] = v * .88; d.data[i + 3] = 255; }
     x.putImageData(d, 0, 0); MAP.grain = g;
   }
+  return MAP.grain;
+}
+// the paper-cut map: a teal sea (lighter over the shelf along the coasts), cream land cut out of card and lifted off it
+// (a soft shadow down and right, a light top edge), the real terrain pressed faintly into the card (the physical
+// raster, grey, multiplied inside the land), paper grain over everything; paperLand / paperSea recolour it
+function mapPaper(t, o) {
+  const c = mapCtx(), path = d3.geoPath(MAP.proj, c), land = GEO[o.dataset].geometry, u = US(), globe = MAP.proj.clipAngle && MAP.proj.clipAngle();
+  c.save(); c.fillStyle = o.paperSea;
+  if (globe) { c.beginPath(); path({ type: 'Sphere' }); c.fill(); } else c.fillRect(0, 0, W, H);
+  c.beginPath(); path(land); c.lineJoin = 'round';
+  for (const [w, a] of [[26, .16], [12, .2]]) { c.strokeStyle = '#BFE8DD'; c.globalAlpha = a; c.lineWidth = w * u; c.stroke(); }   // the shelf
+  c.globalAlpha = 1; c.shadowColor = 'rgba(20,50,45,.45)'; c.shadowBlur = 10 * u; c.shadowOffsetX = 3 * u; c.shadowOffsetY = 5 * u;
+  c.fillStyle = o.paperLand; c.fill(); c.shadowColor = 'transparent';
+  if (o.paperRelief > 0 && MAP.ras.physical && (globe || MAP_IS_MERC(MAP.proj))) {   // the terrain pressed into the card
+    c.save(); c.beginPath(); path(land); c.clip(); c.globalCompositeOperation = 'multiply'; c.globalAlpha = o.paperRelief;
+    mapBaseDraw(t, { ...o, style: 'physical', saturate: 0, brightness: 1.35, contrast: 1.15 }); c.restore();
+  }
+  c.beginPath(); path(land); c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.2 * u; c.stroke();   // the cut edge catching light
+  c.globalCompositeOperation = 'overlay'; c.globalAlpha = .3; c.fillStyle = c.createPattern(mapGrain(), 'repeat'); c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// the old-map finish: parchment tone (multiply), paper grain, a brown graticule and a dark edge, all inside the frame
+function mapAntique(c, o) {
+  const u = US();
+  mapGrain();
   c.save();
   c.globalCompositeOperation = 'multiply'; c.fillStyle = o.paper || '#D9C39A'; c.fillRect(0, 0, W, H);
   c.globalCompositeOperation = 'overlay'; c.globalAlpha = .35; c.fillStyle = c.createPattern(MAP.grain, 'repeat'); c.fillRect(0, 0, W, H);
@@ -231,15 +256,16 @@ function mapAntique(c, o) {
 }
 
 definePreset('mapBase', {
-  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera); a globe floats in space (stars: false turns that off) and atmosphere: true gives it a glowing rim',
+  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), paper (a paper-cut map: cream card land lifted off a teal sea with a soft shadow, the terrain pressed faintly into it, paper grain: friendly explainers), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera); a globe floats in space (stars: false turns that off) and atmosphere: true gives it a glowing rim',
   meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
-    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical', 'antique'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
+    params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical', 'antique', 'paper'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
     assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
   defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, atmosphere: false, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
-    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235', stars: true },
+    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235', stars: true, paperLand: '#E9DFC4', paperSea: '#3E9E8F', paperRelief: .35 },
   run(t, o) {
     if (MAP.proj.clipAngle && MAP.proj.clipAngle() && o.stars !== false) mapSpace(mapCtx(), t, o);   // a globe floats in space
-    if (o.style !== 'antique') mapBaseDraw(t, o);
+    if (o.style === 'paper') mapPaper(t, o);   // a paper-cut map: cream land lifted off a teal sea
+    else if (o.style !== 'antique') mapBaseDraw(t, o);
     else { mapBaseDraw(t, { ...o, style: 'physical', aged: true }); }   // antique: the physical raster aged (sepia, softer)…
     if (o.rivers) mapRivers(mapCtx(), o);
     if (o.style === 'antique') mapAntique(mapCtx(), o);                   // …then paper, a faint graticule and a vignette over it

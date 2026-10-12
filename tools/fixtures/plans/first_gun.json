@@ -1,0 +1,564 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "first_gun",
+ "aspect": "9:16",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 27,
+ "tolerance_seconds": 2,
+ "strategy": {
+  "name": "paper-cut map explainer",
+  "look": "documentary",
+  "background": "#E9DFC4"
+ },
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Demo of the paper-collage kit (mapBase paper, orbitBadges, coinFlip, inkTitle, mapBanner, evolutionCard), studied from a 'first gun' map short. Facts kept to the well-established outline: gunpowder (sulfur, charcoal, saltpetre) was found by Chinese alchemists in the Tang dynasty; it was first used for fireworks; the fire lance was the first gun-like weapon; the Mongol conquests carried gunpowder west; Europe developed the hand cannon into the matchlock.",
+ "data": {
+  "china": {
+   "lonlat": [
+    108,
+    34
+   ],
+   "source": "story: จีน สมัยราชวงศ์ถัง",
+   "confidence": "medium",
+   "note": "centre of Tang China, schematic"
+  },
+  "karakorum": {
+   "lonlat": [
+    102.8,
+    47.2
+   ],
+   "source": "story: มองโกล (คาราโครัม เมืองหลวง)",
+   "confidence": "high"
+  },
+  "mongol_spread": {
+   "units": [
+    "Mongolia",
+    "China"
+   ],
+   "source": "story: มองโกลพิชิตจีน",
+   "confidence": "medium",
+   "note": "modern Mongolia + China approximate the Mongol conquest of China"
+  }
+ },
+ "artwork": {
+  "assets": "assets/stories/first_gun/",
+  "style": "clean flat vector illustration, crisp shapes, subtle cel shading, warm limited palette, editorial history explainer style, isolated object on a plain background",
+  "negative": "cartoon, chibi, watercolor, photo, photorealistic, 3d render, text, letters, numbers, logo, watermark, flag, emblem",
+  "items": {
+   "sulfur": {
+    "prompt": "a small pile of yellow sulfur crystals, top-down three-quarter view",
+    "size": [
+     512
+    ]
+   },
+   "charcoal": {
+    "prompt": "a few black lumps of wood charcoal",
+    "size": [
+     512
+    ]
+   },
+   "saltpeter": {
+    "prompt": "a small heap of white saltpetre powder",
+    "size": [
+     512
+    ]
+   },
+   "fireworks_sign": {
+    "prompt": "a dark brown pictogram of people celebrating with arms raised under bursting fireworks, simple silhouette icon style, flat single colour",
+    "size": [
+     512
+    ]
+   },
+   "skull_sign": {
+    "prompt": "a dark brown pictogram of a skull wreathed in flames, simple silhouette icon style, flat single colour",
+    "size": [
+     512
+    ]
+   },
+   "song_soldier": {
+    "prompt": "a Song dynasty Chinese soldier in lamellar armour holding a long fire lance tube forward with both hands, full body, side three-quarter view, realistic human proportions",
+    "size": [
+     null,
+     1100
+    ],
+    "character": "song_soldier"
+   },
+   "khan_portrait": {
+    "prompt": "a dignified portrait of Genghis Khan in the style of the traditional Yuan dynasty court portrait, white fur hat, white beard, head and shoulders, realistic proportions",
+    "size": [
+     512,
+     640
+    ]
+   },
+   "hand_cannon": {
+    "prompt": "a medieval bronze hand cannon, a short tube on a wooden pole, side view, isolated",
+    "size": [
+     900,
+     400
+    ]
+   },
+   "matchlock": {
+    "prompt": "a 16th century matchlock musket with a wooden stock and serpentine, side view, isolated",
+    "size": [
+     900,
+     400
+    ]
+   },
+   "rifle": {
+    "prompt": "a 19th century bolt-action rifle, wooden stock, side view, isolated",
+    "size": [
+     900,
+     400
+    ]
+   }
+  }
+ },
+ "shots": [
+  {
+   "id": "S01",
+   "start": 0,
+   "end": 6,
+   "narration": "ดินปืน เกิดจากนักเล่นแร่แปรธาตุจีน ที่ผสม กำมะถัน ถ่าน และดินประสิว",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         106,
+         33
+        ],
+        "zoom": 4.4
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         107,
+         33
+        ],
+        "zoom": 4.7
+       }
+      ]
+     ],
+     "dur": 6
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "paper",
+      "coastWidth": 0,
+      "graticule": false
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "[ดินปืน]มาจากไหน?",
+      "at": 0.3,
+      "x": 0.5,
+      "y": 0.16,
+      "maxWidth": 0.86,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 84,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 8,
+        "color": "#15151B"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "mix",
+     "cap": "orbitBadges",
+     "params": {
+      "at": 0.8,
+      "x": 0.5,
+      "y": 0.47,
+      "stagger": 0.45,
+      "mergeAt": 3.6,
+      "items": [
+       {
+        "art": "sulfur",
+        "label": "กำมะถัน"
+       },
+       {
+        "art": "charcoal",
+        "label": "ถ่าน"
+       },
+       {
+        "art": "saltpeter",
+        "label": "ดินประสิว"
+       }
+      ]
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 5.9,
+      "text": "นักเล่นแร่แปรธาตุจีน\nผสมกำมะถัน ถ่าน\nและดินประสิว",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "S01"
+  },
+  {
+   "id": "S02",
+   "start": 6,
+   "end": 11,
+   "narration": "ตอนแรกใช้ทำพลุ แต่เหรียญย่อมมีสองด้าน",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         107,
+         33
+        ],
+        "zoom": 4.7
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         107,
+         33
+        ],
+        "zoom": 4.9
+       }
+      ]
+     ],
+     "dur": 5
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "paper",
+      "coastWidth": 0,
+      "graticule": false
+     }
+    },
+    {
+     "id": "coin",
+     "cap": "coinFlip",
+     "params": {
+      "at": 0.2,
+      "y": 0.45,
+      "flipAt": 2.4,
+      "front": {
+       "art": "fireworks_sign"
+      },
+      "back": {
+       "art": "skull_sign"
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.9,
+      "text": "ตอนแรกใช้ทำพลุ\nแต่เหรียญย่อมมีสองด้าน",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "S02"
+  },
+  {
+   "id": "S03",
+   "start": 11,
+   "end": 16,
+   "narration": "อาวุธแรกที่คล้ายปืน คือหอกไฟ",
+   "treatment": "infographic",
+   "layers": [
+    {
+     "id": "man",
+     "cap": "figure",
+     "params": {
+      "at": 0,
+      "art": "song_soldier",
+      "x": 0.38,
+      "y": 0.82,
+      "height": 1000
+     }
+    },
+    {
+     "id": "ink",
+     "cap": "inkTitle",
+     "params": {
+      "at": 0.6,
+      "text": "หอกไฟ",
+      "number": 1,
+      "x": 0.62,
+      "y": 0.22,
+      "size": 120
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.9,
+      "text": "อาวุธแรกที่คล้ายปืน\nคือหอกไฟ",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "backend": "javascript_motion",
+   "purpose": "S03"
+  },
+  {
+   "id": "S04",
+   "start": 16,
+   "end": 21.5,
+   "narration": "เมื่อมองโกลพิชิตจีน ก็พาดินปืนไปด้วย",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         104,
+         40
+        ],
+        "zoom": 3.4
+       }
+      ],
+      [
+       5.5,
+       {
+        "center": [
+         104,
+         41
+        ],
+        "zoom": 3.6
+       }
+      ]
+     ],
+     "dur": 5.5
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "paper",
+      "coastWidth": 0,
+      "graticule": false
+     }
+    },
+    {
+     "id": "red",
+     "cap": "mapSpread",
+     "params": {
+      "at": 0.6,
+      "units": {
+       "$data": "mongol_spread",
+       "field": "units"
+      },
+      "from": {
+       "$data": "karakorum",
+       "field": "lonlat"
+      },
+      "color": "#C8282B",
+      "dur": 2.6
+     }
+    },
+    {
+     "id": "ban",
+     "cap": "mapBanner",
+     "params": {
+      "at": 0.2,
+      "lonlat": {
+       "$data": "karakorum",
+       "field": "lonlat"
+      },
+      "art": "khan_portrait",
+      "name": "เจงกิสข่าน"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 5.4,
+      "text": "เมื่อมองโกลพิชิตจีน\nก็พาดินปืนไปด้วย",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "S04"
+  },
+  {
+   "id": "S05",
+   "start": 21.5,
+   "end": 27.5,
+   "narration": "ยุโรปพัฒนาปืนใหญ่มือ จนเป็นปืนคาบชุด และปืนไรเฟิล",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         12,
+         49
+        ],
+        "zoom": 6
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         12,
+         49
+        ],
+        "zoom": 6.3
+       }
+      ]
+     ],
+     "dur": 6
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "dataset": "land50",
+      "style": "paper",
+      "coastWidth": 0,
+      "graticule": false
+     }
+    },
+    {
+     "id": "evo",
+     "cap": "evolutionCard",
+     "params": {
+      "at": 0.2,
+      "y": 0.4,
+      "hold": 1.2,
+      "change": 0.8,
+      "items": [
+       {
+        "art": "hand_cannon",
+        "title": "ปืนใหญ่มือ"
+       },
+       {
+        "art": "matchlock",
+        "title": "ปืนคาบชุด"
+       },
+       {
+        "art": "rifle",
+        "title": "ปืนไรเฟิล"
+       }
+      ]
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 5.9,
+      "text": "ยุโรปพัฒนาต่อ\nจนเป็นปืนคาบชุด\nและปืนไรเฟิล",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "S05"
+  }
+ ]
+}

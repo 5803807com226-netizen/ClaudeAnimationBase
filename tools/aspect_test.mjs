@@ -64,6 +64,9 @@ const TARGETS = [
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
   ...['blast', 'eraTicker', 'deepTimeline', 'barRace'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.5, 1.6, 2.6] })),
   ...['sticker', 'dateCard', 'chapterBadge', 'weather', 'yearRuler', 'gauge', 'starfield', 'galaxy', 'depthProfile'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
+  // paper-collage kit: mapBase paper, orbitBadges, coinFlip, inkTitle, mapBanner, evolutionCard (mock art in the cloud)
+  { name: 'map_paper', story: '_plan_first_gun', byAspect: { '16:9': '_plan_first_gun_16x9' }, times: [2.4, 4.9, 9.3, 14, 19.5, 25.6] },
+  ...['orbitBadges', 'coinFlip', 'inkTitle', 'evolutionCard'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
   // real space imagery: planet (surface maps) and spacePhoto (NASA / Hubble / EHT pictures) from assets/space/ (tools/get_space_textures.mjs)
   { name: 'solar_system', story: '_plan_solar_system', byAspect: { '16:9': '_plan_solar_system_16x9' }, times: [3, 8.5, 13, 17.5, 22, 26.5, 31, 35.5] },
   { name: 'preset_planet', loop: 'preset_planet', times: [.9, 2.6] },

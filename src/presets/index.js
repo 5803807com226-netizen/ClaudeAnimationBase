@@ -26,7 +26,9 @@ const PRESET_ASPECTS = { cameraMove: ['9:16', '16:9', '4:5'], popBounce: ['9:16'
   // explainer kit 2 (aspect_test map_explainer2 + preset demos)
   mapSpread: ['9:16', '16:9', '4:5'], mapZone: ['9:16', '16:9', '4:5'], mapLine: ['9:16', '16:9', '4:5'], mapRiver: ['9:16', '16:9', '4:5'], mapFlagFill: ['9:16', '16:9', '4:5'], mapInset: ['9:16', '16:9', '4:5'], yearRuler: ['9:16', '16:9', '4:5'], gauge: ['9:16', '16:9', '4:5'],
   // space and scale kit (aspect_test space_scale + preset demos)
-  depthProfile: ['9:16', '16:9', '4:5'], planet: ['9:16', '16:9', '4:5'], spacePhoto: ['9:16', '16:9', '4:5'], galaxy: ['9:16', '16:9', '4:5'], starfield: ['9:16', '16:9', '4:5'], mapObjectRow: ['9:16', '16:9', '4:5'],
+  depthProfile: ['9:16', '16:9', '4:5'], planet: ['9:16', '16:9', '4:5'], spacePhoto: ['9:16', '16:9', '4:5'],
+  // paper-collage kit (aspect_test map_paper + preset demos)
+  orbitBadges: ['9:16', '16:9', '4:5'], coinFlip: ['9:16', '16:9', '4:5'], inkTitle: ['9:16', '16:9', '4:5'], evolutionCard: ['9:16', '16:9', '4:5'], mapBanner: ['9:16', '16:9', '4:5'], galaxy: ['9:16', '16:9', '4:5'], starfield: ['9:16', '16:9', '4:5'], mapObjectRow: ['9:16', '16:9', '4:5'],
   sticker: ['9:16', '16:9', '4:5'], dateCard: ['9:16', '16:9', '4:5'], chapterBadge: ['9:16', '16:9', '4:5'] };
 const EASES = { linear: clamp, ease, easeIn, easeOut, backOut, elasticOut };
 const easeBy = e => typeof e === 'function' ? e : EASES[e] || ease;

@@ -116,6 +116,13 @@ function checkLayer(L, len, prov, errors, subs) {
     if (!ART.items[n]) errors.push(`${L.id}.${k}: no artwork item "${n}" (the manifest's artwork.items has: ${Object.keys(ART.items).join(', ') || 'none'})`);
     else { params[ik] = ART.dir + n + '.png'; ART.used.add(n); if (!existsSync(params[ik])) ART.missing.add(n); }
   }
+  // a list of pictures (items: [{ art, label }]) or a picture inside an object (front: { art }): its art → its image, the same way
+  const artOf = (e, where) => { if (!e || typeof e !== 'object' || Array.isArray(e) || e.art == null) return e; if (!ART.items[e.art]) { errors.push(`${where}.art: no artwork item "${e.art}"`); return e; }
+    const image = ART.dir + e.art + '.png'; ART.used.add(e.art); if (!existsSync(image)) ART.missing.add(e.art); return { ...e, image }; };
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v)) { if (v.some(e => e && typeof e === 'object' && e.art != null)) params[k] = v.map((e, i) => artOf(e, `${L.id}.${k}[${i}]`)); }
+    else if (v && typeof v === 'object' && !('$data' in v) && v.art != null) params[k] = artOf(v, `${L.id}.${k}`);
+  }
   if (GEO_AREAS && cap.assets?.some(a => a.type === 'geo')) for (const n of [...(Array.isArray(params.units) && params.units.length ? params.units : params.name != null ? [params.name] : []), ...(Array.isArray(params.steps) ? params.steps.flatMap(s => s.units || []) : [])])
     if (!GEO_AREAS.has(n)) errors.push(`${L.id}: blocked:unknown_area "${n}" (countries: Natural Earth English names; provinces "<ISO3>/<name>"; closest: ${areaHint(n)})`);
   // one map look per story: strategy.map (e.g. { "style": "physical", "saturate": 1.1 }) is applied to every mapBase, so

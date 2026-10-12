@@ -188,3 +188,18 @@ node tools/get_space_textures.mjs --photos-only   # pictures only
 ```
 
 It searches the NASA Image and Video Library (images-api.nasa.gov) and prints each picture's title and NASA ID: check each is the picture you expect. Credits go to `assets/space/photos/CREDITS.md`. Some pictures include partners' work (ESA, CSA, STScI, the EHT Collaboration): credit them as the NASA page says. The pictures are in the repo (`assets/space/photos/`), each checked by eye. M87* and Sgr A* are the Event Horizon Telescope images (ESO releases, EHT Collaboration, CC BY 4.0). The others come from NASA's library, each pinned to its NASA ID in the `PHOTOS` table of the script. `blackhole_sim` is an artist's illustration, not a photo: say so when you use it.
+
+## Paper-collage kit (`mapBase` paper, `orbitBadges`, `coinFlip`, `inkTitle`, `mapBanner`, `evolutionCard`)
+
+Studied from a "how the first gun changed everything" map short.
+
+| Preset | What it does |
+|---|---|
+| `mapBase` `style: "paper"` | A paper-cut map: cream card land lifted off a teal sea with a soft shadow, the real terrain pressed faintly into it, paper grain. `paperLand` / `paperSea` recolour it |
+| `orbitBadges` | Round picture badges (`items: [{ art, label }]`) with ribbon labels pop in one by one around a centre, then at `mergeAt` rush into it and burst (ingredients combining) |
+| `coinFlip` | A golden coin drops in and, at `flipAt`, flips from `front` to `back` (`{ art }` / `icon` / `glyph` / `text`): "every coin has two sides" |
+| `inkTitle` | A title on a black ink splash (blobs, specks, a drip) with a numbered badge (`number`) |
+| `mapBanner` | A hanging banner planted in a place: pole, crossbar, name plate, a portrait (`art`) on the cloth, swaying |
+| `evolutionCard` | A parchment card unrolls; its picture changes to the next `items` entry through a blueprint sketch while the title is rewritten (weapons, tools, phones) |
+
+Pictures are artwork items, generated PNGs (`art` in `items` and in `front`/`back` works too). The demo is `tools/fixtures/plans/first_gun.json` (`node tools/aspect_test.mjs --only=map_paper`, mock art in the cloud).
