@@ -1,0 +1,32 @@
+# Downloads the real space assets (planet surface maps + NASA deep-space photos) on a GitHub runner, which has the
+# internet access the cloud sessions lack, and commits them to this branch. Runs when this file or the download
+# script changes on the feature branch; never on main.
+name: space-assets
+on:
+  push:
+    branches: [claude/elegant-galileo-7ck228]
+    paths: ['.github/workflows/space-assets.yml', 'tools/get_space_textures.mjs']
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: download maps and photos
+        run: node tools/get_space_textures.mjs --photos || echo "::warning::some downloads failed (see above)"
+      - name: list
+        run: ls -la assets/space/textures assets/space/photos || true
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/space
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Space assets: planet surface maps (Solar System Scope, NASA data, CC BY 4.0) and NASA deep-space photos, downloaded by the space-assets workflow"
+          git pull --rebase origin claude/elegant-galileo-7ck228
+          git push origin HEAD:claude/elegant-galileo-7ck228
