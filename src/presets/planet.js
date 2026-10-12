@@ -1,0 +1,98 @@
+// presets/planet.js: real planets from real maps. A planet is an equirectangular surface texture (NASA mission data;
+// tools/get_space_textures.mjs downloads them into assets/space/textures/ and writes the credits) wrapped onto a sphere
+// per pixel: it turns on its tilted axis, the Sun lights one side (soft terminator, dark night side), the air glows at
+// the rim, Saturn's rings pass behind and in front of it. Never a drawn planet: without its texture the layer throws.
+//   planet   one body (body: 'mars' … or image: <your own equirectangular map>), on screen
+
+const SPACE_TEX = 'assets/space/textures/';
+// real values: axial tilt (degrees); air: rim glow colour (null = none); ring: Saturn's ring (radii in planet radii)
+const SPACE_BODIES = {
+  sun:     { image: 'sun.jpg', tilt: 7.25, glow: '#FFB347', emissive: true },
+  mercury: { image: 'mercury.jpg', tilt: .03 },
+  venus:   { image: 'venus_atmosphere.jpg', tilt: 177.4, air: '#F2D8A6' },
+  earth:   { image: 'earth.jpg', tilt: 23.44, air: '#7FB8FF' },
+  moon:    { image: 'moon.jpg', tilt: 6.68 },
+  mars:    { image: 'mars.jpg', tilt: 25.19, air: '#E8A982' },
+  jupiter: { image: 'jupiter.jpg', tilt: 3.13, air: '#E9D9C0' },
+  saturn:  { image: 'saturn.jpg', tilt: 26.73, air: '#EADDB8', ring: { image: 'saturn_ring.png', inner: 1.24, outer: 2.27 } },
+  uranus:  { image: 'uranus.jpg', tilt: 97.77, air: '#BDEFF5' },
+  neptune: { image: 'neptune.jpg', tilt: 28.32, air: '#8DB2FF' },
+};
+const spaceBodyImage = (o, k = 'image') => { if (o[k]) return o[k]; const B = SPACE_BODIES[o.body], f = B && (k === 'image' ? B.image : B.ring?.image); return f ? SPACE_TEX + f : ''; };
+
+function planetPixels(im) {   // the texture's pixels, read once
+  if (!im._px) { const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const x = cv.getContext('2d', { willReadFrequently: true });
+    x.drawImage(im.canvas || im.elt, 0, 0); im._px = x.getImageData(0, 0, im.width, im.height).data; }
+  return im._px;
+}
+
+definePreset('planet', {
+  label: 'Planet', about: 'a real planet, moon or the Sun from its real surface map (body: sun, mercury, venus, earth, moon, mars, jupiter, saturn, uranus, neptune; or image: an equirectangular map): a sphere turning on its real tilted axis, lit by the Sun from one side (light: degrees, the night side dark; the Sun glows by itself), its air glowing at the rim, Saturn with its rings; grows in, can zoom (zoom / zoomTo) and slide (x/y → toX/toY); several planets side by side compare sizes',
+  meta: { version: '1.0.0', category: 'fx', tags: ['space', 'planet', 'solar system', 'moon', 'sun', 'mars', 'jupiter', 'saturn', 'earth', 'astronomy', 'globe', 'nasa', 'texture'], camera: 'screen', layers: ['screen'],
+    params: { body: { enum: [null, ...Object.keys(SPACE_BODIES)] }, size: { min: .02, max: 3 }, spin: { min: -60, max: 60 }, light: { min: -180, max: 180 }, night: { min: 0, max: 1 }, zoom: { min: .1, max: 20 } },
+    assets: [{ param: 'image', type: 'image' }] },
+  defaults: { body: 'earth', image: '', imageRing: '', size: .38, x: .5, y: .5, toX: null, toY: null, zoom: 1, zoomTo: null, spin: 12, turn: 0, tilt: null, light: -35, night: .12, label: '', labelColor: '#FFFFFF', bg: null, out: null, outDur: .5, ease: 'ease', dur: 1.2 },
+  run(t, o) {
+    const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(clamp((t - o.at) / .5), q); if (a <= 0) return;
+    const B = SPACE_BODIES[o.body] || {}, path = spaceBodyImage(o), im = STICKER_IMG[path];
+    if (!im) throw new Error(`planet: the texture ${path || '(none)'} is not loaded: run node tools/get_space_textures.mjs (or give image: an equirectangular map)`);
+    const { g, c } = stkCtx(o, 'planet:' + (o.id ?? o.body)), u = US(), k = presetK(t, o), z = o.zoomTo != null ? Math.exp(lerp(Math.log(o.zoom), Math.log(o.zoomTo), k)) : o.zoom;
+    const cx = lerp(o.x, o.toX ?? o.x, k) * W, cy = lerp(o.y, o.toY ?? o.y, k) * H, R = o.size * Math.min(W, H) / 2 * z * (.92 + .08 * easeOut(clamp((t - o.at) / .8)));
+    c.save(); c.globalAlpha = a;
+    if (o.bg === 'sky') spaceSky(c); else if (o.bg) { c.fillStyle = o.bg; c.fillRect(0, 0, W, H); }
+    const tilt = (o.tilt ?? B.tilt ?? 0) * Math.PI / 180, ring = B.ring && { ...B.ring, im: STICKER_IMG[spaceBodyImage(o, 'imageRing')] };
+    if (ring?.im) planetRing(c, cx, cy, R, ring, tilt, 'back');
+    if (B.emissive) {   // the Sun: a corona behind the disc
+      const gl = c.createRadialGradient(cx, cy, R * .9, cx, cy, R * 2.2); gl.addColorStop(0, B.glow + 'CC'); gl.addColorStop(.3, B.glow + '44'); gl.addColorStop(1, B.glow + '00');
+      c.fillStyle = gl; c.beginPath(); c.arc(cx, cy, R * 2.2, 0, TAU); c.fill(); }
+    if (R > .5 && cx + R > 0 && cx - R < W && cy + R > 0 && cy - R < H) planetDisc(c, im, cx, cy, R, (o.turn + (t - o.at) * o.spin) * Math.PI / 180, tilt, B.emissive ? null : o.light * Math.PI / 180, o.night);
+    if (B.air) {   // the air: a thin glow on the lit rim
+      const ga = c.createRadialGradient(cx, cy, R * .96, cx, cy, R * 1.09); ga.addColorStop(0, B.air + '00'); ga.addColorStop(.35, B.air + '99'); ga.addColorStop(1, B.air + '00');
+      c.fillStyle = ga; c.beginPath(); c.arc(cx, cy, R * 1.09, 0, TAU); c.arc(cx, cy, R * .96, 0, TAU, true); c.fill(); }
+    if (ring?.im) planetRing(c, cx, cy, R, ring, tilt, 'front');
+    if (o.label) {   // the name, below the planet (and below the ring's lowest point)
+      const ka = clamp((t - o.at - .4) / .4); c.globalAlpha = a * ka; c.font = fontCss({ font: 'display', weight: 800, size: 46 }); c.textAlign = 'center'; c.textBaseline = 'top';
+      c.lineWidth = 7 * u; c.strokeStyle = 'rgba(10,12,20,.85)'; c.lineJoin = 'round'; const ry = ring?.im ? Math.hypot(ring.outer * Math.sin(tilt), ring.outer * .22 * Math.cos(tilt)) : 0, ly = cy + R * Math.max(1, ry) + 18 * u; c.strokeText(o.label, cx, ly); c.fillStyle = o.labelColor; c.fillText(o.label, cx, ly); }
+    c.restore(); stkBlit(g);
+  },
+  demo: { bg: '#0D1736', after: [['planet', { at: 0, body: 'mars', label: 'ดาวอังคาร' }]] },
+});
+
+// the disc: every pixel inverse-projected (orthographic) onto the texture, at most 900 px across then scaled up
+function planetDisc(c, im, cx, cy, R, rot, tilt, light, night) {
+  const D = Math.max(8, Math.min(900, Math.ceil(R * 2))), px = planetPixels(im), TW = im.width, TH = im.height;
+  if (!planetDisc.cv || planetDisc.cv.width !== D) { planetDisc.cv = document.createElement('canvas'); planetDisc.cv.width = planetDisc.cv.height = D; }
+  const x2 = planetDisc.cv.getContext('2d', { willReadFrequently: true }), img = x2.createImageData(D, D), out = img.data;
+  const ct = Math.cos(tilt), st = Math.sin(tilt), lx = light == null ? 0 : Math.cos(light), ly = light == null ? 0 : -Math.sin(light), lz = .35;   // light from the side, a little toward the viewer
+  const ll = Math.hypot(lx, ly, lz);
+  for (let j = 0; j < D; j++) for (let i = 0; i < D; i++) {
+    const sx = (i + .5) / D * 2 - 1, sy = 1 - (j + .5) / D * 2, r2 = sx * sx + sy * sy; if (r2 >= 1) continue;
+    const sz = Math.sqrt(1 - r2), bx = sx * ct + sy * st, by = -sx * st + sy * ct;   // undo the axial tilt (a roll on screen)
+    const lat = Math.asin(by), lon = Math.atan2(bx, sz) + rot;
+    const U = ((lon / TAU + .5) % 1 + 1) % 1 * TW, V = clamp((.5 - lat / Math.PI) * TH, 0, TH - 1);
+    const x0 = Math.floor(U) % TW, y0 = Math.floor(V), x1 = (x0 + 1) % TW, y1 = Math.min(TH - 1, y0 + 1), fx = U - Math.floor(U), fy = V - y0;
+    const A = (y0 * TW + x0) * 4, Bq = (y0 * TW + x1) * 4, C = (y1 * TW + x0) * 4, Dq = (y1 * TW + x1) * 4, w0 = (1 - fx) * (1 - fy), w1 = fx * (1 - fy), w2 = (1 - fx) * fy, w3 = fx * fy;
+    let sh = 1;
+    if (light != null) { const d = (sx * lx + sy * ly + sz * lz) / ll; sh = night + (1 - night) * clamp(d * 1.6 + .08); sh *= .82 + .18 * sz; }   // soft terminator, darker limb
+    else sh = .78 + .22 * Math.pow(sz, .5);   // the Sun: limb darkening
+    const di = (j * D + i) * 4;
+    for (let ch = 0; ch < 3; ch++) out[di + ch] = (px[A + ch] * w0 + px[Bq + ch] * w1 + px[C + ch] * w2 + px[Dq + ch] * w3) * sh;
+    out[di + 3] = 255 * clamp((1 - Math.sqrt(r2)) * D / 1.5);   // anti-aliased edge
+  }
+  x2.putImageData(img, 0, 0);
+  c.save(); c.imageSmoothingQuality = 'high'; c.drawImage(planetDisc.cv, cx - R, cy - R, R * 2, R * 2); c.restore();
+}
+
+// Saturn's rings: the ring texture is a radial strip (inner → outer, with alpha), drawn as thin ellipses around the
+// planet, tilted with it; the far half before the planet, the near half after it
+function planetRing(c, cx, cy, R, ring, tilt, half) {
+  const im = ring.im, px = planetPixels(im), n = Math.max(40, Math.round((ring.outer - ring.inner) * R / 1.5)), open = .22;   // how far the ring opens toward us
+  c.save(); c.translate(cx, cy); c.rotate(-tilt); c.lineWidth = (ring.outer - ring.inner) * R / n * 1.6;
+  for (let s = 0; s < n; s++) {
+    const f = (s + .5) / n, rr = R * lerp(ring.inner, ring.outer, f), ix = Math.min(im.width - 1, Math.floor(f * im.width)) * 4, alpha = px[ix + 3] / 255; if (alpha < .02) continue;
+    c.strokeStyle = `rgba(${px[ix]},${px[ix + 1]},${px[ix + 2]},${alpha * .95})`; c.beginPath();
+    if (half === 'back') c.ellipse(0, 0, rr, rr * open, 0, Math.PI, TAU); else c.ellipse(0, 0, rr, rr * open, 0, 0, Math.PI);
+    c.stroke();
+  }
+  c.restore();
+}

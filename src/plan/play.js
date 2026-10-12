@@ -5,6 +5,8 @@
 function playPlan(plan) {
   // imported images used by layers (stickers, map pins) load before the first frame
   if (typeof stickerPreload === 'function') stickerPreload(plan.shots.flatMap(s => (s.layers || []).flatMap(L => Object.entries(L.params || {}).filter(([k, v]) => /^image([A-Z]\w*)?$/.test(k) && typeof v === 'string' && v).map(([k, v]) => L.params['art' + k.slice(5)] != null ? artPath(v) : v))));
+  // space bodies (planet layers) load their real surface maps (and Saturn's ring) the same way
+  if (typeof stickerPreload === 'function' && typeof spaceBodyImage === 'function') stickerPreload(plan.shots.flatMap(s => (s.layers || []).filter(L => L.cap === 'planet').flatMap(L => { const o = { body: 'earth', ...L.params }; return [spaceBodyImage(o), spaceBodyImage(o, 'imageRing')]; })));
   // runs of consecutive collage shots play as ONE reel (their transitions span the cut between them)
   const runs = []; for (const s of plan.shots) if (s.scene) { const r = runs.at(-1); if (r && r.end === s) r.list.push(s); else runs.push({ list: [s] }); runs.at(-1).end = plan.shots[plan.shots.indexOf(s) + 1]; }
   for (const r of runs) playCollage(r.list.map(s => SCENES[s.scene]), { start: r.list[0].start });

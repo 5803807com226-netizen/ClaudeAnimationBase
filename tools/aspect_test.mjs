@@ -59,6 +59,8 @@ const TARGETS = [
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
   ...['sticker', 'dateCard', 'chapterBadge', 'weather', 'yearRuler', 'gauge', 'starfield', 'galaxy', 'depthProfile'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
+  // planet needs the real maps (node tools/get_space_textures.mjs): run it locally, not in the cloud
+  { name: 'preset_planet', loop: 'preset_planet', times: [.9, 2.6] },
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
 ];
 const only = args.only ? String(args.only).split(',') : null;

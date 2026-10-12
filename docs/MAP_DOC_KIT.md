@@ -128,3 +128,25 @@ Studied from three shorts: the Pacific and the Mariana Trench, the Sun's orbit a
 | `starfield` | Stars at depth drifting past; `warp` turns them into streaks (a journey); `bg: null` lays them over another layer (screen) |
 
 These are motion graphics (particles and shapes), not story artwork: a real place, person or object is still a generated PNG. The demo is `tools/fixtures/plans/space_scale.json`.
+
+## Real planets (`planet`)
+
+`planet` wraps a real surface map (an equirectangular texture from NASA mission data) onto a sphere, per pixel:
+
+- It turns on its real axial tilt.
+- The Sun lights one side (`light` in degrees, `night` = how dark the night side is). The Sun itself glows, with a corona.
+- The air glows at the rim (Earth, Venus, Mars, the gas giants).
+- Saturn's rings pass behind and in front of it.
+
+`body`: sun, mercury, venus, earth, moon, mars, jupiter, saturn, uranus, neptune. Or give `image`: your own equirectangular map.
+
+Before using it, download the maps once, on a machine with internet access:
+
+```
+node tools/get_space_textures.mjs        # 2k maps into assets/space/textures/ (+ CREDITS.md)
+node tools/get_space_textures.mjs --hi   # 8k where they exist, for close-ups
+```
+
+The maps come from Solar System Scope (made from NASA data, CC BY 4.0): put the credit line from CREDITS.md in the video description. Without its map the layer stops with an error; it never draws a fake planet.
+
+Not yet in `PRESET_ASPECTS`: it needs the maps, so run `node tools/aspect_test.mjs --only=preset_planet` locally after the download, then register it.
