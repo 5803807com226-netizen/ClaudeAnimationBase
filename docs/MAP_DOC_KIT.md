@@ -91,15 +91,27 @@ These presets came out of a study of a "why is it called…" map short. Each one
 
 Artwork items may set `"opaque": true` for a whole picture (no cut-out) and `"style"` to replace the shared style. The demo is `tools/fixtures/plans/bangkok_name.json`.
 
-## Explainer kit 2 (`mapFlagFill`, `mapMeasure`, `mapCompare`, `mapRiver`, `mapZone`, `mapLine`, `mapSpread`, `mapInset`, `yearRuler`, `gauge`, clouds)
+## Size and distance (`mapMeasure`, `mapTrueSize`)
+
+For "how big is …?" and "how far is …?" explainers. The engine computes every number on screen from the geometry; none is typed in:
+- **Distances** are great-circle distances with the mean Earth radius, 6,371.0088 km.
+- **Areas** are the spherical areas of the Natural Earth 1:10m borders. Thailand measures about 516,000 km²; the official figure is 513,120 km².
+
+| Preset | What it does |
+|---|---|
+| `mapMeasure` | A ruler draws itself along sourced `coords`, with ticks every `tick` km and end caps. Its tag counts the measured length up: `text: "{km} กม."`, rounded to `round`. |
+| `mapTrueSize` | A country's outline (`name` or `units`) lifts off and slides on the sphere to a sourced `lonlat`, keeping its true shape and area. Mercator then draws it at the size it really has at its new latitude, so a size comparison is honest. Its tag: `{km2}` (km²), `{rai}`. |
+
+- **Fixture:** `tools/fixtures/plans/thailand_size.json` ("ไทยใหญ่แค่ไหน?", 28 s). It measures Mae Sai → Betong (1,640 km) and Mae Sariang → Khong Chiam (870 km), then lays Thailand over France and Japan at true size.
+- **Test:** `node tools/aspect_test.mjs --only=map_size`.
+
+## Explainer kit 2 (`mapFlagFill`, `mapRiver`, `mapZone`, `mapLine`, `mapSpread`, `mapInset`, `yearRuler`, `gauge`, clouds)
 
 Studied from map shorts on borders, growth, size and war.
 
 | Preset | What it does |
 |---|---|
 | `mapFlagFill` | A territory painted in its flag (`flag`), waving gently |
-| `mapMeasure` | A distance line with ticks and arrowheads between two sourced places, the value in a tag |
-| `mapCompare` | A territory's outline slides over the sphere onto another place at its TRUE size |
 | `mapRiver` | A named Natural Earth river glows and its name runs along it |
 | `mapZone` | A soft, feathered region from sourced `coords`, with a name |
 | `mapLine` | A neon or dashed line (equator, border, route), its name written along it |
@@ -109,18 +121,17 @@ Studied from map shorts on borders, growth, size and war.
 | `gauge` | A dial from safe to danger (screen) |
 | `weather` `kind: "clouds"` | Soft clouds drifting over the frame |
 
-The demo is `tools/fixtures/plans/thailand_size.json`.
+For distances and true sizes use `mapMeasure` and `mapTrueSize` (below). The demo is `tools/fixtures/plans/thailand_kit2.json` (`node tools/aspect_test.mjs --only=map_explainer2`).
 
-## Space and scale kit (`depthProfile`, `galaxy`, `starfield`, `mapObjectRow`, teardrop `mapPin`, tilted map, globe in space)
+## Space and scale kit (`depthProfile`, `galaxy`, `starfield`, `mapObjectRow`, teardrop `mapPin`, satellite view, zoom punch)
 
 Studied from three shorts: the Pacific and the Mariana Trench, the Sun's orbit around the Milky Way, and a journey to Andromeda.
 
 | Preset | What it does |
 |---|---|
-| `mapBase` `stars: true` / `atmosphere: true` | On a globe: a starry sky behind it (drifting as it turns) and a glowing rim |
-| `mapView` `projection: "satellite"` | The view from a spacecraft: keys add `height` (Earth radii from the centre; 1.2 is low) and `tilt` (degrees). The curved horizon, its glowing air (`atmosphere`) and the stars (`stars`) show above the subject. The camera hangs back behind the subject (the subject sits low, the horizon about 20% from the top); zoom is the lens: the higher, the flatter the horizon (height 1.2, tilt 45, zoom 16–20 is gently curved; 8 is a strong dome); travel in from an orbital key (`height` 8, `tilt` 0) |
+| `mapBase` `atmosphere: true` | On a globe: a glowing rim (the globe floats in space by default; `stars: false` turns that off) |
+| `mapView` `projection: "satellite"` | The view from a spacecraft: keys add `height` (Earth radii from the centre; 1.2 is low) and `lean` (degrees: the camera leans forward; a key's `tilt` stays the dutch tilt). The curved horizon, its glowing air (`atmosphere`) and the stars (`stars`) show above the subject. The camera hangs back behind the subject (the subject sits low, the horizon about 20% from the top); zoom is the lens: the higher, the flatter the horizon (height 1.2, tilt 45, zoom 16–20 is gently curved; 8 is a strong dome); travel in from an orbital key (`height` 8, `lean` 0) |
 | `mapView` `punchAt` | A zoom punch for a "look at this" beat on any map: a quick zoom-in (`punch` ×1.1–1.2) that eases back over `punchDur`; on a globe it also rolls `punchRoll` degrees |
-| `mapView` `tilt` / `tiltTo` | Leans the flat map image back like a sheet. Its edges show, so don't use it: use `satellite` or `punchAt` |
 | `mapPin` `style: "drop"` | A teardrop map marker (flag, icon, glyph or PNG inside) with a pulse ring at its tip |
 | `mapObjectRow` | Copies of a thing line up between two places, one after another, with a running count |
 | `depthProfile` | A side cut through the sea: surface, trench, depth arrow and value, objects stacked to scale (screen) |

@@ -1,0 +1,1128 @@
+diff --git a/app.py b/app.py
+index 09096de..c5d836e 100644
+--- a/app.py
++++ b/app.py
+@@ -466,7 +466,8 @@ class App(tk.Tk):
+         row1.pack(fill="x")
+         ttk.Label(row1, text="Project", style="Panel.TLabel").pack(side="left")
+         self.project_var = tk.StringVar(value="story_project")
+-        ttk.Entry(row1, textvariable=self.project_var, width=24).pack(side="left", padx=(6,12))
++        self.project_entry = ttk.Entry(row1, textvariable=self.project_var, width=24)
++        self.project_entry.pack(side="left", padx=(6,12))
+ 
+         self.format_var = tk.StringVar(value="short")
+         ttk.Radiobutton(row1, text="SHORT 9:16", variable=self.format_var, value="short", command=self._sync_duration).pack(side="left")
+@@ -1336,7 +1337,14 @@ class App(tk.Tk):
+     def log(self, msg):
+         self.after(0, lambda: (self.log_text.insert("end", str(msg) + "\n"), self.log_text.see("end")))
+ 
++    def _sync_project_lock(self):
++        """The project name is read-only while jobs run or wait: they resolve their
++        folder from it, so a rename mid-run would send them to another project."""
++        if hasattr(self, "project_entry"):
++            self.project_entry.configure(state="disabled" if self._jobs_active() else "normal")
++
+     def _busy(self, value: bool):
++        self.after(0, self._sync_project_lock)
+         state = "disabled" if value else "normal"
+         for b in (self.story_btn, self.media_btn, self.all_btn):
+             b.configure(state=state)
+@@ -1387,7 +1395,10 @@ class App(tk.Tk):
+ 
+     def _start_job(self, fn, success, label):
+         self.is_starting_job = True
++        paused = self.controller.is_paused
+         self.controller.reset()
++        if paused:
++            self.controller.pause()  # Pause holds the whole queue, not just one job
+         self._busy(True)
+         self.current_job_text.set(f"Running: {label}")
+         self.log(f"▶ Starting: {label}")
+@@ -1438,6 +1449,11 @@ class App(tk.Tk):
+         self.worker_thread.start()
+ 
+     def _run_next_job_if_any(self):
++        if self.pending_jobs and self.controller.is_paused and not (self.worker_thread and self.worker_thread.is_alive()):
++            self.current_job_text.set("Paused • queue waiting — กด Resume เพื่อทำต่อ")
++            self.resume_btn.configure(state="normal")
++            self._update_queue_label()
++            return
+         if self.pending_jobs and not (self.worker_thread and self.worker_thread.is_alive()):
+             fn, success, label = self.pending_jobs.popleft()
+             self._update_queue_label()
+@@ -1458,6 +1474,7 @@ class App(tk.Tk):
+ 
+     def _start_voice_job(self, fn, success, label):
+         self.voice_is_starting_job = True
++        self.after(0, self._sync_project_lock)
+         self.voice_action_var.set(f"Running: {label}…")
+         self.log(f"🎙 Starting independent voice job: {label}")
+ 
+@@ -1485,6 +1502,7 @@ class App(tk.Tk):
+                         if current.startswith("Running:"):
+                             self.voice_action_var.set(f"Finished: {label} ✓")
+                     self._run_next_voice_job_if_any()
++                    self._sync_project_lock()
+                 self.after(0, finish)
+ 
+         self.voice_worker_thread = threading.Thread(target=worker, daemon=True)
+@@ -1790,6 +1808,13 @@ class App(tk.Tk):
+         self._clear_story_cache_keep_research(p)
+ 
+     def _prepare_story_source_for_manual_run(self, resume=False):
++        if self.research_mode_var.get() != "new":
++            # Another source (library / PDF) replaces research_pack.json: the
++            # pending mark of an earlier "new" run no longer describes it.
++            (self._project_dir() / "story/pending_source.json").unlink(missing_ok=True)
++        return self._prepare_story_source_for_manual_run_inner(resume=resume)
++
++    def _prepare_story_source_for_manual_run_inner(self, resume=False):
+         """
+         Make the radio-button meaning literal.
+ 
+@@ -1828,7 +1853,16 @@ class App(tk.Tk):
+             if prior == settings and (p / "story/story_package.json").exists():
+                 self.log("♻ CREDIT SAVER: หัวข้อ/สไตล์/ความยาวเหมือนเดิม — ใช้ Story เดิม (0 Claude calls)")
+                 return
+-            if (prior.get("source") == fingerprint and
++            # A run that failed or was stopped after research has no request
++            # fingerprint yet; its pending source still marks the research as ours.
++            pending_source = ""
++            pending_file = p / "story/pending_source.json"
++            if pending_file.exists():
++                try:
++                    pending_source = load_json(pending_file).get("source", "")
++                except Exception:
++                    pass
++            if ((prior.get("source") or pending_source) == fingerprint and
+                     (p / "research/research_pack.json").exists()):
+                 self.log("♻ CREDIT SAVER: สลับสไตล์/ความยาว — ใช้ Research เดิม (ไม่เรียก Sonnet ใหม่)")
+                 self._archive_current_story_outputs(p, reason="style_change_story")
+@@ -1970,8 +2004,10 @@ class App(tk.Tk):
+ 
+         self._clear_story_cache_keep_research(p)
+         self.log("↻ Manual Rebuild Story Prompts requested")
++        # resume=True: the source is unchanged, so research, media and character refs
++        # stay (as the dialog promises); only the story is rebuilt.
+         self._start_or_queue(
+-            self._story_sync,
++            lambda: self._story_sync(resume=True),
+             "Rebuild Story Prompts เสร็จแล้ว",
+             "Rebuild Story Prompts"
+         )
+@@ -2191,6 +2227,12 @@ class App(tk.Tk):
+             if research_override is None:
+                 raise ValueError("เลือก Research จาก Research Library ก่อน หรือเปลี่ยนเป็น New Research")
+ 
++        if mode == "new":
++            # Mark the research as this source's before the paid calls, so a failed or
++            # stopped run is retried without buying the same research again.
++            import hashlib
++            save_json(project_dir / "story/pending_source.json",
++                      {"source": hashlib.sha256(raw.encode("utf-8")).hexdigest()})
+         out = pipeline.run_full(
+             self.project_var.get().strip() or "story_project",
+             raw, self.format_var.get(), self.style_var.get(), int(self.duration_var.get()),
+@@ -2204,6 +2246,7 @@ class App(tk.Tk):
+                 "format": self.format_var.get(), "style": self.style_var.get(),
+                 "duration": int(self.duration_var.get()),
+             })
++            (project_dir / "story/pending_source.json").unlink(missing_ok=True)
+         self.after(0, self.refresh_project_views)
+         return out
+ 
+@@ -2253,11 +2296,12 @@ class App(tk.Tk):
+         base = (self.project_var.get().strip() or "story_project").strip()
+         style = (self.style_var.get().strip() or "new_style").split("—", 1)[0].strip()
+         style_slug = slugify(style) or "new_style"
+-        stem = f"{base}__{style_slug}"
++        # Folder names are slugified (spaces → _, at most 80 chars): check the real folder.
++        stem = slugify(f"{base}__{style_slug}")[:72]
+         projects_root = ROOT / load_json(CONFIG_PATH).get("app", {}).get("projects_dir", "projects")
+         candidate = stem
+         n = 2
+-        while (projects_root / candidate).exists():
++        while (projects_root / slugify(candidate)).exists():
+             candidate = f"{stem}_v{n}"
+             n += 1
+         return candidate
+@@ -2584,6 +2628,11 @@ class App(tk.Tk):
+             self.log("▶ RESUME requested")
+             self.pause_btn.configure(state="normal")
+             self.resume_btn.configure(state="disabled")
++        elif self.pending_jobs:
++            # Paused between queued jobs: continue the queue.
++            self.controller.resume()
++            self.log("▶ RESUME requested — continuing queue")
++            self._run_next_job_if_any()
+         else:
+             if (self._project_dir() / "story/story_package.json").exists():
+                 self.run_media()
+@@ -2600,6 +2649,9 @@ class App(tk.Tk):
+         self._update_queue_label()
+         if self.voice_worker_thread and self.voice_worker_thread.is_alive():
+             self.voice_action_var.set("Voice job is still running independently • queued voice jobs cleared")
++        if not (self.worker_thread and self.worker_thread.is_alive()):
++            self.controller.resume()  # a Pause held for the cleared queue ends with it
++            self.after(0, self._sync_project_lock)
+         if self.worker_thread and self.worker_thread.is_alive():
+             self.controller.stop()
+             self.log("■ STOP requested — กำลังหยุด Claude/ComfyUI และล้าง queue...")
+@@ -2617,8 +2669,12 @@ class App(tk.Tk):
+         self._busy(False)
+ 
+     def new_project(self):
++        if self.voice_worker_thread and self.voice_worker_thread.is_alive():
++            messagebox.showwarning("Busy", "งานเสียง / Captions กำลังรันอยู่ — รอให้เสร็จก่อนเริ่มเรื่องใหม่")
++            return
+         self.pending_jobs.clear()
+         self.voice_pending_jobs.clear()
++        self.controller.resume()
+         self._update_queue_label()
+         if self.worker_thread and self.worker_thread.is_alive():
+             if not messagebox.askyesno("เปลี่ยนเรื่อง", "Stop งานเดิมแล้วเริ่มเรื่องใหม่?"):
+@@ -2640,6 +2696,9 @@ class App(tk.Tk):
+         self.story_text.delete("1.0", "end")
+         self.refresh_media_list()
+         self.clear_preview()
++        # Clear the previous project's character / PDF / library views too.
++        self._update_research_mode_ui()
++        self.refresh_project_views()
+         self.input_text.focus_set()
+ 
+     def refresh_project_views(self):
+@@ -2779,7 +2838,20 @@ class App(tk.Tk):
+         ]
+         self.story_library_preview.insert("1.0", "\n".join(lines))
+ 
++    def _jobs_active(self) -> bool:
++        """True while any job runs or waits: jobs resolve the project from the UI, so
++        switching project now would send them to the other project."""
++        return bool(
++            (self.worker_thread and self.worker_thread.is_alive())
++            or (self.voice_worker_thread and self.voice_worker_thread.is_alive())
++            or self.pending_jobs or self.voice_pending_jobs
++            or self.is_starting_job or self.voice_is_starting_job
++        )
++
+     def _load_project_into_ui(self, project_id):
++        if self._jobs_active():
++            messagebox.showwarning("Busy", "มีงานกำลังรันหรือรอคิวอยู่ — รอให้เสร็จหรือกด Stop ก่อนเปลี่ยน Project")
++            return False
+         self.project_var.set(project_id)
+         p = self._project_dir()
+ 
+@@ -2808,17 +2880,18 @@ class App(tk.Tk):
+         if list_pdfs(p):
+             self.research_mode_var.set("pdf")
+         self._update_research_mode_ui()
++        # The loaded story keeps its own style: never restyle it with the previous
++        # project's dropdown choice.
++        self._sync_style_dropdown_from_current_story(force=True)
+         self.refresh_project_views()
+         self.log(f"📂 Loaded project: {project_id}")
++        return True
+ 
+     def continue_selected_story(self):
+         pid = self._selected_story_project_id()
+         if not pid:
+             messagebox.showwarning("No Project", "เลือก Story / Project ก่อน")
+             return
+-        if self.worker_thread and self.worker_thread.is_alive():
+-            messagebox.showwarning("Busy", "หยุดงานที่กำลังรันก่อนเปลี่ยน Project")
+-            return
+         self._load_project_into_ui(pid)
+ 
+     def _ask_copy_name(self, title, default_name):
+@@ -4035,7 +4108,7 @@ class App(tk.Tk):
+                 self.preview_info.configure(text="VIDEO • Audio test playing")
+                 messagebox.showinfo(
+                     "Audio Test",
+-                    f"กำลังทดสอบเสียงจากไฟล์:\\n{wav.name}\\n\\nถ้าได้ยินเสียง แสดงว่าระบบ audio ใช้งานได้"
++                    f"กำลังทดสอบเสียงจากไฟล์:\n{wav.name}\n\nถ้าได้ยินเสียง แสดงว่าระบบ audio ใช้งานได้"
+                 )
+             self.after(0, done)
+         threading.Thread(target=worker, daemon=True).start()
+@@ -4406,11 +4479,13 @@ class App(tk.Tk):
+ 
+         seq = self._next_reroll_seq()
+ 
+-        def job(sid=sid, seq=seq):
++        pdir = self._project_dir()  # the project this job was queued for
++
++        def job(sid=sid, seq=seq, pdir=pdir):
+             self.log(f"▶ Regen image {sid} — queue item #{seq}")
+             cfg = load_json(CONFIG_PATH)
+             runner = ProductionRunner(ROOT, cfg, log=self.log, controller=self.controller)
+-            new_image = runner.regenerate_image_only(self._project_dir(), sid)
++            new_image = runner.regenerate_image_only(pdir, sid)
+             self.after(0, lambda sid=sid, new_image=new_image: self._focus_generated_media(sid, new_image))
+ 
+         self._start_or_queue(job, f"Regenerate image {sid} เสร็จ #{seq}", f"Regen image {sid} #{seq}")
+@@ -4442,11 +4517,13 @@ class App(tk.Tk):
+         source_name = Path(image_path).name
+         seq = self._next_reroll_seq()
+ 
+-        def job(sid=sid, image_path=image_path, source_name=source_name, seq=seq):
++        pdir = self._project_dir()  # the project this job was queued for
++
++        def job(sid=sid, image_path=image_path, source_name=source_name, seq=seq, pdir=pdir):
+             self.log(f"▶ Regen video {sid} — queue item #{seq} using image source: {source_name}")
+             cfg = load_json(CONFIG_PATH)
+             runner = ProductionRunner(ROOT, cfg, log=self.log, controller=self.controller)
+-            new_video = runner.regenerate_video_only(self._project_dir(), sid, image_path=image_path)
++            new_video = runner.regenerate_video_only(pdir, sid, image_path=image_path)
+             self.after(0, lambda sid=sid, new_video=new_video: self._focus_generated_media(sid, new_video))
+ 
+         self._start_or_queue(job, f"Regenerate video {sid} เสร็จ #{seq}", f"Regen video {sid} #{seq} from {source_name}")
+@@ -4460,17 +4537,19 @@ class App(tk.Tk):
+ 
+         seq = self._next_reroll_seq()
+ 
+-        def job(sid=sid, seq=seq):
++        pdir = self._project_dir()  # the project this job was queued for
++
++        def job(sid=sid, seq=seq, pdir=pdir):
+             self.log(f"▶ Regen full shot {sid} — queue item #{seq}")
+             cfg = load_json(CONFIG_PATH)
+             runner = ProductionRunner(ROOT, cfg, log=self.log, controller=self.controller)
+ 
+             # Explicit behavior: create a brand-new image first,
+             # then generate the video from THAT exact new image.
+-            new_image = runner.regenerate_image_only(self._project_dir(), sid)
++            new_image = runner.regenerate_image_only(pdir, sid)
+             self.log(f"   ✓ New image: {new_image.name}")
+             new_video = runner.regenerate_video_only(
+-                self._project_dir(), sid, image_path=new_image
++                pdir, sid, image_path=new_image
+             )
+             self.log(f"   ✓ New video from {new_image.name}: {new_video.name}")
+             # Prefer showing the new video after a full-shot reroll completes.
+@@ -4924,8 +5003,9 @@ class App(tk.Tk):
+                 vp.save_pronunciation(source, reading)
+                 refresh_tree(source)
+             profile = self._load_voice_profile()
+-            ref = Path(str(profile.get("ref_audio", "") or ""))
+-            if not str(ref) or not ref.exists():
++            ref_raw = str(profile.get("ref_audio", "") or "").strip()
++            ref = Path(ref_raw)
++            if not ref_raw or not ref.is_file():
+                 messagebox.showerror("Pronunciation", "เลือก Voice Reference ก่อน", parent=win)
+                 return
+             status_var.set("กำลังเจนเสียงทดสอบ…")
+@@ -5027,8 +5107,9 @@ class App(tk.Tk):
+         if not story or not story.get("shots"):
+             raise RuntimeError("ยังไม่มี Story / Narration")
+         profile = self._load_voice_profile()
+-        ref = Path(str(profile.get("ref_audio", "") or ""))
+-        if not str(ref) or not ref.exists():
++        ref_raw = str(profile.get("ref_audio", "") or "").strip()
++        ref = Path(ref_raw)
++        if not ref_raw or not ref.is_file():
+             raise RuntimeError("เลือก Voice Reference ก่อน")
+         cfg = load_json(CONFIG_PATH)
+         self._save_caption_style()
+@@ -5239,7 +5320,9 @@ class App(tk.Tk):
+         def add():
+             paths = filedialog.askopenfilenames(title="Character refs", filetypes=[("Images","*.png;*.jpg;*.jpeg;*.webp")])
+             if paths:
+-                add_images(project_dir, name_var.get().strip() or "main_character", view_var.get(), list(paths))
++                # Keep the typed id as is (e.g. CHAR_01) so shots' character_ref_id finds it.
++                name = name_var.get().strip() or "main_character"
++                add_images_with_id(project_dir, name, name, view_var.get(), list(paths))
+                 refresh()
+ 
+         def remove():
+diff --git a/autocinematic/character_link_sync.py b/autocinematic/character_link_sync.py
+index c0c9be4..06e63aa 100644
+--- a/autocinematic/character_link_sync.py
++++ b/autocinematic/character_link_sync.py
+@@ -79,11 +79,11 @@ def _pick_match(
+         return unique[0], "alias_match"
+ 
+     # 3) if exactly one generated character exists and this shot clearly wants a character,
+-    #    trust the character prompt pack as the source of truth.
++    #    trust the character prompt pack as the source of truth. (preferred_view is not a
++    #    sign: the pipeline gives every shot a default view, b-roll included.)
+     wants_character = bool(
+         cid or cname or legacy
+         or str(shot.get("character_action") or "").strip()
+-        or str(shot.get("preferred_view") or "").strip()
+     )
+     if wants_character and len(by_id) == 1:
+         only_id = next(iter(by_id.keys()))
+diff --git a/autocinematic/comfyui.py b/autocinematic/comfyui.py
+index 89eebdc..c6ca4ab 100644
+--- a/autocinematic/comfyui.py
++++ b/autocinematic/comfyui.py
+@@ -120,7 +120,8 @@ class ComfyUIClient:
+     def _collect_files(obj: Any) -> list[dict]:
+         found = []
+         if isinstance(obj, dict):
+-            if "filename" in obj and isinstance(obj["filename"], str):
++            # "temp" files are previews (e.g. an ImageCompare node), not results.
++            if "filename" in obj and isinstance(obj["filename"], str) and obj.get("type") != "temp":
+                 found.append({
+                     "filename": obj["filename"],
+                     "subfolder": obj.get("subfolder", ""),
+diff --git a/autocinematic/hybrid_ui.py b/autocinematic/hybrid_ui.py
+index 98e41af..9ce19ae 100644
+--- a/autocinematic/hybrid_ui.py
++++ b/autocinematic/hybrid_ui.py
+@@ -158,6 +158,16 @@ def build_hybrid_manifest(project: Path, mode_by_shot: dict, animation_root: Pat
+             raise HybridPlanError('Unknown/empty selected shots: ' + ', '.join(sorted(unknown)))
+     data = read_json(project / "production" / "production_manifest.json", {})
+     records = {x.get("shot_id"): x for x in data.get("shots", [])} if isinstance(data, dict) else {}
++    # With narration, each shot lasts as long as its voice (narration_master.wav is
++    # the natural voice lengths back to back), so picture and voice stay in sync.
++    voice_len = {}
++    if use_voice and only_shots is None:
++        vm = read_json(project / "voice" / "voice_manifest.json", {})
++        for row in (vm.get("shots", []) if isinstance(vm, dict) else []):
++            try:
++                voice_len[str(row.get("shot_id"))] = float(row.get("actual_duration_sec") or 0)
++            except (TypeError, ValueError):
++                pass
+     plan = []
+     errs = []
+     for index, sh in enumerate(shots, 1):
+@@ -166,6 +176,8 @@ def build_hybrid_manifest(project: Path, mode_by_shot: dict, animation_root: Pat
+             continue
+         try:
+             length = float(sh.get("duration_sec", 6) or 6)
++            if voice_len.get(sid, 0) > 0:
++                length = round(voice_len[sid], 3)
+         except (ValueError, TypeError):
+             errs.append(f"{sid}: invalid duration")
+             continue
+@@ -234,7 +246,7 @@ def preflight_media(manifest: dict):
+         except (ValueError, TypeError):
+             raise HybridPlanError(f"{scene['id']}: FFprobe อ่านคลิปไม่ได้: {video.name}")
+         if result.returncode or duration < scene["duration"] - 0.15:
+-            raise HybridPlanError(f"{scene['id']}: MP4 ยาว {duration:.2f}s แต่ Story ต้องการ {scene['duration']:.2f}s — ปรับความยาวหรือเปลี่ยนไฟล์ก่อน")
++            raise HybridPlanError(f"{scene['id']}: MP4 ยาว {duration:.2f}s แต่ Story ต้องการ {scene['duration']:.2f}s (ตามความยาวเสียง) — สร้างคลิปใหม่ให้ยาวพอ หรือสร้างเสียงใหม่ / ปิดเสียง ก่อน Export")
+     if manifest.get("narration"):
+         audio = Path(manifest["narration"])
+         try:
+@@ -243,8 +255,8 @@ def preflight_media(manifest: dict):
+         except (OSError, ValueError, wave.Error):
+             raise HybridPlanError(f"Voice WAV อ่านไม่ได้: {audio.name}")
+         total = sum(s["duration"] for s in manifest["scenes"])
+-        if secs > total + .2:
+-            raise HybridPlanError(f"Narration {secs:.2f}s ยาวกว่า Timeline {total:.2f}s — ต้องจัดเวลาใหม่ก่อน Render")
++        if abs(secs - total) > .25:
++            raise HybridPlanError(f"Narration {secs:.2f}s ไม่เท่ากับ Timeline {total:.2f}s — สร้างเสียงใหม่หรือจัดเวลาใหม่ก่อน Render")
+ 
+ 
+ 
+@@ -382,7 +394,7 @@ def open_hybrid_dialog(app):
+             for scene in manifest["scenes"]:
+                 if scene["kind"] == "code_motion":
+                     original = next(s for i, s in enumerate(shots, 1) if str(s.get("shot_id") or f"S{i:03d}") == scene["id"])
+-                    generated, motif, changed = prepare_code_motion_story(project, {**original, "shot_id": scene["id"]}, animation_root)
++                    generated, motif, changed = prepare_code_motion_story(project, {**original, "shot_id": scene["id"], "duration_sec": scene["duration"]}, animation_root)
+                     if generated != scene["story"]:
+                         raise HybridPlanError("Generated motion story ID mismatch")
+                     app.log(f"[Code Motion] {scene['id']}: {motif}; ClaudeAnimationBase story {generated}; changed={changed}")
+@@ -391,13 +403,13 @@ def open_hybrid_dialog(app):
+             write_json(project / 'hybrid' / 'bridge_config.json', bridge_config(project, root, animation_root))
+             individual_manifest = project / 'hybrid' / f'hybrid_preview_{sid}.json'
+             write_json(individual_manifest, manifest)
+-        except (HybridPlanError, OSError, ValueError) as ex:
++        except (HybridPlanError, OSError, ValueError, RuntimeError) as ex:
+             messagebox.showerror(f'Hybrid Test {sid}', str(ex), parent=win)
+             return
+         scene = manifest['scenes'][0]
+         if not messagebox.askyesno('Test one shot · No AI',
+                                   f"{sid} · {scene['duration']:g}s · {scene['kind']}\n"
+-                                  f"{Path(scene['file']).name}\n\n"
++                                  f"{Path(scene.get('file') or scene.get('story', '')).name}\n\n"
+                                   'Render only this shot at ' + profile.get() + '?\n'
+                                   'No Opus, ComfyUI or other shots will be run.\n'
+                                   'Audio master is not included in one-shot tests.', parent=win):
+@@ -440,7 +452,7 @@ def open_hybrid_dialog(app):
+         except (HybridPlanError, OSError, ValueError) as ex:
+             messagebox.showerror("Hybrid Plan", str(ex), parent=win)
+             return
+-        desc = "\n".join(f"{s['id']}: {s['kind']} {s['duration']:g}s · {Path(s['file']).name}" for s in m['scenes'])
++        desc = "\n".join(f"{s['id']}: {s['kind']} {s['duration']:g}s · {Path(s.get('file') or s.get('story', '')).name}" for s in m['scenes'])
+         app.log(f"HYBRID PLAN ({len(m['scenes'])} shots): " + ", ".join(s['kind'] for s in m['scenes']))
+         messagebox.showinfo("Hybrid Plan · No AI", desc + "\n\nพร้อมทดลอง Render (ยังไม่มีการ Generate AI)", parent=win)
+ 
+@@ -458,7 +470,7 @@ def open_hybrid_dialog(app):
+             for scene in manifest["scenes"]:
+                 if scene["kind"] == "code_motion":
+                     original = next(s for i, s in enumerate(shots, 1) if str(s.get("shot_id") or f"S{i:03d}") == scene["id"])
+-                    generated, motif, changed = prepare_code_motion_story(project, {**original, "shot_id": scene["id"]}, animation_root)
++                    generated, motif, changed = prepare_code_motion_story(project, {**original, "shot_id": scene["id"], "duration_sec": scene["duration"]}, animation_root)
+                     if generated != scene["story"]:
+                         raise HybridPlanError('Generated motion story ID mismatch')
+                     app.log(f"[Code Motion] {scene['id']}: {motif}; changed={changed}")
+diff --git a/autocinematic/model_runner.py b/autocinematic/model_runner.py
+index 9246620..c39a567 100644
+--- a/autocinematic/model_runner.py
++++ b/autocinematic/model_runner.py
+@@ -86,8 +86,13 @@ class ModelRunner:
+ 
+         try:
+             if p.stdin:
+-                p.stdin.write(prompt)
+-                p.stdin.close()
++                try:
++                    p.stdin.write(prompt)
++                    p.stdin.close()
++                except (BrokenPipeError, OSError):
++                    # The CLI exited before reading the prompt (login, quota, bad
++                    # flag); its stderr below says why.
++                    pass
+ 
+             started = time.time()
+             last_heartbeat = started
+diff --git a/autocinematic/motion_only.py b/autocinematic/motion_only.py
+index 96a87aa..978f04a 100644
+--- a/autocinematic/motion_only.py
++++ b/autocinematic/motion_only.py
+@@ -94,8 +94,16 @@ def _headline(narration: str, scene: str) -> str:
+             if 12 <= len(part) <= 39:
+                 return part
+     clipped = text[:33]
+-    while clipped and unicodedata.combining(clipped[-1]):
+-        clipped = clipped[:-1]
++    # End on a word: the last space if there is one late enough, else never in
++    # the middle of a syllable (before a vowel/tone mark or after a leading vowel).
++    if ' ' in clipped[12:]:
++        clipped = clipped[:clipped.rindex(' ')]
++    else:
++        while clipped and (unicodedata.combining(clipped[-1]) or text[len(clipped)] in 'ะาำๅ'
++                           or unicodedata.combining(text[len(clipped)])):
++            clipped = clipped[:-1]
++        while clipped and clipped[-1] in 'เแโใไ':
++            clipped = clipped[:-1]
+     return clipped.rstrip() + '…'
+ 
+ 
+diff --git a/autocinematic/motion_plan_ui.py b/autocinematic/motion_plan_ui.py
+index fb26de8..5cda026 100644
+--- a/autocinematic/motion_plan_ui.py
++++ b/autocinematic/motion_plan_ui.py
+@@ -57,7 +57,13 @@ def open_motion_plan_dialog(app, animation_root: str | None = None):
+     opts.pack(fill="x", pady=(6, 6))
+     enginevar = tk.StringVar(value=animation_root or settings.get("animation_root") or str(Path.home() / "ClaudeAnimationBase"))
+     default_manifest = project / "production" / "shot_manifest.json"
+-    manifestvar = tk.StringVar(value=settings.get("motion_manifest") or str(default_manifest))
++    # The saved manifest is global; reuse it only when it belongs to this project.
++    saved_manifest = settings.get("motion_manifest") or ""
++    try:
++        own = bool(saved_manifest) and Path(saved_manifest).resolve().is_relative_to(project.resolve())
++    except (OSError, ValueError):
++        own = False
++    manifestvar = tk.StringVar(value=saved_manifest if own else str(default_manifest))
+     aspectvar = tk.StringVar(value=settings.get("motion_aspect") or "9:16")
+     ttk.Label(opts, text="ClaudeAnimationBase:").pack(side="left")
+     ttk.Entry(opts, textvariable=enginevar, width=30).pack(side="left", padx=4)
+diff --git a/autocinematic/pipeline.py b/autocinematic/pipeline.py
+index a462ad9..53ac6f1 100644
+--- a/autocinematic/pipeline.py
++++ b/autocinematic/pipeline.py
+@@ -18,6 +18,17 @@ from .credit_saver import (source_is_sufficient, local_research_pack, compact_re
+ from .input_optimizer import (evidence_without_exact_duplicates, compact_json, creative_request_fingerprint)
+ 
+ class StoryPipeline:
++    @staticmethod
++    def _model_json(raw_path: Path, raw: str) -> dict:
++        """Save a model's raw answer first (it is paid for), then parse it. A
++        non-object answer is an error, never cached as an empty result."""
++        raw_path.parent.mkdir(parents=True, exist_ok=True)
++        raw_path.write_text(raw, encoding="utf-8")
++        data = extract_json(raw)
++        if not isinstance(data, dict):
++            raise ValueError(f"Model answer is not a JSON object (raw saved to {raw_path.name})")
++        return data
++
+     def __init__(self, root: Path, config: dict, log: Optional[Callable[[str], None]] = None, controller=None):
+         self.root = root
+         self.config = config
+@@ -148,9 +159,7 @@ class StoryPipeline:
+                    f"RESEARCH PACK:\n{compact_json(evidence_without_exact_duplicates(research_pack))}\n"
+                    + ("PREVIOUS EPISODE MUST HAVE A DIFFERENT NARRATIVE ANGLE: " + compact_json(reuse) if reuse else ""))
+         raw = self.runner.run("opus", dynamic, stable_prefix=self._prompt("opus_character_casting.txt"))
+-        data = extract_json(raw)
+-        if not isinstance(data, dict):
+-            data = {}
++        data = self._model_json(p / "story/opus_preproduction_raw.txt", raw)
+         data.setdefault("story_blueprint", {})
+         data.setdefault("character_strategy", {"mode":"none","reason":"","selected_character_ids":[]})
+         data.setdefault("character_generation_prompts", [])
+@@ -224,7 +233,7 @@ RESEARCH PACK:
+ {previous_story_section}
+ """
+         raw = self.runner.run("opus", prompt)
+-        data = extract_json(raw)
++        data = self._model_json(p / "story/opus_draft_raw.txt", raw)
+         # Character-first guarantee: the pre-production cast is the source of truth.
+         # Never allow the later shot-writing pass to replace it with generic placeholder prompts.
+         if isinstance(preproduction, dict):
+@@ -349,7 +358,7 @@ RESEARCH PACK:
+             json.dumps(research_pack, ensure_ascii=False, indent=2) + \
+             "\n\nOPUS STORY PACKAGE:\n" + json.dumps(story_draft, ensure_ascii=False, indent=2)
+         raw = self.runner.run("sonnet", prompt)
+-        data = extract_json(raw)
++        data = self._model_json(p / "story/sonnet_factcheck_raw.txt", raw)
+         (p/"story/sonnet_factcheck_raw.txt").write_text(raw, encoding="utf-8")
+         save_json(cached, data)
+         self.log(f"✓ Fact-check: {data.get('status','unknown')}")
+@@ -457,7 +466,7 @@ Rewrite only the named shots. Return valid JSON only."""
+             "\n\nCURRENT STORY PACKAGE:\n" + json.dumps(story_draft, ensure_ascii=False, indent=2) + \
+             "\n\nFACT CHECK:\n" + json.dumps(factcheck, ensure_ascii=False, indent=2)
+         raw = self.runner.run("opus", prompt)
+-        data = extract_json(raw)
++        data = self._model_json(p / "story/opus_final_raw.txt", raw)
+         # Keep the pre-production cast locked through final revision as well.
+         if isinstance(preproduction, dict):
+             if "character_strategy" in preproduction:
+diff --git a/autocinematic/production_runner.py b/autocinematic/production_runner.py
+index 6c3c5f9..dd239a0 100644
+--- a/autocinematic/production_runner.py
++++ b/autocinematic/production_runner.py
+@@ -6,6 +6,7 @@ from typing import Optional
+ from .comfyui import ComfyUIClient, load_workflow, set_input
+ from .utils import load_json, save_json
+ from .character_refs import pick_reference
++from .run_control import RunCancelled
+ 
+ IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
+ VIDEO_EXTS = {'.mp4', '.webm', '.mov', '.mkv', '.gif'}
+@@ -118,7 +119,11 @@ class ProductionRunner:
+ 
+     def _find_previous_image_for_shot(self, project_dir: Path, story: dict, manifest_by_id: dict, target_sid: str) -> Optional[Path]:
+         shots = story.get('shots', [])
+-        sid_to_idx = {s.get('shot_id', f'S{i:03d}'): i for i, s in enumerate(shots)}
++        # Shots without an id are numbered from 1, as in run_project; a reroll's
++        # save tag (<id>_reroll) looks up the same shot.
++        sid_to_idx = {s.get('shot_id') or f'S{i + 1:03d}': i for i, s in enumerate(shots)}
++        if target_sid not in sid_to_idx and target_sid.endswith('_reroll'):
++            target_sid = target_sid[:-len('_reroll')]
+         idx = sid_to_idx.get(target_sid)
+         if idx is None:
+             return None
+@@ -195,19 +200,21 @@ class ProductionRunner:
+             (r'\bIMAGE PROMPT:\s*', ''),
+             (r'\bCharacter rendering treatment:\s*', ''),
+             (r'\bGLOBAL STYLE LOCK\s*[—-]\s*', ''),
+-            (r'\bCHAR[_\-\s]*0*\d+\b', 'the subject'),
++            # Numeric ids (CHAR_01, char 2) and, case-sensitive with a separator,
++            # letter ids (CHAR_A, CHAR-B) — never words like chart / charm.
++            (r'\bCHAR[_\-\s]*0*\d+\b|(?-i:\bCHAR[_\-][A-Z]\b)', 'the subject'),
+             (r'\bEXACT_CHARACTER_ID\b', 'same subject identity'),
+             (r'\bPROMPT ONLY\b', ''),
+             (r'\bEditorial Collage 2\.5D\b', 'editorial collage with layered paper depth'),
+             (r'\bEditorial Collage\b', 'editorial collage'),
+             (r'\b2\.5D\b', 'layered paper depth'),
+             (r'\b2\.5\.0D\b', 'layered paper depth'),
+-            (r'\btypography\b', 'paper graphic elements'),
++            (r'(?<!visible )\btypography\b', 'paper graphic elements'),
+             (r'\btitle card\b', 'graphic card'),
+             (r'\bheadline\b', 'graphic emphasis'),
+             (r'\bCHARACTER ID\b', ''),
+             (r'\breference-sheet labels?\b', ''),
+-            (r'\bprompt labels?\b', ''),
++            (r'\bprompt labels?\b', 'meta labels'),
+         ]
+         for pattern, repl in replacements:
+             text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+@@ -232,7 +239,7 @@ class ProductionRunner:
+             ' No readable text, no letters, no words, no numbers, no labels, no captions, no logos, no watermark, no signage, no title card, and no interface UI in the image.'
+         )
+         lowered = text.lower()
+-        if 'no readable text' not in lowered and 'no text' not in lowered:
++        if not re.search(r'\bno (readable )?text\b', lowered):
+             text += anti_text_clause
+         return text.strip()
+ 
+@@ -485,6 +492,8 @@ class ProductionRunner:
+                 results = self._upsert_results(results, rec)
+                 save_json(results_path, results)
+                 save_json(manifest_path, manifest)
++            except RunCancelled:
++                raise
+             except Exception as e:
+                 rec = dict(existing) if existing else {'shot_id': sid}
+                 rec.update({'shot_id': sid, 'method': method, 'status': 'image_error', 'error': str(e)})
+@@ -586,6 +595,8 @@ class ProductionRunner:
+                 results = self._upsert_results(results, rec)
+                 save_json(results_path, results)
+                 save_json(manifest_path, manifest)
++            except RunCancelled:
++                raise
+             except Exception as e:
+                 rec = dict(existing) if existing else {'shot_id': sid}
+                 rec.update({
+diff --git a/autocinematic/pronunciation.py b/autocinematic/pronunciation.py
+index 32ed218..273afc6 100644
+--- a/autocinematic/pronunciation.py
++++ b/autocinematic/pronunciation.py
+@@ -110,9 +110,31 @@ class PronunciationDictionary:
+     @staticmethod
+     def _replace_ascii_token(text: str, source: str, reading: str) -> str:
+         # Keep common English/technical tokens from matching inside larger words.
+-        pat = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(source) + r"(?![A-Za-z0-9_])", re.IGNORECASE)
++        # A token that starts with a letter may follow a digit (units: 300Wh, 2°C,
++        # 5GW); a token that starts or ends with a digit never matches inside a
++        # longer number (1.5 in 11.5 or 1.55). Short tokens (units, acronyms) are
++        # case-sensitive so mW (milliwatt) is not read as MW (megawatt).
++        first, last = source[0], source[-1]
++        if first.isalpha():
++            pre = r"(?<![A-Za-z_])"
++        elif first.isdigit():
++            pre = r"(?<![A-Za-z0-9_.,])"
++        else:
++            pre = ""
++        post = r"(?![A-Za-z0-9_]|[.,][0-9])" if last.isalnum() or last == "_" else ""
++        letters = sum(ch.isalpha() for ch in source)
++        flags = re.IGNORECASE if letters > 3 else 0
++        pat = re.compile(pre + re.escape(source) + post, flags)
+         return pat.sub(reading, text)
+ 
++    @staticmethod
++    def _replace_text_token(text: str, source: str, reading: str) -> str:
++        # Non-ASCII sources (Thai words, 2×, 0.2–0.3, 46 พันล้านปีแสง). Digits at
++        # either end must not be part of a longer number (12× is not 1 + 2×).
++        pre = r"(?<![0-9.,])" if source[0].isdigit() else ""
++        post = r"(?![0-9]|[.,][0-9])" if source[-1].isdigit() else ""
++        return re.sub(pre + re.escape(source) + post, lambda m: f" {reading} ", text)
++
+     def normalize(self, text: str) -> tuple[str, list[dict]]:
+         original = unicodedata.normalize("NFC", str(text or ""))
+         out = original
+@@ -127,7 +149,7 @@ class PronunciationDictionary:
+                 # Thai is normally written without spaces between words. Add a
+                 # light boundary around the replacement so a pronunciation like
+                 # "กา แล็ก ซี" does not become "กา แล็ก ซีของเรา".
+-                out = out.replace(source, f" {reading} ")
++                out = self._replace_text_token(out, source, reading)
+             if out != before:
+                 applied.append({"source": source, "reading": reading})
+ 
+diff --git a/autocinematic/remotion_pipeline.py b/autocinematic/remotion_pipeline.py
+index 63fe16f..8b837d8 100644
+--- a/autocinematic/remotion_pipeline.py
++++ b/autocinematic/remotion_pipeline.py
+@@ -38,8 +38,10 @@ class RemotionPipeline:
+         if not ok:
+             raise RuntimeError(f"ต้องติดตั้ง Node.js ก่อน: {info}")
+         self.log("Installing Remotion dependencies…")
++        # shutil.which finds npm.cmd on Windows (subprocess alone does not).
+         proc = subprocess.run(
+-            ["npm", "install"], cwd=str(self.remotion_dir), capture_output=True, text=True
++            [shutil.which("npm") or "npm", "install"], cwd=str(self.remotion_dir), capture_output=True,
++            text=True, encoding="utf-8", errors="replace", timeout=1800
+         )
+         if proc.returncode != 0:
+             raise RuntimeError((proc.stderr or proc.stdout or "npm install failed")[-1800:])
+@@ -160,11 +162,12 @@ class RemotionPipeline:
+         for key in ("clean", "captioned", "preview"):
+             self.log(f"🎬 Remotion render: {key}")
+             cmd = [
+-                "npx", "remotion", "render", "src/index.jsx",
++                shutil.which("npx") or "npx", "remotion", "render", "src/index.jsx",
+                 composition_map[key], str(outputs[key]),
+                 "--overwrite",
+             ]
+-            proc = subprocess.run(cmd, cwd=str(self.remotion_dir), capture_output=True, text=True)
++            proc = subprocess.run(cmd, cwd=str(self.remotion_dir), capture_output=True, text=True,
++                                  encoding="utf-8", errors="replace", timeout=3600)
+             if proc.returncode != 0:
+                 raise RuntimeError((proc.stderr or proc.stdout or f"Remotion {key} failed")[-2400:])
+         return {"manifest": manifest, **outputs}
+diff --git a/autocinematic/source_loader.py b/autocinematic/source_loader.py
+index 1d04495..c2b66b2 100644
+--- a/autocinematic/source_loader.py
++++ b/autocinematic/source_loader.py
+@@ -24,7 +24,9 @@ def fetch_url(url: str, timeout: int = 20) -> str:
+     headers = {"User-Agent": "Mozilla/5.0 AutoCinematicStoryStudio/10"}
+     r = requests.get(url, timeout=timeout, headers=headers)
+     r.raise_for_status()
+-    soup = BeautifulSoup(r.text, "html.parser")
++    # Bytes, not r.text: bs4 honours <meta charset> (Thai pages often declare it
++    # only there, and requests would otherwise decode them as ISO-8859-1).
++    soup = BeautifulSoup(r.content, "html.parser")
+     for tag in soup(["script","style","noscript","svg"]):
+         tag.decompose()
+     text = "\n".join(line.strip() for line in soup.get_text("\n").splitlines() if line.strip())
+diff --git a/autocinematic/story_motion.py b/autocinematic/story_motion.py
+index d68cead..08a9e4d 100644
+--- a/autocinematic/story_motion.py
++++ b/autocinematic/story_motion.py
+@@ -88,6 +88,39 @@ def _ass_face(fontfile: Path) -> str:
+     return 'Leelawadee UI' if os.name == 'nt' else 'Noto Sans Thai'
+ 
+ 
++def _ass_break_thai(text: str, per_line: float, max_lines: int = 3) -> str:
++    """Break unspaced text into lines of about per_line visible characters, never
++    inside a syllable (no break before a combining mark or following vowel, none
++    right after a leading vowel)."""
++    import unicodedata
++    per_line = max(4, int(per_line))
++    lines, rest = [], text
++    while rest and len(lines) < max_lines - 1:
++        visible, cut = 0, 0
++        while cut < len(rest) and visible < per_line:
++            if unicodedata.category(rest[cut]) != 'Mn':
++                visible += 1
++            cut += 1
++        if cut >= len(rest):
++            break
++        while cut < len(rest) and (unicodedata.category(rest[cut]) == 'Mn' or rest[cut] in 'ะาำๅ'):
++            cut += 1
++        while 0 < cut < len(rest) and rest[cut - 1] in 'เแโใไ':
++            cut -= 1
++        lines.append(rest[:cut])
++        rest = rest[cut:]
++    if rest:
++        # The plate holds max_lines lines: shorten the last one (as the Pillow path does).
++        visible = [i for i, ch in enumerate(rest) if unicodedata.category(ch) != 'Mn']
++        if len(visible) > per_line:
++            cut = visible[per_line - 1]
++            while cut < len(rest) and unicodedata.category(rest[cut]) == 'Mn':
++                cut += 1
++            rest = rest[:cut].rstrip() + '…'
++        lines.append(rest)
++    return '\\N'.join(lines)
++
++
+ def _ass_caption(text: str, fontfile: Path, w: int, h: int, duration: float) -> str:
+     """Build an ASS caption; FFmpeg/libass performs actual Thai glyph shaping."""
+     text = text.replace('\\', ' ').replace('{', '(').replace('}', ')')
+@@ -95,6 +128,9 @@ def _ass_caption(text: str, fontfile: Path, w: int, h: int, duration: float) ->
+     text = text.replace('\n', ' ').replace('\r', ' ')
+     size = max(23, round(w*.047))
+     margin_x = max(18, round(w*.095))
++    if ' ' not in text:
++        # libass wraps only at spaces; Thai has few, so break lines here (\N).
++        text = _ass_break_thai(text, (w - 2*margin_x) / (size*.45))
+     margin_v = round(h*.105) + round(w*.045)
+     def t(sec: float) -> str:
+         cs = max(0, round(sec*100))
+diff --git a/autocinematic/style_lock.py b/autocinematic/style_lock.py
+index 6aecbb6..fe7312c 100644
+--- a/autocinematic/style_lock.py
++++ b/autocinematic/style_lock.py
+@@ -144,6 +144,12 @@ STYLE_BLOCK_MARKERS = (
+     "Video treatment:",
+     "Character rendering treatment:",
+     "CHARACTER STYLE LOCK —",
++    # The prefixes this module writes itself (period form), so re-applying or
++    # switching a style replaces the old block instead of stacking it.
++    "Visual treatment.",
++    "Motion treatment.",
++    "Video treatment.",
++    "Character rendering treatment.",
+ )
+ 
+ 
+diff --git a/autocinematic/utils.py b/autocinematic/utils.py
+index 446cf4a..74d1c9c 100644
+--- a/autocinematic/utils.py
++++ b/autocinematic/utils.py
+@@ -20,28 +20,24 @@ def extract_json(text: str) -> Any:
+         return json.loads(text)
+     except Exception:
+         pass
+-    starts = [i for i,c in enumerate(text) if c in "[{"]
+-    for start in starts:
+-        stack, in_str, esc = [], False, False
+-        for i in range(start, len(text)):
+-            c = text[i]
+-            if in_str:
+-                if esc: esc = False
+-                elif c == "\\": esc = True
+-                elif c == '"': in_str = False
+-                continue
+-            if c == '"':
+-                in_str = True
+-            elif c in "[{":
+-                stack.append(c)
+-            elif c in "]}":
+-                if not stack:
+-                    break
+-                opener = stack.pop()
+-                if (opener, c) not in [("[","]"),("{","}")]:
+-                    break
+-                if not stack:
+-                    return json.loads(text[start:i+1])
++    # Scan every { or [ and decode from there. Text before the JSON may hold
++    # brackets of its own (citations like [PDF_01, p.3], "[1]"), so a candidate
++    # that does not parse is skipped, and an object wins over a bare list.
++    dec = json.JSONDecoder()
++    first = None
++    for start, c in enumerate(text):
++        if c not in "[{":
++            continue
++        try:
++            obj, _ = dec.raw_decode(text, start)
++        except ValueError:
++            continue
++        if isinstance(obj, dict):
++            return obj
++        if first is None:
++            first = obj
++    if first is not None:
++        return first
+     raise ValueError("Model response did not contain valid JSON.")
+ 
+ def slugify(value: str) -> str:
+diff --git a/autocinematic/voice_pipeline.py b/autocinematic/voice_pipeline.py
+index ca71c5f..05d0699 100644
+--- a/autocinematic/voice_pipeline.py
++++ b/autocinematic/voice_pipeline.py
+@@ -6,6 +6,7 @@ import os
+ import re
+ import shutil
+ import subprocess
++import unicodedata
+ import wave
+ from dataclasses import dataclass
+ from pathlib import Path
+@@ -401,6 +402,12 @@ class VoicePipeline:
+                     if pos > 3:
+                         candidates.append(pos)
+                 cut = max(candidates) if candidates else max_chars
++                # Never split a Thai syllable: no cut before a combining mark or a
++                # following vowel, and none right after a leading vowel.
++                while cut < len(remaining) and (unicodedata.category(remaining[cut]) == "Mn" or remaining[cut] in "ะาำๅ"):
++                    cut += 1
++                while 0 < cut < len(remaining) and remaining[cut - 1] in "เแโใไ":
++                    cut -= 1
+                 out.append(remaining[:cut].strip())
+                 remaining = remaining[cut:].strip()
+             if remaining:
+@@ -463,7 +470,7 @@ class VoicePipeline:
+ 
+         # Numeric ranges / values, optionally followed by a short unit.
+         unit = r"(?:%|Wh|W|kW|MW|GW|วัตต์ชั่วโมง|วัตต์|กิโลวัตต์|เมกะวัตต์|กิกะวัตต์|เท่า|ล้าน|พันล้าน|ล้านคน|คน|ปี|ชั่วโมง|นาที|วินาที)?"
+-        pattern = re.compile(rf"(?<!\w)(\d+(?:[.,]\d+)?(?:\s*[–—-]\s*\d+(?:[.,]\d+)?)?\s*{unit})(?!\w)", re.IGNORECASE)
++        pattern = re.compile(rf"(?<!\w)(\d+(?:[.,]\d+)?(?:\s*[–—-]\s*\d+(?:[.,]\d+)?)?\s*{unit})(?![A-Za-z0-9])", re.IGNORECASE)
+         for m in pattern.finditer(txt):
+             raw = m.group(1).strip()
+             if not raw:
+@@ -656,11 +663,15 @@ class VoicePipeline:
+             weights = [max(4, len(c)) for c in chunks]
+             total = sum(weights) or 1
+             cursor = start
++            # Each chunk gets its share of the shot by text length (so captions
++            # follow the voice), at least min_chunk, scaled back to the shot length.
++            # (A per-chunk ceiling made the last chunk absorb the rest of the shot.)
++            shares = [max(min_chunk, dur * w / total) for w in weights]
++            scale = dur / (sum(shares) or 1)
++            shares = [s * scale for s in shares]
+             for i, (chunk, weight) in enumerate(zip(chunks, weights)):
+-                # Weighted timing with a fast-caption ceiling. The last chunk
+-                # always lands exactly on the shot end.
+-                raw_part = dur * weight / total
+-                part = min(max_chunk, max(min_chunk, raw_part))
++                # The last chunk always lands exactly on the shot end.
++                part = shares[i]
+                 remaining_chunks = len(chunks) - i - 1
+                 latest_end = end - remaining_chunks * min_chunk
+                 cstart = cursor
+@@ -800,8 +811,14 @@ class VoicePipeline:
+         generated_paths: list[Path] = []
+         synth_items = []
+ 
++        seen_ids: set[str] = set()
+         for index, sh in enumerate(shots, 1):
+             sid = str(sh.get("shot_id") or f"S{index:03d}")
++            if sid in seen_ids:
++                # Two shots with one id would share raw/<id>.wav and the first would
++                # turn silent; keep each shot's audio apart.
++                sid = f"{sid}_{index:03d}"
++            seen_ids.add(sid)
+             narration = str(sh.get("narration", "") or "").strip()
+             target = float(sh.get("duration_sec") or 0.0)
+             tts_text, applied_overrides = self.normalize_tts_text(narration)
+@@ -880,7 +897,7 @@ class VoicePipeline:
+                 if ref_text.strip():
+                     cmd.extend(["--ref_text", ref_text.strip()])
+                 self.log(f"🎙 OmniVoice {item['id']} ({i}/{len(synth_items)})")
+-                proc = subprocess.run(cmd, capture_output=True, text=True)
++                proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                 if proc.returncode != 0:
+                     detail = (proc.stderr or proc.stdout or "OmniVoice failed").strip()
+                     raise RuntimeError(f"OmniVoice failed on {item['id']}: {detail[-1600:]}")
+diff --git a/hybrid_bridge.py b/hybrid_bridge.py
+index 7368d4c..36ea8e9 100644
+--- a/hybrid_bridge.py
++++ b/hybrid_bridge.py
+@@ -219,6 +219,13 @@ def compose(scenes, clips, manifest, manifest_dir, output_dir, ffmpeg, ffprobe,
+ 
+ 
+ def main():
++    # The app reads this process's output as UTF-8; Thai project paths must not
++    # depend on the Windows code page (cp1252 cannot encode them at all).
++    for stream in (sys.stdout, sys.stderr):
++        try:
++            stream.reconfigure(encoding="utf-8", errors="replace")
++        except (AttributeError, ValueError):
++            pass
+     parser = argparse.ArgumentParser(description='No-credit hybrid MP4 bridge for AutoCinematic + ClaudeAnimationBase')
+     parser.add_argument('--config', default=str(HERE / 'config.example.json'))
+     parser.add_argument('--manifest', default=str(HERE / 'smoke_12s.json'))
+diff --git a/remotion/src/index.jsx b/remotion/src/index.jsx
+new file mode 100644
+index 0000000..4204283
+--- /dev/null
++++ b/remotion/src/index.jsx
+@@ -0,0 +1,106 @@
++// AutoCinematic Remotion compositions. remotion_pipeline.py writes src/jobData.json
++// (shots with staged media under public/job/, captions, headlines, narration) and
++// renders three compositions from it:
++//   AutoCinematicClean      picture + narration
++//   AutoCinematicCaptioned  + timed captions
++//   AutoCinematicPreview    + captions + semantic headlines
++import React from 'react';
++import {
++  AbsoluteFill, Composition, Html5Audio, Img, OffthreadVideo, Sequence,
++  interpolate, registerRoot, staticFile, useCurrentFrame, useVideoConfig,
++} from 'remotion';
++import job from './jobData.json';
++
++const FONT = '"Leelawadee UI", "Noto Sans Thai", "Sarabun", Tahoma, sans-serif';
++const fps = Math.max(1, Math.round(job.fps || 30));
++const frames = (sec) => Math.max(1, Math.round((sec || 0) * fps));
++
++const Shot = ({ shot }) => {
++  const frame = useCurrentFrame();
++  const { durationInFrames } = useVideoConfig();
++  const fill = { width: '100%', height: '100%', objectFit: 'cover' };
++  if (!shot.media) return <AbsoluteFill style={{ backgroundColor: '#111' }} />;
++  if (shot.media_type === 'video') {
++    // Narration is the soundtrack; clip audio stays muted.
++    return <AbsoluteFill><OffthreadVideo src={staticFile(shot.media)} muted style={fill} /></AbsoluteFill>;
++  }
++  // A still gets a slow push-in so it is not frozen on screen.
++  const scale = interpolate(frame, [0, durationInFrames], [1, 1.06], { extrapolateRight: 'clamp' });
++  return (
++    <AbsoluteFill style={{ overflow: 'hidden' }}>
++      <Img src={staticFile(shot.media)} style={{ ...fill, transform: `scale(${scale})` }} />
++    </AbsoluteFill>
++  );
++};
++
++const activeAt = (items, t) => (items || []).find((c) => t >= c.start_sec && t < c.end_sec);
++
++const Captions = () => {
++  const frame = useCurrentFrame();
++  const { width } = useVideoConfig();
++  const cap = activeAt(job.captions, frame / fps);
++  if (!cap || !cap.text) return null;
++  return (
++    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: '13%' }}>
++      <div style={{
++        maxWidth: '84%', textAlign: 'center', fontFamily: FONT, fontWeight: 700,
++        fontSize: Math.round(width * 0.052), lineHeight: 1.35, color: '#FFFFFF',
++        padding: `${Math.round(width * 0.012)}px ${Math.round(width * 0.03)}px`,
++        backgroundColor: 'rgba(12,12,16,0.62)', borderRadius: Math.round(width * 0.02),
++        // Thai has few spaces: allow breaks anywhere rather than overflowing.
++        wordBreak: 'break-word', overflowWrap: 'anywhere',
++      }}>{cap.text}</div>
++    </AbsoluteFill>
++  );
++};
++
++const HEADLINE_TOP = { top: '9%', upper_mid: '22%', center: '42%' };
++
++const Headlines = () => {
++  const frame = useCurrentFrame();
++  const { width } = useVideoConfig();
++  const t = frame / fps;
++  const h = job.semantic_headlines === false ? null : activeAt(job.headlines, t);
++  if (!h || !h.text) return null;
++  const pop = interpolate(t - h.start_sec, [0, 0.18], [0.85, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
++  return (
++    <AbsoluteFill style={{ alignItems: 'center' }}>
++      <div style={{
++        position: 'absolute', top: HEADLINE_TOP[job.headline_position] || HEADLINE_TOP.upper_mid,
++        maxWidth: '86%', textAlign: 'center', fontFamily: FONT, fontWeight: 800,
++        fontSize: Math.round(width * 0.11), lineHeight: 1.1, color: '#FFE45C',
++        textShadow: '0 4px 18px rgba(0,0,0,0.65), 0 0 2px #000', transform: `scale(${pop})`,
++        overflowWrap: 'anywhere',
++      }}>{h.text}</div>
++    </AbsoluteFill>
++  );
++};
++
++const Film = ({ captions, headlines }) => (
++  <AbsoluteFill style={{ backgroundColor: '#000' }}>
++    {(job.shots || []).map((s) => (
++      <Sequence key={s.shot_id} from={Math.round((s.start_sec || 0) * fps)} durationInFrames={frames(s.duration_sec)}>
++        <Shot shot={s} />
++      </Sequence>
++    ))}
++    {job.narration ? <Html5Audio src={staticFile(job.narration)} /> : null}
++    {headlines ? <Headlines /> : null}
++    {captions ? <Captions /> : null}
++  </AbsoluteFill>
++);
++
++const Root = () => {
++  const common = {
++    durationInFrames: frames(job.duration_sec), fps,
++    width: job.width || 768, height: job.height || 1344,
++  };
++  return (
++    <>
++      <Composition id="AutoCinematicClean" component={Film} defaultProps={{ captions: false, headlines: false }} {...common} />
++      <Composition id="AutoCinematicCaptioned" component={Film} defaultProps={{ captions: true, headlines: false }} {...common} />
++      <Composition id="AutoCinematicPreview" component={Film} defaultProps={{ captions: true, headlines: true }} {...common} />
++    </>
++  );
++};
++
++registerRoot(Root);
+diff --git a/tests/test_conversational_storytelling_lock.py b/tests/test_conversational_storytelling_lock.py
+index 450f073..786e0bb 100644
+--- a/tests/test_conversational_storytelling_lock.py
++++ b/tests/test_conversational_storytelling_lock.py
+@@ -1,3 +1,4 @@
++import re
+ from pathlib import Path
+ import sys
+ 
+@@ -61,4 +62,5 @@ def test_version_labels_updated():
+     cfg = (ROOT / "config.json").read_text(encoding="utf-8")
+     app = (ROOT / "app.py").read_text(encoding="utf-8")
+     assert "V12.9.36.6" in cfg
+-    assert "V12.9.36.6" in app
++    # app.py moves ahead of config.json's release label (V12.9.36.7+).
++    assert re.search(r"V12\.9\.36\.([6-9]|1\d)", app)
+diff --git a/tests/test_v12936.py b/tests/test_v12936.py
+index e9e128c..840d83f 100644
+--- a/tests/test_v12936.py
++++ b/tests/test_v12936.py
+@@ -34,16 +34,22 @@ class MangaEditorialTests(unittest.TestCase):
+         transformed = apply_style_lock_to_story(self.original, "Manga Editorial Ink")
+         shot = transformed["shots"][0]
+         ch = transformed["character_generation_prompts"][0]
+-        self.assertIn("Visual treatment: Manga Editorial Ink", shot["image_prompt"])
+-        self.assertIn("Video treatment: Manga Editorial Ink", shot["video_prompt"])
+-        self.assertIn("Character rendering treatment: Manga Editorial Ink", ch["master_prompt"])
++        # V12.9.36.10+: the style NAME stays out of model prompts (it can be drawn as
++        # text); the treatment block carries the style description instead.
++        self.assertTrue(shot["image_prompt"].startswith("Visual treatment."))
++        self.assertTrue(shot["video_prompt"].startswith("Video treatment."))
++        self.assertTrue(ch["master_prompt"].startswith("Character rendering treatment."))
++        self.assertNotIn("Manga Editorial Ink", shot["image_prompt"])
+         self.assertIn("screentone", shot["image_prompt"])
+         self.assertIn("glossy anime", shot["negative_prompt"])
+         self.assertNotIn("gradients", [x.strip() for x in shot["negative_prompt"].split(",")])
+         self.assertIn("no violence", shot["negative_prompt"])
+         self.assertEqual(transformed, apply_style_lock_to_story(transformed, "Manga Editorial Ink"))
+         back = apply_style_lock_to_story(transformed, "Japanese Minimal Editorial")
+-        self.assertIn("Visual treatment: Japanese Minimal Editorial", back["shots"][0]["image_prompt"])
++        # Restyling replaces the treatment block (one block, new style, old one gone).
++        self.assertEqual(back["shots"][0]["image_prompt"].count("Visual treatment."), 1)
++        self.assertIn("Japanese-inspired minimalist", back["shots"][0]["image_prompt"])
++        self.assertNotIn("screentone", back["shots"][0]["image_prompt"])
+         self.assertNotIn("inconsistent line art", back["shots"][0]["negative_prompt"])
+         self.assertIn("no violence", back["shots"][0]["negative_prompt"])
+         self.assertNotIn("Manga Editorial Ink", back["shots"][0]["image_prompt"])

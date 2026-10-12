@@ -1,0 +1,1202 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "earth_to_ai",
+ "aspect": "9:16",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 42,
+ "tolerance_seconds": 2,
+ "strategy": {
+  "name": "deep time documentary",
+  "look": "documentary",
+  "background": "#05060A",
+  "map": {
+   "style": "physical",
+   "saturate": 1.08,
+   "brightness": 1.04
+  }
+ },
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Demo of the foundation kit: eraTicker, deepTimeline, mapBlast (+ light flash, camera shake), mapFlow, mapEmpire, mapDogfight, barRace; camera variety (globe approach, dutch tilt, push-ins, white-flash dip, slide and wipe cuts). Dates and routes are approximate and cited in data; the Mongol extent uses modern borders as an approximation. Aircraft are artwork (local ComfyUI; mock in the cloud). Timing provisional until voiced.",
+ "artwork": {
+  "assets": "assets/stories/earth_to_ai/",
+  "style": "clean flat vector illustration, crisp shapes, subtle cel shading, limited muted historical palette, editorial documentary infographic style",
+  "negative": "text, letters, numbers, logo, watermark, insignia, roundel, emblem, flag, swastika, nazi symbol, badge, cartoon, chibi, photo, 3d render",
+  "seed": 1940,
+  "items": {
+   "fighter_a": {
+    "prompt": "a single 1940 British single-engine propeller fighter plane in flight, exact side view facing right, plain unmarked olive-green and brown camouflage, no roundels, no letters",
+    "size": [
+     600,
+     null
+    ]
+   },
+   "fighter_b": {
+    "prompt": "a single 1940 German single-engine propeller fighter plane in flight, exact side view facing right, plain unmarked grey-green paint, no crosses, no insignia, no letters",
+    "size": [
+     600,
+     null
+    ]
+   }
+  }
+ },
+ "data": {
+  "chicxulub": {
+   "lonlat": [
+    -89.5,
+    21.4
+   ],
+   "date": "66 Ma",
+   "event": "Chicxulub impact, end of the non-avian dinosaurs",
+   "source": "Wikipedia, \"Chicxulub crater\"",
+   "confidence": "high"
+  },
+  "r_levant": {
+   "coords": [
+    [
+     38.5,
+     8.5
+    ],
+    [
+     43.2,
+     12.6
+    ],
+    [
+     45,
+     20
+    ],
+    [
+     44,
+     31
+    ]
+   ],
+   "date": "~60,000 years ago",
+   "event": "modern humans leave Africa (southern route)",
+   "source": "Wikipedia, \"Recent African origin of modern humans\" (approximate, simplified for illustration)",
+   "confidence": "approximate"
+  },
+  "r_asia": {
+   "coords": [
+    [
+     44,
+     31
+    ],
+    [
+     60,
+     26
+    ],
+    [
+     78,
+     20
+    ],
+    [
+     100,
+     15
+    ],
+    [
+     115,
+     0
+    ],
+    [
+     133,
+     -24
+    ]
+   ],
+   "date": "~50,000 years ago",
+   "event": "along South Asia to Sahul (Australia)",
+   "source": "Wikipedia, \"Early human migrations\" (approximate, simplified for illustration)",
+   "confidence": "approximate"
+  },
+  "r_europe": {
+   "coords": [
+    [
+     44,
+     31
+    ],
+    [
+     38,
+     40
+    ],
+    [
+     25,
+     45
+    ],
+    [
+     10,
+     48
+    ]
+   ],
+   "date": "~45,000 years ago",
+   "event": "into Europe",
+   "source": "Wikipedia, \"Early human migrations\" (approximate, simplified for illustration)",
+   "confidence": "approximate"
+  },
+  "dover": {
+   "lonlat": [
+    1.6,
+    51.0
+   ],
+   "date": "1940",
+   "event": "Battle of Britain over the English Channel",
+   "source": "Wikipedia, \"Battle of Britain\"",
+   "confidence": "high"
+  },
+  "mongol": {
+   "event": "Mongol Empire extent, approximated with modern countries",
+   "source": "Wikipedia, \"Mongol Empire\" (maps of 1206, 1227, 1279); modern borders only approximate the historical extent",
+   "confidence": "approximate"
+  },
+  "pop": {
+   "event": "population by country, millions",
+   "source": "UN World Population Prospects 2022, rounded to the nearest million",
+   "confidence": "high"
+  }
+ },
+ "shots": [
+  {
+   "id": "S1",
+   "start": 0,
+   "end": 6,
+   "narration": "4,600 ล้านปีก่อน โลกของเราถือกำเนิดขึ้น",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "birth of the Earth: approach the globe",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 6,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -40,
+         0
+        ],
+        "zoom": 0.3,
+        "rot": -12
+       }
+      ],
+      [
+       5,
+       {
+        "center": [
+         20,
+         5
+        ],
+        "zoom": 0.95,
+        "rot": 0
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         26,
+         5
+        ],
+        "zoom": 1.0
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        4600000000.0
+       ]
+      ],
+      "names": [
+       [
+        0,
+        "โลกกำเนิด"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "tl",
+     "cap": "deepTimeline",
+     "params": {
+      "at": 1.2,
+      "eras": [
+       {
+        "name": "ฮาเดียน",
+        "from": 4600000000.0,
+        "to": 4000000000.0,
+        "color": "#9A3B2E"
+       },
+       {
+        "name": "อาร์เคียน",
+        "from": 4000000000.0,
+        "to": 2500000000.0,
+        "color": "#B5653A"
+       },
+       {
+        "name": "โพรเทอโรโซอิก",
+        "from": 2500000000.0,
+        "to": 539000000.0,
+        "color": "#C7923E"
+       },
+       {
+        "name": "พาลีโอโซอิก",
+        "from": 539000000.0,
+        "to": 252000000.0,
+        "color": "#4E8F6A"
+       },
+       {
+        "name": "มีโซโซอิก",
+        "from": 252000000.0,
+        "to": 66000000.0,
+        "color": "#3E7CA8"
+       },
+       {
+        "name": "ซีโนโซอิก",
+        "from": 66000000.0,
+        "to": 1,
+        "color": "#7A5BB5"
+       }
+      ],
+      "window": [
+       [
+        0,
+        4600000000.0,
+        1000000.0
+       ],
+       [
+        6,
+        4600000000.0,
+        1000000.0
+       ]
+      ],
+      "marker": [
+       [
+        0,
+        4600000000.0
+       ]
+      ],
+      "y": 0.7,
+      "height": 70,
+      "size": 28
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.impact",
+     "params": {
+      "text": "จากโลกกำเนิด\nถึงยุค [AI]",
+      "at": 2.0,
+      "end": 5.8,
+      "y": 0.25,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B"
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 5.9,
+      "text": "4,600 ล้านปีก่อน\nโลกของเราถือกำเนิดขึ้น",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S2",
+   "start": 6,
+   "end": 11.5,
+   "narration": "66 ล้านปีก่อน อุกกาบาตพุ่งชนคาบสมุทรยูคาทาน ยุคไดโนเสาร์สิ้นสุดลง",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "extinction impact",
+   "transition_in": "dip",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 5.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         -70,
+         15
+        ],
+        "zoom": 1.2,
+        "rot": 6
+       }
+      ],
+      [
+       2.2,
+       {
+        "center": [
+         -89.5,
+         21.4
+        ],
+        "zoom": 4.5,
+        "rot": 0
+       }
+      ],
+      [
+       5.5,
+       {
+        "center": [
+         -89.5,
+         21.4
+        ],
+        "zoom": 5.2,
+        "rot": -4
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        4600000000.0
+       ],
+       [
+        0.3,
+        66000000.0
+       ]
+      ],
+      "names": [
+       [
+        0.3,
+        "ไดโนเสาร์สูญพันธุ์"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "boom",
+     "cap": "mapBlast",
+     "params": {
+      "at": 2.4,
+      "lonlat": {
+       "$data": "chicxulub",
+       "field": "lonlat"
+      },
+      "hits": [
+       0,
+       0.25,
+       0.5
+      ],
+      "radius": 150,
+      "spread": 70,
+      "shake": 22,
+      "flash": 0.3
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 5.4,
+      "text": "66 ล้านปีก่อน\nอุกกาบาตชน [ยูคาทาน]",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S3",
+   "start": 11.5,
+   "end": 18,
+   "narration": "มนุษย์สมัยใหม่เดินทางออกจากแอฟริกา แล้วกระจายไปทั่วโลก",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "out of Africa",
+   "transition_in": "slide",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 6.5,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 0.25,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         42,
+         15
+        ],
+        "zoom": 2.4,
+        "tilt": -4
+       }
+      ],
+      [
+       2.5,
+       {
+        "center": [
+         70,
+         24
+        ],
+        "zoom": 2.1,
+        "tilt": 0
+       }
+      ],
+      [
+       6.5,
+       {
+        "center": [
+         45,
+         32
+        ],
+        "zoom": 2.0,
+        "tilt": 3
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "physical",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        66000000.0
+       ],
+       [
+        0.3,
+        60000
+       ],
+       [
+        2.4,
+        45000
+       ]
+      ],
+      "names": [
+       [
+        0.3,
+        "ออกจากแอฟริกา"
+       ],
+       [
+        2.4,
+        "ถึงยุโรปและเอเชีย"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "f1",
+     "cap": "mapFlow",
+     "params": {
+      "at": 0.4,
+      "dur": 1.6,
+      "coords": {
+       "$data": "r_levant",
+       "field": "coords"
+      },
+      "text": "~60,000 ปีก่อน",
+      "width": 30
+     }
+    },
+    {
+     "id": "f2",
+     "cap": "mapFlow",
+     "params": {
+      "at": 1.8,
+      "dur": 2.0,
+      "coords": {
+       "$data": "r_asia",
+       "field": "coords"
+      },
+      "text": "~50,000",
+      "width": 26,
+      "color": "#FFB13D"
+     }
+    },
+    {
+     "id": "f3",
+     "cap": "mapFlow",
+     "params": {
+      "at": 2.2,
+      "dur": 1.6,
+      "coords": {
+       "$data": "r_europe",
+       "field": "coords"
+      },
+      "text": "~45,000",
+      "width": 24,
+      "color": "#FFC85A"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 6.4,
+      "text": "มนุษย์เดินทาง\nออกจาก[แอฟริกา]",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S4",
+   "start": 18,
+   "end": 24,
+   "narration": "ศตวรรษที่ 13 จักรวรรดิมองโกลขยายตัวจนเป็นจักรวรรดิทางบกที่ต่อเนื่องใหญ่ที่สุดในประวัติศาสตร์",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "empire grows",
+   "transition_in": "wipe",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 6,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         95,
+         45
+        ],
+        "zoom": 3.6,
+        "tilt": 3
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         75,
+         42
+        ],
+        "zoom": 2.9,
+        "tilt": -3
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "physical",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        15000
+       ],
+       [
+        0.3,
+        {
+         "year": 1206
+        }
+       ],
+       [
+        2.2,
+        {
+         "year": 1227
+        }
+       ],
+       [
+        4.0,
+        {
+         "year": 1279
+        }
+       ]
+      ],
+      "names": [
+       [
+        0.3,
+        "จักรวรรดิมองโกล"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "emp",
+     "cap": "mapEmpire",
+     "params": {
+      "at": 0.3,
+      "color": "#E5484D",
+      "alpha": 0.5,
+      "x": 0.07,
+      "y": 0.2,
+      "steps": [
+       {
+        "at": 0,
+        "units": [
+         "Mongolia"
+        ],
+        "label": ""
+       },
+       {
+        "at": 1.9,
+        "units": [
+         "Mongolia",
+         "Kazakhstan",
+         "Uzbekistan",
+         "Turkmenistan",
+         "Kyrgyzstan",
+         "Tajikistan"
+        ],
+        "label": ""
+       },
+       {
+        "at": 3.7,
+        "units": [
+         "Mongolia",
+         "Kazakhstan",
+         "Uzbekistan",
+         "Turkmenistan",
+         "Kyrgyzstan",
+         "Tajikistan",
+         "China",
+         "Iran",
+         "Afghanistan",
+         "Iraq",
+         "Georgia",
+         "Armenia",
+         "Azerbaijan",
+         "Ukraine",
+         "North Korea",
+         "South Korea"
+        ],
+        "label": ""
+       }
+      ]
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 5.9,
+      "text": "จักรวรรดิ[มองโกล]\n(ขอบเขตโดยประมาณ)",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S5",
+   "start": 24,
+   "end": 31,
+   "narration": "ปี 1940 ฟ้าเหนือช่องแคบอังกฤษกลายเป็นสนามรบทางอากาศ",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "dogfight",
+   "transition_in": "cut",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 7,
+     "ease": "ease",
+     "projection": "mercator",
+     "blur": 0.2,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         1.4,
+         51.0
+        ],
+        "zoom": 14,
+        "tilt": 0
+       }
+      ],
+      [
+       3,
+       {
+        "center": [
+         1.5,
+         51.0
+        ],
+        "zoom": 17,
+        "tilt": 6
+       }
+      ],
+      [
+       7,
+       {
+        "center": [
+         1.6,
+         51.0
+        ],
+        "zoom": 19,
+        "tilt": -5
+       }
+      ]
+     ],
+     "shakes": [
+      [
+       0.3,
+       6,
+       0.4
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        {
+         "year": 1279
+        }
+       ],
+       [
+        0.3,
+        {
+         "year": 1940
+        }
+       ]
+      ],
+      "names": [
+       [
+        0.3,
+        "สงครามโลกครั้งที่ 2"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "fight",
+     "cap": "mapDogfight",
+     "params": {
+      "at": 0.3,
+      "dur": 6.4,
+      "lonlat": {
+       "$data": "dover",
+       "field": "lonlat"
+      },
+      "radius": 9,
+      "laps": 1.6,
+      "shape": "eight",
+      "width": 170,
+      "art": "fighter_a",
+      "artB": "fighter_b",
+      "bursts": [
+       [
+        1.0,
+        1.6
+       ],
+       [
+        2.6,
+        3.3
+       ],
+       [
+        3.8,
+        4.3
+       ]
+      ],
+      "down": {
+       "at": 4.3
+      },
+      "fall": 1.5,
+      "px": 250
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 6.9,
+      "text": "ปี 1940\nยุทธการ[แห่งบริเตน]",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S6",
+   "start": 31,
+   "end": 37.5,
+   "narration": "ศตวรรษที่ 20 ประชากรโลกเพิ่มขึ้นอย่างรวดเร็ว จีนและอินเดียทะยานขึ้นนำ",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "population race",
+   "transition_in": "fade",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 6.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         95,
+         25
+        ],
+        "zoom": 0.9,
+        "rot": 0
+       }
+      ],
+      [
+       6.5,
+       {
+        "center": [
+         70,
+         22
+        ],
+        "zoom": 0.95
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "race",
+     "cap": "barRace",
+     "params": {
+      "at": 0.4,
+      "dur": 5.6,
+      "years": [
+       1950,
+       1980,
+       2000,
+       2020
+      ],
+      "top": 6,
+      "unit": "",
+      "title": "ประชากร (ล้านคน)",
+      "source": "UN WPP 2022 (ปัดเศษ)",
+      "y0": 0.27,
+      "y1": 0.66,
+      "size": 36,
+      "series": [
+       {
+        "name": "จีน",
+        "values": [
+         544,
+         982,
+         1264,
+         1424
+        ]
+       },
+       {
+        "name": "อินเดีย",
+        "values": [
+         357,
+         697,
+         1057,
+         1396
+        ]
+       },
+       {
+        "name": "สหรัฐฯ",
+        "values": [
+         159,
+         229,
+         282,
+         335
+        ]
+       },
+       {
+        "name": "อินโดนีเซีย",
+        "values": [
+         69,
+         147,
+         214,
+         272
+        ]
+       },
+       {
+        "name": "บราซิล",
+        "values": [
+         54,
+         122,
+         175,
+         213
+        ]
+       },
+       {
+        "name": "ปากีสถาน",
+        "values": [
+         37,
+         80,
+         154,
+         227
+        ]
+       },
+       {
+        "name": "ไนจีเรีย",
+        "values": [
+         37,
+         73,
+         122,
+         208
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 6.4,
+      "text": "ประชากรโลก\n[พุ่งทะยาน]",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  },
+  {
+   "id": "S7",
+   "start": 37.5,
+   "end": 42,
+   "narration": "และวันนี้ เรากำลังเข้าสู่ยุคของปัญญาประดิษฐ์",
+   "treatment": "animated_map",
+   "backend": "javascript_motion",
+   "purpose": "age of AI",
+   "transition_in": "dip",
+   "camera": {
+    "cap": "mapView",
+    "params": {
+     "at": 0,
+     "dur": 4.5,
+     "ease": "ease",
+     "projection": "orthographic",
+     "blur": 1,
+     "keys": [
+      [
+       0,
+       {
+        "center": [
+         60,
+         20
+        ],
+        "zoom": 1.0,
+        "rot": 0
+       }
+      ],
+      [
+       4.5,
+       {
+        "center": [
+         110,
+         15
+        ],
+        "zoom": 1.35,
+        "rot": -6
+       }
+      ]
+     ]
+    }
+   },
+   "layers": [
+    {
+     "id": "base",
+     "cap": "mapBase",
+     "params": {
+      "style": "satellite",
+      "coastWidth": 0
+     }
+    },
+    {
+     "id": "era",
+     "cap": "eraTicker",
+     "params": {
+      "at": 0,
+      "keys": [
+       [
+        0,
+        {
+         "year": 2020
+        }
+       ],
+       [
+        0.3,
+        {
+         "year": 2026
+        }
+       ]
+      ],
+      "names": [
+       [
+        0.3,
+        "ยุค AI"
+       ]
+      ],
+      "y": 0.07,
+      "size": 64
+     }
+    },
+    {
+     "id": "t2",
+     "cap": "type.impact",
+     "params": {
+      "text": "ยุค [AI]",
+      "at": 0.8,
+      "end": 4.4,
+      "y": 0.22,
+      "style": {
+       "color": "#FFFFFF",
+       "highlight": "#FFD43B"
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.2,
+      "end": 4.4,
+      "text": "และวันนี้\nเรากำลังเข้าสู่[ยุค AI]",
+      "y": 0.88,
+      "size": 54,
+      "maxWidth": 0.86,
+      "accent": "#FFD43B",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ]
+  }
+ ]
+}

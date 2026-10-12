@@ -108,6 +108,27 @@ def typekey(rnd):
     return [v * math.exp(-i / SR * 120) + .4 * math.sin(2 * math.pi * 1900 * i / SR) * math.exp(-i / SR * 260) for i, v in enumerate(hp)]
 
 
+def explosion(rnd, dur, f0):
+    # a deep thump plus a long, darkening roar of noise
+    n = int(SR * dur); x = noise(n, rnd); lo = lowpass(lowpass(x, 900), 500)
+    return [.9 * v * math.exp(-i / SR * 2.2) * min(1, i / (SR * .004)) + .8 * math.sin(2 * math.pi * f0 * i / SR * (1 - .4 * i / n)) * math.exp(-i / SR * 6) for i, v in enumerate(lo)]
+
+
+def gunfire(rnd, shots, gap):
+    # a burst: short cracks with a little body, evenly spaced
+    n = int(SR * (shots * gap + .25)); out = [0.0] * n
+    for s in range(shots):
+        st = int(SR * s * gap * (1 + (rnd.random() - .5) * .15)); m = int(SR * .09); x = noise(m, rnd); body = lowpass(x, 1800)
+        for i in range(m):
+            if st + i < n: out[st + i] += (.7 * x[i] * math.exp(-i / SR * 90) + .6 * body[i] * math.exp(-i / SR * 35))
+    return out
+
+
+def rumble(rnd, dur):
+    n = int(SR * dur); x = lowpass(lowpass(noise(n, rnd), 160), 120)
+    return [3.2 * v * math.sin(math.pi * i / n) for i, v in enumerate(x)]
+
+
 PACK = {
     'whoosh': [lambda r: whoosh(r, .45, 300, 4200), lambda r: whoosh(r, .6, 5000, 400), lambda r: whoosh(r, .3, 700, 6000)],
     'pop': [lambda r: pop(r, 520), lambda r: pop(r, 760), lambda r: pop(r, 380)],
@@ -117,6 +138,9 @@ PACK = {
     'riser': [lambda r: riser(r, 1.4)],
     'ding': [lambda r: ding(r, 880), lambda r: ding(r, 1320)],
     'type': [lambda r: typekey(r), lambda r: typekey(r), lambda r: typekey(r)],
+    'explosion': [lambda r: explosion(r, 2.2, 48), lambda r: explosion(r, 1.6, 62)],
+    'gunfire': [lambda r: gunfire(r, 9, .075), lambda r: gunfire(r, 6, .09)],
+    'rumble': [lambda r: rumble(r, 2.5)],
 }
 
 

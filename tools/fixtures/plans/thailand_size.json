@@ -4,7 +4,7 @@
  "aspect": "9:16",
  "fps": 24,
  "mode": "motion_only",
- "target_seconds": 31,
+ "target_seconds": 28,
  "tolerance_seconds": 2,
  "strategy": {
   "name": "bright explainer map",
@@ -14,193 +14,138 @@
  "audio": {},
  "subtitles": true,
  "polish": true,
- "_comment": "Demo of explainer kit 2 (flag fill, measure, inset, true-size compare, river glow, zones, line with label along it, spread, clouds). Facts: Thailand ~513,000 km2 (France metropolitan ~551,000 km2); Mae Sai to Betong ~1,640 km in a straight line (computed from the coordinates); latitude about 5.6-20.5 N.",
+ "_comment": "How big is Thailand? Distances and areas on screen are computed by mapMeasure / mapTrueSize from the coordinates and the Natural Earth borders (not typed in). Narration states rounded values of the same measurements. Timing provisional until voiced.",
  "data": {
-  "thailand": {
-   "units": [
-    "Thailand"
-   ],
-   "source": "story: ประเทศไทย",
-   "confidence": "high"
-  },
-  "maesai": {
+  "mae_sai": {
    "lonlat": [
-    99.876,
+    99.88,
     20.43
    ],
-   "source": "story: แม่สาย เหนือสุดของไทย",
+   "event": "Mae Sai, Chiang Rai: the northernmost town",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
    "confidence": "high"
   },
   "betong": {
    "lonlat": [
-    101.16,
+    101.07,
     5.77
    ],
-   "source": "story: เบตง ใต้สุดของไทย",
+   "event": "Betong, Yala: the southernmost town",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
    "confidence": "high"
   },
-  "france_c": {
+  "mae_sariang": {
    "lonlat": [
-    2.5,
-    46.6
+    97.93,
+    18.16
    ],
-   "source": "story: ฝรั่งเศส (ตำแหน่งกลางประเทศ)",
-   "confidence": "medium",
-   "note": "centre of metropolitan France"
+   "event": "Mae Sariang, Mae Hong Son: a western border town",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
+   "confidence": "high"
   },
-  "france": {
-   "units": [
-    "France"
+  "khong_chiam": {
+   "lonlat": [
+    105.5,
+    15.32
    ],
-   "source": "story: ฝรั่งเศส",
-   "confidence": "high",
-   "note": "the 1:10m outline includes overseas territories, only the European part is in view"
+   "event": "Khong Chiam, Ubon Ratchathani: an eastern border town",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
+   "confidence": "high"
   },
   "bangkok": {
    "lonlat": [
     100.5,
     13.75
    ],
-   "source": "story: กรุงเทพฯ",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
    "confidence": "high"
   },
-  "north_zone": {
+  "ns": {
    "coords": [
     [
-     97.6,
-     20.2
+     99.88,
+     20.43
     ],
     [
-     100.2,
-     20.6
-    ],
-    [
-     101.4,
-     18.6
-    ],
-    [
-     100.9,
-     17.2
-    ],
-    [
-     98.6,
-     16.4
-    ],
-    [
-     97.6,
-     18
+     101.07,
+     5.77
     ]
    ],
-   "source": "story: ภาคเหนือเป็นเขตภูเขาสูง",
-   "confidence": "schematic",
-   "note": "a soft outline of the northern highlands"
-  },
-  "south_zone": {
-   "coords": [
-    [
-     98.4,
-     10.6
-    ],
-    [
-     99.9,
-     10.4
-    ],
-    [
-     101.2,
-     7.2
-    ],
-    [
-     101.9,
-     6.1
-    ],
-    [
-     100.6,
-     5.7
-    ],
-    [
-     98.9,
-     7.7
-    ]
-   ],
-   "source": "story: ภาคใต้เป็นคาบสมุทรแคบยาว",
-   "confidence": "schematic",
-   "note": "a soft outline of the peninsula"
-  },
-  "equator": {
-   "coords": [
-    [
-     88,
-     0
-    ],
-    [
-     128,
-     0
-    ]
-   ],
-   "source": "story: เส้นศูนย์สูตร (ละติจูด 0 องศา)",
+   "event": "Mae Sai → Betong, great-circle distance computed by the engine",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
    "confidence": "high"
-  }
- },
- "artwork": {
-  "assets": "assets/stories/thailand_size/",
-  "style": "clean flat vector illustration, crisp shapes, subtle cel shading, warm limited palette, editorial explainer style",
-  "negative": "cartoon, chibi, watercolor, photo, photorealistic, 3d render, flag, emblem, logo",
-  "items": {
-   "maesai_view": {
-    "prompt": "misty green mountains and a river at the northern border town, morning light, wide landscape scene",
-    "size": [
-     800
+  },
+  "we": {
+   "coords": [
+    [
+     97.93,
+     18.16
     ],
-    "opaque": true
-   }
+    [
+     105.5,
+     15.32
+    ]
+   ],
+   "event": "Mae Sariang → Khong Chiam, great-circle distance computed by the engine",
+   "source": "town centre coordinates (GeoNames / Wikipedia infobox), rounded to 0.01°",
+   "confidence": "high"
+  },
+  "france_c": {
+   "lonlat": [
+    2.6,
+    46.6
+   ],
+   "event": "centre of metropolitan France (approximate)",
+   "source": "geographic centre of France, Wikipedia \"Centre of France\"",
+   "confidence": "medium"
+  },
+  "japan_c": {
+   "lonlat": [
+    137.9,
+    36.4
+   ],
+   "event": "centre of Honshu (approximate placement point)",
+   "source": "placement point only (the outline keeps its true area wherever it is put)",
+   "confidence": "medium"
   }
  },
  "shots": [
   {
    "id": "S01",
    "start": 0,
-   "end": 4.4,
-   "narration": "ประเทศไทย ใหญ่แค่ไหนกันแน่",
+   "end": 4.5,
+   "narration": "ประเทศไทยของเรา จริงๆ แล้วใหญ่แค่ไหน?",
    "treatment": "animated_map",
    "backend": "javascript_motion",
-   "purpose": "hook",
+   "purpose": "hook: Thailand glows",
+   "transition_in": "cut",
    "camera": {
     "cap": "mapView",
     "params": {
      "at": 0,
-     "dur": 4.4,
+     "dur": 4.5,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "mercator",
      "blur": 1,
      "keys": [
       [
        0,
        {
         "center": [
-         100,
-         10
+         101,
+         13.2
         ],
-        "zoom": 1.4
+        "zoom": 10.8
        }
       ],
       [
-       1.8,
+       4.5,
        {
         "center": [
-         100.6,
-         13.2
+         101,
+         13.0
         ],
-        "zoom": 4.6
-       }
-      ],
-      [
-       4.4,
-       {
-        "center": [
-         100.6,
-         13.2
-        ],
-        "zoom": 4.9
+        "zoom": 12
        }
       ]
      ]
@@ -211,63 +156,28 @@
      "id": "base",
      "cap": "mapBase",
      "params": {
-      "dataset": "land50",
       "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
+      "coastWidth": 0
      }
     },
     {
-     "id": "flag",
-     "cap": "mapFlagFill",
+     "id": "glow",
+     "cap": "mapGlow",
      "params": {
-      "at": 1.3,
-      "units": {
-       "$data": "thailand",
-       "field": "units"
-      },
-      "flag": "th",
-      "alpha": 0.9
-     }
-    },
-    {
-     "id": "clouds",
-     "cap": "weather",
-     "params": {
-      "at": 0,
-      "kind": "clouds",
-      "density": 1,
-      "wind": 0.6,
-      "out": 1.6
+      "at": 0.4,
+      "name": "Thailand",
+      "color": "#FFD43B",
+      "alpha": 0.3
      }
     },
     {
      "id": "title",
-     "cap": "type.slide",
+     "cap": "type.cutout",
      "params": {
-      "text": "ไทย[ใหญ่]แค่ไหน?",
+      "text": "ไทยใหญ่แค่ไหน?",
       "at": 0.8,
-      "x": 0.5,
-      "y": 0.25,
-      "maxWidth": 0.84,
-      "maxLines": 2,
-      "prefer": "up",
-      "style": {
-       "font": "headline",
-       "weight": 800,
-       "size": 96,
-       "color": "#FFFFFF",
-       "stroke": {
-        "width": 8,
-        "color": "#121218"
-       },
-       "shadow": {
-        "color": "rgba(0,0,0,.4)",
-        "blur": 8,
-        "dy": 3
-       }
-      }
+      "end": 4.4,
+      "y": 0.16
      }
     },
     {
@@ -275,12 +185,12 @@
      "cap": "captionBar",
      "params": {
       "at": 0.1,
-      "end": 4.3,
-      "text": "ประเทศไทย\nใหญ่แค่ไหนกันแน่?",
+      "end": 4.4,
+      "text": "ประเทศไทยของเรา\nจริงๆ แล้วใหญ่แค่ไหน?",
       "y": 0.86,
-      "size": 60,
+      "size": 58,
       "maxWidth": 0.86,
-      "accent": "#F2C14E",
+      "accent": "#FFD43B",
       "font": "display",
       "weight": 700
      }
@@ -289,49 +199,40 @@
   },
   {
    "id": "S02",
-   "start": 4.4,
-   "end": 9.6,
-   "narration": "จากเหนือสุดแม่สาย ถึงใต้สุดเบตง ยาวราว 1,640 กิโลเมตร",
+   "start": 4.5,
+   "end": 10.5,
+   "narration": "จากแม่สายเหนือสุด ลงไปถึงเบตงใต้สุด ยาวกว่า 1,600 กิโลเมตร",
    "treatment": "animated_map",
    "backend": "javascript_motion",
-   "purpose": "length",
+   "purpose": "north-south length, measured",
+   "transition_in": "fade",
    "camera": {
     "cap": "mapView",
     "params": {
      "at": 0,
-     "dur": 5.2,
+     "dur": 6.0,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "mercator",
      "blur": 1,
      "keys": [
       [
        0,
        {
         "center": [
-         100.6,
-         13.2
+         100.7,
+         13.1
         ],
-        "zoom": 4.9
+        "zoom": 12.2
        }
       ],
       [
-       1.0,
+       6,
        {
         "center": [
-         100.6,
+         100.7,
          13.1
         ],
-        "zoom": 4.4
-       }
-      ],
-      [
-       5.2,
-       {
-        "center": [
-         100.6,
-         13.1
-        ],
-        "zoom": 4.6
+        "zoom": 12.4
        }
       ]
      ]
@@ -342,111 +243,101 @@
      "id": "base",
      "cap": "mapBase",
      "params": {
-      "dataset": "land50",
       "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
+      "coastWidth": 0
      }
     },
     {
-     "id": "measure",
-     "cap": "mapMeasure",
+     "id": "m1",
+     "cap": "mapMarker",
      "params": {
-      "at": 0.8,
-      "from": {
-       "$data": "maesai",
+      "at": 0.3,
+      "lonlat": {
+       "$data": "mae_sai",
        "field": "lonlat"
       },
-      "to": {
+      "color": "#FFD43B",
+      "ring": "#FFD43B"
+     }
+    },
+    {
+     "id": "l1",
+     "cap": "mapLabel",
+     "params": {
+      "at": 0.4,
+      "text": "แม่สาย",
+      "lonlat": {
+       "$data": "mae_sai",
+       "field": "lonlat"
+      },
+      "dx": 18,
+      "dy": -16,
+      "size": 44,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "left"
+     }
+    },
+    {
+     "id": "m2",
+     "cap": "mapMarker",
+     "params": {
+      "at": 2.6,
+      "lonlat": {
        "$data": "betong",
        "field": "lonlat"
       },
-      "text": "≈ 1,640 กม.",
-      "size": 44,
-      "dur": 1.2
+      "color": "#FFD43B",
+      "ring": "#FFD43B"
      }
     },
     {
-     "id": "n",
+     "id": "l2",
      "cap": "mapLabel",
      "params": {
-      "at": 0.5,
-      "text": "แม่สาย",
-      "lonlat": {
-       "$data": "maesai",
-       "field": "lonlat"
-      },
-      "dx": -30,
-      "dy": -40,
-      "size": 40,
-      "weight": 800,
-      "font": "display",
-      "style": "marker",
-      "angle": -4,
-      "align": "center"
-     }
-    },
-    {
-     "id": "s",
-     "cap": "mapLabel",
-     "params": {
-      "at": 1.6,
+      "at": 2.7,
       "text": "เบตง",
       "lonlat": {
        "$data": "betong",
        "field": "lonlat"
       },
-      "dx": 30,
-      "dy": 70,
-      "size": 40,
-      "weight": 800,
+      "dx": 18,
+      "dy": -16,
+      "size": 44,
+      "weight": 700,
       "font": "display",
-      "style": "marker",
-      "angle": 4,
-      "align": "center"
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "left"
      }
     },
     {
-     "id": "inset",
-     "cap": "mapInset",
+     "id": "ruler",
+     "cap": "mapMeasure",
      "params": {
-      "at": 2.4,
-      "lonlat": {
-       "$data": "maesai",
-       "field": "lonlat"
+      "at": 0.6,
+      "dur": 2.4,
+      "coords": {
+       "$data": "ns",
+       "field": "coords"
       },
-      "art": "maesai_view",
-      "dx": 230,
-      "dy": -60,
-      "radius": 110
-     }
-    },
-    {
-     "id": "badge",
-     "cap": "chapterBadge",
-     "params": {
-      "at": 0.2,
-      "x": 0.06,
-      "y": 0.075,
-      "number": null,
-      "text": "[ความยาว]",
-      "size": 62,
-      "color": "#2F67B1",
-      "textColor": "#F7F3EA"
+      "tick": 100,
+      "dx": 150
      }
     },
     {
      "id": "caption",
      "cap": "captionBar",
      "params": {
-      "at": 0.1,
-      "end": 5.1,
-      "text": "จากเหนือสุด แม่สาย\nถึงใต้สุด เบตง\nยาวราว 1,640 กิโลเมตร",
+      "at": 0.2,
+      "end": 5.9,
+      "text": "แม่สาย → เบตง\nยาวกว่า [1,600 กม.]",
       "y": 0.86,
-      "size": 60,
+      "size": 58,
       "maxWidth": 0.86,
-      "accent": "#F2C14E",
+      "accent": "#FFD43B",
       "font": "display",
       "weight": 700
      }
@@ -455,49 +346,40 @@
   },
   {
    "id": "S03",
-   "start": 9.6,
-   "end": 15.6,
-   "narration": "พื้นที่ราว 513,000 ตารางกิโลเมตร เกือบเท่าฝรั่งเศส",
+   "start": 10.5,
+   "end": 15.5,
+   "narration": "ส่วนความกว้าง จากแม่สะเรียงถึงโขงเจียม ราว 870 กิโลเมตร",
    "treatment": "animated_map",
    "backend": "javascript_motion",
-   "purpose": "true size",
+   "purpose": "west-east width, measured",
+   "transition_in": "fade",
    "camera": {
     "cap": "mapView",
     "params": {
      "at": 0,
-     "dur": 6,
+     "dur": 5.0,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "mercator",
      "blur": 1,
      "keys": [
       [
        0,
        {
         "center": [
-         100.6,
-         13.1
+         101.7,
+         16.7
         ],
-        "zoom": 4.6
+        "zoom": 12.6
        }
       ],
       [
-       1.3,
+       5,
        {
         "center": [
-         36,
-         40
+         101.7,
+         16.7
         ],
-        "zoom": 1.4
-       }
-      ],
-      [
-       6,
-       {
-        "center": [
-         36,
-         40
-        ],
-        "zoom": 1.45
+        "zoom": 12.9
        }
       ]
      ]
@@ -508,72 +390,102 @@
      "id": "base",
      "cap": "mapBase",
      "params": {
-      "dataset": "land50",
       "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
+      "coastWidth": 0
      }
     },
     {
-     "id": "fr",
-     "cap": "mapHighlight",
+     "id": "m3",
+     "cap": "mapMarker",
      "params": {
-      "at": 1.0,
-      "units": {
-       "$data": "france",
-       "field": "units"
-      },
-      "color": "#FFFFFF",
-      "width": 3,
-      "wash": 0.15,
-      "pulse": 0.6
-     }
-    },
-    {
-     "id": "cmp",
-     "cap": "mapCompare",
-     "params": {
-      "at": 1.6,
-      "units": {
-       "$data": "thailand",
-       "field": "units"
-      },
-      "to": {
-       "$data": "france_c",
+      "at": 0.3,
+      "lonlat": {
+       "$data": "mae_sariang",
        "field": "lonlat"
       },
-      "color": "#FFD84D",
-      "text": "≈ ฝรั่งเศส",
-      "size": 44,
-      "dur": 2.0
+      "color": "#4FD1FF",
+      "ring": "#4FD1FF"
      }
     },
     {
-     "id": "badge",
-     "cap": "chapterBadge",
+     "id": "l3",
+     "cap": "mapLabel",
      "params": {
-      "at": 0.2,
-      "x": 0.06,
-      "y": 0.075,
-      "number": null,
-      "text": "[พื้นที่]",
-      "size": 62,
-      "color": "#2F67B1",
-      "textColor": "#F7F3EA"
+      "at": 0.4,
+      "text": "แม่สะเรียง",
+      "lonlat": {
+       "$data": "mae_sariang",
+       "field": "lonlat"
+      },
+      "dx": 18,
+      "dy": 40,
+      "size": 44,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "left"
+     }
+    },
+    {
+     "id": "m4",
+     "cap": "mapMarker",
+     "params": {
+      "at": 2.2,
+      "lonlat": {
+       "$data": "khong_chiam",
+       "field": "lonlat"
+      },
+      "color": "#4FD1FF",
+      "ring": "#4FD1FF"
+     }
+    },
+    {
+     "id": "l4",
+     "cap": "mapLabel",
+     "params": {
+      "at": 2.3,
+      "text": "โขงเจียม",
+      "lonlat": {
+       "$data": "khong_chiam",
+       "field": "lonlat"
+      },
+      "dx": -18,
+      "dy": 40,
+      "size": 44,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "right"
+     }
+    },
+    {
+     "id": "ruler2",
+     "cap": "mapMeasure",
+     "params": {
+      "at": 0.6,
+      "dur": 1.8,
+      "coords": {
+       "$data": "we",
+       "field": "coords"
+      },
+      "tick": 100,
+      "color": "#4FD1FF",
+      "dy": -60
      }
     },
     {
      "id": "caption",
      "cap": "captionBar",
      "params": {
-      "at": 0.1,
-      "end": 5.9,
-      "text": "พื้นที่ราว 513,000 ตร.กม.\nเกือบเท่าฝรั่งเศส",
+      "at": 0.2,
+      "end": 4.9,
+      "text": "แม่สะเรียง → โขงเจียม\nราว [870 กม.]",
       "y": 0.86,
-      "size": 60,
+      "size": 58,
       "maxWidth": 0.86,
-      "accent": "#F2C14E",
+      "accent": "#FFD43B",
       "font": "display",
       "weight": 700
      }
@@ -582,49 +494,60 @@
   },
   {
    "id": "S04",
-   "start": 15.6,
-   "end": 20.6,
-   "narration": "มีแม่น้ำสายหลัก คือเจ้าพระยา และแม่น้ำโขง",
+   "start": 15.5,
+   "end": 22,
+   "narration": "ถ้ายกประเทศไทยไปวางบนยุโรป ด้วยขนาดจริง จะใหญ่เกือบเท่าฝรั่งเศสทั้งประเทศ",
    "treatment": "animated_map",
    "backend": "javascript_motion",
-   "purpose": "rivers",
+   "purpose": "true size over France",
+   "transition_in": "cut",
    "camera": {
     "cap": "mapView",
     "params": {
      "at": 0,
-     "dur": 5,
+     "dur": 6.5,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "mercator",
      "blur": 1,
      "keys": [
       [
        0,
        {
         "center": [
-         36,
-         40
+         100.5,
+         14
         ],
-        "zoom": 1.45
+        "zoom": 10.5
        }
       ],
       [
-       1.4,
+       0.9,
        {
         "center": [
-         101.5,
-         15.5
+         100.5,
+         15
         ],
-        "zoom": 6
+        "zoom": 10
        }
       ],
       [
-       5,
+       3.8,
        {
         "center": [
-         101.5,
-         15.5
+         4,
+         45
         ],
-        "zoom": 6.3
+        "zoom": 9.6
+       }
+      ],
+      [
+       6.5,
+       {
+        "center": [
+         3.5,
+         45.5
+        ],
+        "zoom": 9.9
        }
       ]
      ]
@@ -635,61 +558,67 @@
      "id": "base",
      "cap": "mapBase",
      "params": {
-      "dataset": "land50",
       "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
+      "coastWidth": 0
      }
     },
     {
-     "id": "cp",
-     "cap": "mapRiver",
+     "id": "fr",
+     "cap": "mapRegion",
      "params": {
-      "at": 1.2,
-      "river": "Chao Phraya",
-      "text": "เจ้าพระยา",
-      "color": "#7FE3FF",
-      "size": 34
+      "name": "France",
+      "color": "#3D7DD8",
+      "alpha": 0.45,
+      "at": 2.6,
+      "dur": 0.6
      }
     },
     {
-     "id": "mk",
-     "cap": "mapRiver",
+     "id": "lfr",
+     "cap": "mapLabel",
      "params": {
-      "at": 1.8,
-      "river": "Mekong",
-      "text": "แม่น้ำโขง",
-      "color": "#7FE3FF",
-      "size": 36,
-      "labelAt": 0.45
+      "at": 3.0,
+      "text": "ฝรั่งเศส",
+      "lonlat": {
+       "$data": "france_c",
+       "field": "lonlat"
+      },
+      "dx": -30,
+      "dy": -300,
+      "size": 44,
+      "weight": 700,
+      "font": "display",
+      "color": "#FFFFFF",
+      "box": true,
+      "align": "left"
      }
     },
     {
-     "id": "badge",
-     "cap": "chapterBadge",
+     "id": "th",
+     "cap": "mapTrueSize",
      "params": {
-      "at": 0.2,
-      "x": 0.06,
-      "y": 0.075,
-      "number": null,
-      "text": "[แม่น้ำ]",
-      "size": 62,
-      "color": "#1E8FB0",
-      "textColor": "#F7F3EA"
+      "name": "Thailand",
+      "lonlat": {
+       "$data": "france_c",
+       "field": "lonlat"
+      },
+      "at": 0.4,
+      "dur": 3.6,
+      "hold": 0.15,
+      "text": "ไทย ≈ {km2} ตร.กม."
      }
     },
     {
      "id": "caption",
      "cap": "captionBar",
      "params": {
-      "at": 0.1,
-      "end": 4.9,
-      "text": "มีแม่น้ำสายหลัก\nเจ้าพระยา และแม่น้ำโขง",
+      "at": 0.2,
+      "end": 6.4,
+      "text": "ยกไทยไปวางบนยุโรป\nด้วย[ขนาดจริง]",
       "y": 0.86,
-      "size": 60,
+      "size": 58,
       "maxWidth": 0.86,
-      "accent": "#F2C14E",
+      "accent": "#FFD43B",
       "font": "display",
       "weight": 700
      }
@@ -698,49 +627,60 @@
   },
   {
    "id": "S05",
-   "start": 20.6,
-   "end": 25.8,
-   "narration": "ภาคเหนือเป็นภูเขาสูง ภาคใต้เป็นคาบสมุทรแคบยาว",
+   "start": 22,
+   "end": 28,
+   "narration": "และใหญ่กว่าประเทศญี่ปุ่นอีกด้วย",
    "treatment": "animated_map",
    "backend": "javascript_motion",
-   "purpose": "two landscapes",
+   "purpose": "true size over Japan",
+   "transition_in": "fade",
    "camera": {
     "cap": "mapView",
     "params": {
      "at": 0,
-     "dur": 5.2,
+     "dur": 6,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "mercator",
      "blur": 1,
      "keys": [
       [
        0,
        {
         "center": [
-         101.5,
-         15.5
+         101,
+         14.5
         ],
-        "zoom": 6.3
+        "zoom": 10.4
        }
       ],
       [
-       1.2,
+       0.9,
        {
         "center": [
-         100.2,
-         13.3
+         103,
+         16
         ],
-        "zoom": 4.7
+        "zoom": 10
        }
       ],
       [
-       5.2,
+       4,
        {
         "center": [
-         100.2,
-         13.3
+         136,
+         34
         ],
-        "zoom": 4.9
+        "zoom": 9.6
+       }
+      ],
+      [
+       6,
+       {
+        "center": [
+         136.5,
+         34.5
+        ],
+        "zoom": 9.8
        }
       ]
      ]
@@ -751,224 +691,47 @@
      "id": "base",
      "cap": "mapBase",
      "params": {
-      "dataset": "land50",
       "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
+      "coastWidth": 0
      }
     },
     {
-     "id": "nz",
-     "cap": "mapZone",
+     "id": "jp",
+     "cap": "mapRegion",
      "params": {
-      "at": 0.8,
-      "coords": {
-       "$data": "north_zone",
-       "field": "coords"
-      },
-      "color": "#3FD17A",
-      "alpha": 0.62,
-      "text": "ภูเขาสูง",
-      "size": 44,
-      "feather": 12
+      "name": "Japan",
+      "color": "#E5484D",
+      "alpha": 0.45,
+      "at": 3.0,
+      "dur": 0.6
      }
     },
     {
-     "id": "sz",
-     "cap": "mapZone",
+     "id": "th2",
+     "cap": "mapTrueSize",
      "params": {
-      "at": 2.0,
-      "coords": {
-       "$data": "south_zone",
-       "field": "coords"
-      },
-      "color": "#F2A13E",
-      "alpha": 0.62,
-      "text": "คาบสมุทร",
-      "size": 44,
-      "feather": 12
-     }
-    },
-    {
-     "id": "badge",
-     "cap": "chapterBadge",
-     "params": {
-      "at": 0.2,
-      "x": 0.06,
-      "y": 0.075,
-      "number": null,
-      "text": "[ภูมิประเทศ]",
-      "size": 62,
-      "color": "#2E8B57",
-      "textColor": "#F7F3EA"
-     }
-    },
-    {
-     "id": "caption",
-     "cap": "captionBar",
-     "params": {
-      "at": 0.1,
-      "end": 5.1,
-      "text": "ภาคเหนือเป็นภูเขาสูง\nภาคใต้เป็นคาบสมุทรแคบยาว",
-      "y": 0.86,
-      "size": 60,
-      "maxWidth": 0.86,
-      "accent": "#F2C14E",
-      "font": "display",
-      "weight": 700
-     }
-    }
-   ]
-  },
-  {
-   "id": "S06",
-   "start": 25.8,
-   "end": 31.2,
-   "narration": "และอยู่เหนือเส้นศูนย์สูตรราว 6 ถึง 20 องศา อากาศจึงร้อนชื้นทั้งปี",
-   "treatment": "animated_map",
-   "backend": "javascript_motion",
-   "purpose": "climate",
-   "camera": {
-    "cap": "mapView",
-    "params": {
-     "at": 0,
-     "dur": 5.4,
-     "ease": "ease",
-     "projection": "orthographic",
-     "blur": 1,
-     "keys": [
-      [
-       0,
-       {
-        "center": [
-         100.2,
-         13.3
-        ],
-        "zoom": 4.9
-       }
-      ],
-      [
-       1.3,
-       {
-        "center": [
-         103,
-         9
-        ],
-        "zoom": 3.2
-       }
-      ],
-      [
-       5.4,
-       {
-        "center": [
-         103,
-         9
-        ],
-        "zoom": 3.35
-       }
-      ]
-     ]
-    }
-   },
-   "layers": [
-    {
-     "id": "base",
-     "cap": "mapBase",
-     "params": {
-      "dataset": "land50",
-      "style": "physical",
-      "rivers": true,
-      "coastWidth": 1,
-      "space": "#0B0C10"
-     }
-    },
-    {
-     "id": "eq",
-     "cap": "mapLine",
-     "params": {
-      "at": 0.8,
-      "coords": {
-       "$data": "equator",
-       "field": "coords"
-      },
-      "color": "#FF5A8A",
-      "text": "เส้นศูนย์สูตร",
-      "size": 36,
-      "dur": 1.4
-     }
-    },
-    {
-     "id": "heat",
-     "cap": "mapSpread",
-     "params": {
-      "at": 2.2,
-      "units": {
-       "$data": "thailand",
-       "field": "units"
-      },
-      "from": {
-       "$data": "bangkok",
+      "name": "Thailand",
+      "lonlat": {
+       "$data": "japan_c",
        "field": "lonlat"
       },
-      "color": "#F25C3B",
-      "alpha": 0.55,
-      "dur": 1.6
-     }
-    },
-    {
-     "id": "badge",
-     "cap": "chapterBadge",
-     "params": {
-      "at": 0.2,
-      "x": 0.06,
-      "y": 0.075,
-      "number": null,
-      "text": "[ภูมิอากาศ]",
-      "size": 62,
-      "color": "#C2462E",
-      "textColor": "#F7F3EA"
-     }
-    },
-    {
-     "id": "title",
-     "cap": "type.stamp",
-     "params": {
-      "text": "[ร้อนชื้น]ทั้งปี",
-      "at": 2.6,
-      "x": 0.5,
-      "y": 0.24,
-      "maxWidth": 0.84,
-      "maxLines": 2,
-      "prefer": "up",
-      "style": {
-       "font": "headline",
-       "weight": 800,
-       "size": 96,
-       "color": "#FFFFFF",
-       "stroke": {
-        "width": 8,
-        "color": "#121218"
-       },
-       "shadow": {
-        "color": "rgba(0,0,0,.4)",
-        "blur": 8,
-        "dy": 3
-       }
-      }
+      "at": 0.3,
+      "dur": 3.4,
+      "hold": 0.15,
+      "text": "ไทย ≈ {km2} ตร.กม."
      }
     },
     {
      "id": "caption",
      "cap": "captionBar",
      "params": {
-      "at": 0.1,
-      "end": 5.3,
-      "text": "อยู่เหนือเส้นศูนย์สูตรราว 6–20 องศา\nอากาศจึงร้อนชื้นทั้งปี",
+      "at": 0.2,
+      "end": 5.9,
+      "text": "และใหญ่กว่า\n[ญี่ปุ่น]อีกด้วย",
       "y": 0.86,
-      "size": 60,
+      "size": 58,
       "maxWidth": 0.86,
-      "accent": "#F2C14E",
+      "accent": "#FFD43B",
       "font": "display",
       "weight": 700
      }

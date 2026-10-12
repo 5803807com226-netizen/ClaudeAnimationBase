@@ -71,10 +71,10 @@ function mapSatRaw(P, tilt) {
 }
 // zoom 1 = the whole world spans the frame's SHORT side, so a plan frames the same core in 9:16 and 16:9 (16:9 shows more
 // to the sides: re-framed, never cropped); orthographic: the globe fills the short side
-function mapProjection(kind, center, zoom, rot = 0, height = 1.6, tilt = 0) {
+function mapProjection(kind, center, zoom, rot = 0, height = 1.6, leanDeg = 0) {
   if (kind === 'satellite') {   // the camera hangs back behind the subject: leaning forward, the subject sits low (60%), the horizon ~20% from the top; straight down it is a globe like orthographic
-    const P = Math.max(1.05, height), w = clamp(tilt, 0, 75) * Math.PI / 180, raw = mapSatRaw(P, w), h = Math.acos(1 / P), yT = raw(0, h - 1e-4)[1];
-    const lean = clamp(tilt / 30), sc = lerp(Math.min(W, H) / Math.sqrt((P - 1) / (P + 1)), W, lean) / 2.1 * zoom, ys = H * (.5 + .1 * lean), want = yT - (ys - H * .2) / sc;   // the subject's raw height on screen so the horizon lands at 20%
+    const P = Math.max(1.05, height), w = clamp(leanDeg, 0, 75) * Math.PI / 180, raw = mapSatRaw(P, w), h = Math.acos(1 / P), yT = raw(0, h - 1e-4)[1];
+    const lean = clamp(leanDeg / 30), sc = lerp(Math.min(W, H) / Math.sqrt((P - 1) / (P + 1)), W, lean) / 2.1 * zoom, ys = H * (.5 + .1 * lean), want = yT - (ys - H * .2) / sc;   // the subject's raw height on screen so the horizon lands at 20%
     let lo = 0, hi = h - 1e-3; if (raw(0, 0)[1] >= want) hi = 0; else for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (raw(0, m)[1] < want) lo = m; else hi = m; }
     const back = hi, p = d3.geoProjection(raw).clipAngle(h * 180 / Math.PI - .2); p._kind = 'satellite'; p._height = P; p._tilt = w;
     return p.scale(sc).translate([W / 2, ys + raw(0, back)[1] * sc]).rotate([-center[0], -(center[1] - back * 180 / Math.PI), rot]);   // zoom is the lens: higher = a flatter horizon
@@ -100,20 +100,20 @@ mapProjection.fit = (p, center, lim) => {
 // arc > 0 pulls back mid-move (a "fly-over"), so long jumps don't smear across the map
 function mapLerpView(a, b, k, arc = 0) {
   const c = d3.geoInterpolate(a.center, b.center)(k), z = Math.exp(lerp(Math.log(a.zoom), Math.log(b.zoom), k)) * (1 - arc * Math.sin(Math.PI * k));
-  return { center: c, zoom: Math.max(.05, z), rot: lerp(a.rot || 0, b.rot || 0, k), height: lerp(a.height ?? 1.6, b.height ?? a.height ?? 1.6, k), tilt: lerp(a.tilt || 0, b.tilt ?? a.tilt ?? 0, k) };
+  return { center: c, zoom: Math.max(.05, z), rot: lerp(a.rot || 0, b.rot || 0, k), tilt: lerp(a.tilt || 0, b.tilt || 0, k), height: lerp(a.height ?? 1.6, b.height ?? a.height ?? 1.6, k), lean: lerp(a.lean || 0, b.lean ?? a.lean ?? 0, k) };
 }
 const MAP_IS_MERC = p => p?._kind === 'mercator';
 const mapPt = ll => { const p = MAP.proj(ll); return p && Number.isFinite(p[0]) ? p : null; };
 const mapVisible = ll => !MAP.proj.clipAngle || !MAP.proj.clipAngle() || d3.geoDistance(ll, [-MAP.proj.rotate()[0], -MAP.proj.rotate()[1]]) < MAP.proj.clipAngle() * Math.PI / 180 - .01;
 
 definePreset('mapView', {
-  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside. projection "satellite": the view from a spacecraft, keys may set height (Earth radii from the centre: 1.15 low, 3 high) and tilt (degrees, 0–60: the camera leans forward and the curved horizon, its glowing air and the stars show above the subject), the 3D look for a globe or ocean shot; punchAt (shot seconds): a quick zoom punch (punch ×, punchRoll degrees on a globe) that eases back over punchDur, for a "look at this" beat on any map; tilt / tiltTo lean the flat map image back like a sheet (its edges show: avoid)',
+  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside. projection "satellite": the view from a spacecraft, keys may set height (Earth radii from the centre: 1.2 low, 3 high) and lean (degrees, 0–60: the camera leans forward and the curved horizon, its glowing air and the stars show above the subject; zoom is the lens, 16–20 = a gentle curve), the 3D look for a globe or ocean shot; tilt in a key (degrees) is a dutch tilt of the whole picture; shakes [[at, amp, dur]] shake the camera; punchAt (shot seconds): a quick zoom punch (punch ×, punchRoll degrees on a globe) that eases back over punchDur, for a "look at this" beat on any map',
   meta: { version: '1.0.0', category: 'camera', tags: ['map', 'camera', 'geography', 'travel', 'zoom', 'pan', 'globe', 'documentary'],
-    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 }, tilt: { min: -70, max: 70 }, spin: { min: -45, max: 45 }, tiltScale: { min: .5, max: 3 }, punch: { min: 1, max: 1.6 }, punchRoll: { min: -10, max: 10 }, punchDur: { min: .3, max: 3 } }, camera: 'camera', layers: ['camera'] },
-  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, tilt: 0, tiltTo: null, spin: 0, spinTo: null, tiltScale: 1.25, tiltBg: '#2340C8', punchAt: null, punch: 1.18, punchRoll: 3, punchDur: 1.2, dur: 4 },
+    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 }, punch: { min: 1, max: 1.6 }, punchRoll: { min: -10, max: 10 }, punchDur: { min: .3, max: 3 } }, camera: 'camera', layers: ['camera'] },
+  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, shakes: [], punchAt: null, punch: 1.18, punchRoll: 3, punchDur: 1.2, dur: 4 },
   run(t, o, inner) {
     const viewAt = tt => {
-      if (o.keys) {   // [[t, {center, zoom, rot?}], ...] in shot time, each segment eased
+      if (o.keys) {   // [[t, {center, zoom, rot?, tilt?}], ...] in shot time, each segment eased (tilt: a dutch angle in degrees)
         const K = o.keys; let i = 0; while (i + 2 < K.length && tt >= K[i + 1][0]) i++;
         const [ta, va] = K[i], [tb, vb] = K[Math.min(i + 1, K.length - 1)];
         return mapLerpView(va, vb, easeBy(o.ease)(tb > ta ? clamp((tt - ta) / (tb - ta)) : 1), o.arc);
@@ -123,17 +123,19 @@ definePreset('mapView', {
     const v = viewAt(t);
     const pk = o.punchAt == null ? 0 : (tp => tp < 0 ? 0 : tp < .22 ? easeOut(tp / .22) : 1 - ease((tp - .22) / o.punchDur))(t - o.punchAt);
     if (pk) { v.zoom *= 1 + (o.punch - 1) * pk; if (o.projection === 'orthographic' || o.projection === 'satellite') v.rot += o.punchRoll * pk; }   // the zoom punch
-    MAP.proj = mapProjection(o.projection, v.center, v.zoom, v.rot, v.height, v.tilt); MAP.view = v;
+    MAP.proj = mapProjection(o.projection, v.center, v.zoom, v.rot, v.height, v.lean); MAP.view = v;
     // motion blur: how far the frame's content travels in one frame (pan in px + zoom change at the frame edge)
     let blurPx = 0;
     if (o.blur > 0) {
-      const p0 = mapProjection(o.projection, ...(w => [w.center, w.zoom, w.rot, w.height, w.tilt])(viewAt(t - 1 / 24)));
+      const p0 = mapProjection(o.projection, ...(w => [w.center, w.zoom, v.rot, w.height, w.lean])(viewAt(t - 1 / 24)));
+      // travel = where the view's centre was one frame ago vs where it is now (not vs the frame centre: near a pole the
+      // projection slides to keep the map in frame, and a satellite view sits low, which is not motion)
       const a = p0(v.center), b = MAP.proj(v.center) || [W / 2, H / 2], zr = Math.abs(Math.log(MAP.proj.scale() / p0.scale()));
       blurPx = clamp((Math.hypot(a[0] - b[0], a[1] - b[1]) + zr * Math.hypot(W, H) / 2 - 8) * .22 * o.blur, 0, 16);
     }
     if (!MAP.g) { MAP.g = createGraphics(W, H); MAP.g.pixelDensity(1); MAP.ctx = MAP.g.drawingContext; }
     MAP.ctx.setTransform(1, 0, 0, 1, 0, 0); MAP.ctx.clearRect(0, 0, W, H); MAP.ctx.globalAlpha = 1;
-    MAP.obst = []; MAP.labels = [];
+    MAP.obst = []; MAP.labels = []; MAP.shake = 0;
     if (inner) inner();
     mapPlaceLabels();
     MAP.ctx.getImageData(0, 0, 1, 1);   // settle the layer's pending draws before it is composited (first frame of a shot)
@@ -142,13 +144,13 @@ definePreset('mapView', {
       const x = MAP.tmp.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(MAP.ctx.canvas, 0, 0);
       MAP.ctx.save(); MAP.ctx.clearRect(0, 0, W, H); MAP.ctx.filter = `blur(${blurPx.toFixed(1)}px)`; MAP.ctx.drawImage(MAP.tmp, 0, 0); MAP.ctx.restore();
     }
-    flushBrush(); push(); resetMatrix();
-    const tl = o.tilt || o.tiltTo ? lerp(o.tilt || 0, o.tiltTo ?? o.tilt ?? 0, presetK(t, o)) : 0, sp = o.spin || o.spinTo ? lerp(o.spin || 0, o.spinTo ?? o.spin ?? 0, presetK(t, o)) : 0;
-    if (tl || sp) {   // the map as a sheet in 3D: leaned back by tilt (degrees), turned by spin, over a plain backdrop
-      noStroke(); fill(o.tiltBg); rect(-W, -H, 2 * W, 2 * H); drawingContext.disable(drawingContext.DEPTH_TEST);   // the leaned-back half must not hide behind the backdrop
-      translate(0, H * .04 * Math.sin(tl * Math.PI / 180)); rotateX(tl * Math.PI / 180); rotateZ(sp * Math.PI / 180); scale(o.tiltScale);
-    }
-    translate(-W / 2, -H / 2); image(MAP.g, 0, 0); pop(); if (tl || sp) drawingContext.enable(drawingContext.DEPTH_TEST);
+    // camera shake: the largest request of this frame (mapBlast, mapDogfight) plus the view's own shakes [[at, amp, dur]];
+    // the frame is scaled up just enough that the shaken picture never shows an edge
+    let amp = MAP.shake || 0; for (const [sa, sp, sd = .6] of o.shakes || []) if (t >= sa && t <= sa + sd) amp = Math.max(amp, sp * US() * (1 - (t - sa) / sd) ** 2);
+    // a dutch tilt (keys' tilt, degrees) turns the whole picture on screen, scaled up just enough to keep the frame covered
+    const tilt = (v.tilt || 0) * Math.PI / 180, cover = tilt ? Math.abs(Math.cos(tilt)) + Math.abs(Math.sin(tilt)) * Math.max(W / H, H / W) : 1;
+    const [sx, sy] = amp > .3 ? shakeXY(t, amp) : [0, 0], sk = (amp > .3 ? 1 + 2.2 * amp / Math.min(W, H) : 1) * cover;
+    flushBrush(); push(); resetMatrix(); translate(-W / 2 + sx, -H / 2 + sy); if (sk !== 1 || tilt) { translate(W / 2, H / 2); rotate(tilt); scale(sk); translate(-W / 2, -H / 2); } image(MAP.g, 0, 0); pop();
     MAP.proj = null;
   },
 });
@@ -208,8 +210,6 @@ function spaceSky(c, shift = 0) {
     c.beginPath(); c.arc(x, y, (big ? .7 + z * 1.6 : .45 + z * .5) * u, 0, TAU); c.fill(); }
   c.restore();
 }
-// the starry sky behind a globe, drifting a little as the globe turns
-function mapStars(c, o) { spaceSky(c, MAP.proj.rotate()[0] * 2); }
 
 // the old-map finish: parchment tone (multiply), paper grain, a brown graticule and a dark edge, all inside the frame
 function mapAntique(c, o) {
@@ -231,14 +231,14 @@ function mapAntique(c, o) {
 }
 
 definePreset('mapBase', {
-  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera); on a globe, stars: true puts it in space and atmosphere: true gives it a glowing rim',
+  label: 'Map Base', about: 'the map: style flat (drawn land and ocean), satellite (documentary colour), physical (clean atlas relief, the sharpest) or antique (an old map: sepia, paper, graticule, vignette, for history before ~1900); rivers: true draws Natural Earth rivers (more and wider the closer the camera); a globe floats in space (stars: false turns that off) and atmosphere: true gives it a glowing rim',
   meta: { version: '1.0.0', category: 'map', tags: ['map', 'land', 'ocean', 'coastline', 'world', 'geography'],
     params: { dataset: { enum: ['land50'] }, style: { enum: ['flat', 'satellite', 'physical', 'antique'] }, coastWidth: { min: 0, max: 8 }, saturate: { min: 0, max: 3 }, brightness: { min: .3, max: 2 }, contrast: { min: .3, max: 2 } },
     assets: [{ param: 'dataset', type: 'geo' }], layers: ['background'] },
-  defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, stars: false, atmosphere: false, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
-    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235' },
+  defaults: { dataset: 'land50', style: 'flat', rivers: false, riverColor: null, atmosphere: false, ocean: '#C9D8D6', land: '#EFE5CF', coast: '#5E5446', coastWidth: 1.4, shore: '#9DB7B6', graticule: true, graticuleColor: '#B4C6C4',
+    saturate: 1, brightness: 1, contrast: 1, space: '#0E2235', stars: true },
   run(t, o) {
-    if (o.stars && MAP.proj.clipAngle && MAP.proj.clipAngle()) mapStars(mapCtx(), o);   // the globe in space
+    if (MAP.proj.clipAngle && MAP.proj.clipAngle() && o.stars !== false) mapSpace(mapCtx(), t, o);   // a globe floats in space
     if (o.style !== 'antique') mapBaseDraw(t, o);
     else { mapBaseDraw(t, { ...o, style: 'physical', aged: true }); }   // antique: the physical raster aged (sepia, softer)…
     if (o.rivers) mapRivers(mapCtx(), o);
@@ -255,6 +255,27 @@ definePreset('mapBase', {
   },
 });
 
+// the space around a globe: a deep blue-black gradient and seeded stars in three depths that drift with the globe's
+// turn (parallax) and twinkle softly
+function mapSpace(c, t, o) {
+  const g = c.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.hypot(W, H) * .6);
+  g.addColorStop(0, o.space); g.addColorStop(1, '#13224A'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const lon = MAP.proj.rotate()[0], u = US();
+  // a faint Milky Way: soft coloured clouds along a diagonal band (large-scale texture, so space never reads as a flat bar)
+  for (let i = 0; i < 14; i++) {
+    const r1 = Math.sin(i * 91.7) * 4375.85, r2 = Math.sin(i * 17.3) * 2345.67, f = i / 13, jx = r1 - Math.floor(r1), jy = r2 - Math.floor(r2);
+    const x = (((f * 1.3 - .15) * W + lon * 1.2 * u) % (W * 1.3) + W * 1.3) % (W * 1.3) - W * .15, y = (1 - f) * H * .9 + (jy - .5) * H * .25, r = Math.min(W, H) * (.18 + .22 * jx);
+    const gg = c.createRadialGradient(x, y, 0, x, y, r); gg.addColorStop(0, i % 3 ? 'rgba(120,110,200,.22)' : 'rgba(210,150,200,.18)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = gg; c.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  for (let i = 0; i < 700; i++) {
+    const r1 = Math.sin(i * 12.9898) * 43758.5453, r2 = Math.sin(i * 78.233) * 12345.678, r3 = Math.sin(i * 4.1414) * 9876.54;
+    const fx = r1 - Math.floor(r1), fy = r2 - Math.floor(r2), d = .3 + .7 * (r3 - Math.floor(r3)), x = ((fx * W + lon * d * 3 * u) % W + W) % W, y = fy * H;
+    c.globalAlpha = (.5 + .5 * d) * (.75 + .25 * Math.sin(t * (1 + d * 2) + i)); c.fillStyle = d > .85 ? '#FFF4DA' : '#DCE6FF';
+    c.beginPath(); c.arc(x, y, (.6 + d * 1.4) * u, 0, Math.PI * 2); c.fill();
+  }
+  c.globalAlpha = 1;
+}
 // the tile level a shot needs: none (the overview) while the overview is sharp enough, else the coarsest level at least
 // as fine as the frame (the camera's world width in px: 2π·scale, Mercator and globe alike)
 function mapLevel(X) {

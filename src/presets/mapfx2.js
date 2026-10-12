@@ -1,16 +1,110 @@
-// presets/mapfx2.js: more explainer-map tools (studied from map shorts on borders, growth, size and war):
-//   mapSpread   a territory fills in by spreading out from a point, with a ragged front (conquest, a language, an idea)
-//   mapZone     a soft, free-form zone (sourced outline) with a feathered edge and a name (ecozone, sphere of influence)
-//   mapLine     a glowing line (a boundary, a parallel, a front) that draws itself, with its name written along it
-//   mapRiver    a named river (Natural Earth) lights up from source to mouth, its name along it
-//   mapMeasure  a distance: a line with a tick and an arrowhead at both ends, the value on it
-//   mapCompare  a territory's TRUE-SIZE copy slides over the globe to another place (size comparisons)
-//   mapFlagFill a territory filled with its flag, gently waving
-//   mapInset    a round picture (artwork) beside a place, joined to it by a thin line
-//   yearRuler   (screen) a tilted year track: the marker slides to the year
-//   gauge       (screen) a dial whose needle swings into a zone (risk, rank, how close to the edge)
-// Coordinates and outlines come from the manifest's sourced data like every map layer; pictures are artwork items.
+// presets/mapfx2.js: size and distance explainers on top of map.js (drawn inside mapView). Every number on screen is
+// computed from the geometry: distances on the sphere (great circle, mean Earth radius) and areas of the Natural Earth
+// borders, so a "how big is …?" story shows measured values, never typed-in ones.
+//   mapMeasure   a ruler draws itself along sourced points; its length counts up in km
+//   mapTrueSize  a country's outline is lifted and carried to another place at its TRUE size (moved on the sphere, so
+//                Mercator stretches or shrinks it exactly as it does the land there); its area can be shown
+// and explainer kit 2 (studied from map shorts on borders, growth, size and war):
+//   mapSpread    a territory fills in by spreading out from a point, with a ragged front (conquest, a language, an idea)
+//   mapZone      a soft, free-form zone (sourced outline) with a feathered edge and a name (ecozone, sphere of influence)
+//   mapLine      a glowing line (a boundary, a parallel, a front) that draws itself, with its name written along it
+//   mapRiver     a named river (Natural Earth) lights up from source to mouth, its name along it
+//   mapFlagFill  a territory filled with its flag, gently waving
+//   mapInset     a round picture (artwork) beside a place, joined to it by a thin line
+//   mapObjectRow copies of a thing line up between two places with a running count (scale)
+//   yearRuler    (screen) a tilted year track: the marker slides to the year
+//   gauge        (screen) a dial whose needle swings into a zone (risk, rank, how close to the edge)
 
+const EARTH_KM = 6371.0088;   // mean Earth radius (IUGG)
+const geoKm = (a, b) => d3.geoDistance(a, b) * EARTH_KM;
+const fmtNum = (v, step = 1) => (Math.round(v / step) * step).toLocaleString('en-US');
+const fillNum = (tpl, vals) => String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m));
+
+definePreset('mapMeasure', {
+  label: 'Map Measure', about: 'a ruler draws itself along sourced points (a country\'s length, a distance between two places): ticks every step km, end caps, and a tag that counts the measured great-circle length up ({km} in text, e.g. "{km} กม.")',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'measure', 'distance', 'ruler', 'length', 'size', 'km', 'how far', 'how big', 'scale'],
+    params: { width: { min: 1, max: 16 }, tick: { min: 0, max: 2000 } }, assets: [{ param: 'coords', type: 'route' }], layers: ['overlay'] },
+  defaults: { coords: [[0, 0], [10, 0]], text: '{km} กม.', round: 10, tick: 100, color: '#FFE14D', ink: '#141414', width: 5, size: 50, labelAt: .5, dx: 0, dy: 0, out: null, outDur: .4, ease: 'ease', dur: 1.6 },
+  run(t, o) {
+    const c = mapCtx(), u = US(), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, e = presetK(t, o), a = Math.min(clamp((t - o.at) / .2), q);
+    if (a <= 0) return;
+    const pts = o.coords, legs = []; let total = 0;
+    for (let i = 1; i < pts.length; i++) { const d = geoKm(pts[i - 1], pts[i]); legs.push(d); total += d; }
+    const goal = total * e, path = [pts[0]]; let run = 0;   // the drawn part, along great circles
+    for (let i = 1; i < pts.length && run < goal; i++) {
+      const f = clamp((goal - run) / legs[i - 1]), ip = d3.geoInterpolate(pts[i - 1], pts[i]), n = Math.max(2, Math.ceil(legs[i - 1] / 25));
+      for (let s = 1; s <= n; s++) { if (s / n > f) { path.push(ip(f)); break; } path.push(ip(s / n)); }
+      run += legs[i - 1];
+    }
+    const xy = path.map(mapPt).filter(Boolean); if (xy.length < 2) return;
+    c.save(); c.globalAlpha = a; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.strokeStyle = o.ink; c.lineWidth = (o.width + 4) * u; c.beginPath(); xy.forEach((p, i) => i ? c.lineTo(...p) : c.moveTo(...p)); c.stroke();
+    c.strokeStyle = o.color; c.lineWidth = o.width * u; c.stroke();
+    // ticks every `tick` km along the drawn part, and end caps across the line
+    const cap = (p, r, len) => { c.save(); c.translate(...p); c.rotate(r); c.strokeStyle = o.color; c.lineWidth = o.width * .8 * u; c.beginPath(); c.moveTo(0, -len); c.lineTo(0, len); c.stroke(); c.restore(); };
+    const ang = (p, q2) => Math.atan2(q2[1] - p[1], q2[0] - p[0]);
+    if (o.tick > 0) {
+      let acc = 0;
+      for (let i = 1; i < xy.length; i++) { const seg = geoKm(path[i - 1], path[i]); for (let k = Math.ceil(acc / o.tick) * o.tick; k < acc + seg; k += o.tick) if (k > 0) { const f = (k - acc) / seg; cap([lerp(xy[i - 1][0], xy[i][0], f), lerp(xy[i - 1][1], xy[i][1], f)], ang(xy[i - 1], xy[i]), 7 * u); } acc += seg; }
+    }
+    cap(xy[0], ang(xy[0], xy[1]), 16 * u);
+    if (e >= 1) cap(xy[xy.length - 1], ang(xy[xy.length - 2], xy[xy.length - 1]), 16 * u);
+    c.restore();
+    if (!o.text) return;
+    // the tag: beside the point labelAt of the way along, counting up with the line
+    const m = xy[Math.min(xy.length - 1, Math.round((xy.length - 1) * o.labelAt))], txt = fillNum(o.text, { km: fmtNum(goal, o.round) });
+    const font = fontCss({ font: 'display', weight: 800, size: o.size }), px = o.size * TS();
+    c.save(); c.font = font; const tw = c.measureText(txt).width, M = .04 * Math.min(W, H);
+    const x = clamp(m[0] + o.dx * u - tw / 2, M + px * .4, W - M - tw - px * .4), y = clamp(m[1] + o.dy * u, M + px * 1.2, H - M);
+    c.globalAlpha = a; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 10 * u; c.shadowOffsetY = 3 * u; c.fillStyle = o.color;
+    c.beginPath(); c.roundRect(x - px * .4, y - px * 1.05, tw + px * .8, px * 1.45, px * .3); c.fill(); c.shadowColor = 'transparent';
+    c.fillStyle = o.ink; c.textBaseline = 'alphabetic'; c.fillText(txt, x, y); c.restore();
+    mapObstacle(x - px * .4, y - px * 1.05, tw + px * .8, px * 1.45);
+  },
+});
+
+// rotate a geometry on the sphere so that point `from` lands on `to` (shape and area kept, like sliding a cut-out
+// over a globe); Mercator then draws it at the size it really has at its new latitude
+function geoCarry(g, from, to) {
+  const r1 = d3.geoRotation([-from[0], -from[1]]), r2 = d3.geoRotation([-to[0], -to[1]]).invert;
+  const mv = p => r2(r1(p)), ring = r => r.map(mv);
+  const coords = g.type === 'Polygon' ? g.coordinates.map(ring) : g.type === 'MultiPolygon' ? g.coordinates.map(pg => pg.map(ring)) : null;
+  return coords ? { type: g.type, coordinates: coords } : g;
+}
+const TRUE_AREA = new Map();
+const geoKm2 = gs => gs.reduce((s, g) => s + d3.geoArea(g), 0) * EARTH_KM * EARTH_KM;
+
+definePreset('mapTrueSize', {
+  label: 'Map True Size', about: 'a country\'s outline lifts off and slides to a sourced place (lonlat) at its TRUE size, the way the land there is drawn, so sizes compare honestly on a Mercator map (Thailand over Europe, Greenland over Africa); a tag can show its measured area ({km2} km², {rai} rai) or any text',
+  meta: { version: '1.0.0', category: 'map', tags: ['map', 'true size', 'compare', 'size', 'area', 'how big', 'overlay', 'mercator', 'scale', 'country'],
+    params: { alpha: { min: 0, max: 1 }, width: { min: 1, max: 12 } }, assets: [{ param: 'name', type: 'geo' }, { param: 'units', type: 'geo' }], layers: ['overlay'] },
+  defaults: { name: 'Thailand', units: [], lonlat: [0, 0], color: '#FFD43B', alpha: .55, width: 4, hold: .25, text: '', size: 46, ink: '#141414', round: 1000, out: null, outDur: .5, ease: 'linear', dur: 2 },
+  run(t, o) {
+    const gs = mapUnits(o, 'mapTrueSize'), c = mapCtx(), u = US(), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1;
+    const a = Math.min(clamp((t - o.at) / .3), q); if (a <= 0) return;
+    const key = JSON.stringify([o.units, o.name]);
+    if (!TRUE_AREA.has(key)) TRUE_AREA.set(key, { km2: geoKm2(gs), from: d3.geoCentroid({ type: 'GeometryCollection', geometries: gs }) });
+    const { km2, from } = TRUE_AREA.get(key);
+    // a short lift in place (hold, as a fraction of dur), then the slide along the great circle
+    const k = presetK(t, o), slide = ease(clamp((k - o.hold) / (1 - o.hold))), lift = clamp(k / Math.max(.01, o.hold));
+    const at = d3.geoInterpolate(from, o.lonlat)(slide), moved = gs.map(g => geoCarry(g, from, at));
+    c.save(); mapTrace(c, moved);
+    c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 18 * u * lift; c.shadowOffsetY = 10 * u * lift;
+    c.globalAlpha = o.alpha * a; c.fillStyle = o.color; c.fill(); c.shadowColor = 'transparent';
+    c.globalAlpha = a; c.lineJoin = 'round'; c.lineWidth = o.width * u; c.strokeStyle = '#FFFFFF'; c.stroke();
+    c.restore();
+    if (!o.text || slide < 1) return;
+    const txt = fillNum(o.text, { km2: fmtNum(km2, o.round), rai: fmtNum(km2 * 625, o.round * 1000) });
+    const B = mapBox(moved), px = o.size * TS(), M = .04 * Math.min(W, H);
+    c.save(); c.font = fontCss({ font: 'display', weight: 800, size: o.size }); const tw = c.measureText(txt).width;
+    const x = clamp((B.x0 + B.x1) / 2 - tw / 2, M + px * .4, W - M - tw - px * .4), y = clamp(B.y1 + px * 1.6, M + px * 1.2, H - M);
+    c.globalAlpha = a * clamp((t - (o.at + o.dur)) / .3); c.fillStyle = o.color; c.beginPath(); c.roundRect(x - px * .4, y - px * 1.05, tw + px * .8, px * 1.45, px * .3); c.fill();
+    c.fillStyle = o.ink; c.textBaseline = 'alphabetic'; c.fillText(txt, x, y); c.restore();
+    mapObstacle(x - px * .4, y - px * 1.05, tw + px * .8, px * 1.45);
+  },
+});
+
+// ---- explainer kit 2 (studied from map shorts on borders, growth, size and war) ----
 // text along a screen polyline, centred at fraction `at` of its length, kept upright (Thai-safe: whole graphemes)
 function textAlongPath(c, pts, text, at = .5, lift = 0, stroke = false) {
   if (pts.length < 2) return;
@@ -111,50 +205,7 @@ definePreset('mapRiver', {
   },
 });
 
-definePreset('mapMeasure', {
-  label: 'Map Measure', about: 'a distance between two sourced places: a line draws itself with a tick and an arrowhead at each end, and the value (text, e.g. "≈ 1,620 กม.") sits on it in a small tag',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'distance', 'measure', 'length', 'width', 'scale', 'km', 'miles', 'how far'],
-    params: { size: { min: 12, max: 120 } }, assets: [{ param: 'from', type: 'place' }, { param: 'to', type: 'place' }], layers: ['overlay'] },
-  defaults: { from: [100, 20], to: [101, 6], text: '', color: '#FFFFFF', size: 40, out: null, outDur: .35, ease: 'ease', dur: .9 },
-  run(t, o) {
-    const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, k = presetK(t, o); if (k <= 0 || q <= 0) return;
-    const a = mapPt(o.from), b = mapPt(o.to); if (!a || !b) return;
-    const c = mapCtx(), u = US(), L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-    const p0 = [m[0] - ux * L / 2 * k, m[1] - uy * L / 2 * k], p1 = [m[0] + ux * L / 2 * k, m[1] + uy * L / 2 * k], hd = 14 * u, tk = 12 * u;
-    c.save(); c.globalAlpha = q; c.strokeStyle = o.color; c.fillStyle = o.color; c.lineWidth = 3 * u; c.lineCap = 'round'; c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 6 * u;
-    c.beginPath(); c.moveTo(...p0); c.lineTo(...p1); c.stroke();
-    for (const [p, s] of [[p0, -1], [p1, 1]]) {
-      c.beginPath(); c.moveTo(p[0] - uy * tk, p[1] + ux * tk); c.lineTo(p[0] + uy * tk, p[1] - ux * tk); c.stroke();   // tick
-      c.beginPath(); c.moveTo(p[0], p[1]); c.lineTo(p[0] - s * ux * hd - uy * hd * .55, p[1] - s * uy * hd + ux * hd * .55); c.lineTo(p[0] - s * ux * hd + uy * hd * .55, p[1] - s * uy * hd - ux * hd * .55); c.closePath(); c.fill();
-    }
-    if (o.text && k > .6) { const ta = clamp((k - .6) / .3); c.globalAlpha = q * ta; c.font = fontCss({ font: 'display', weight: 800, size: o.size }); const tw = c.measureText(o.text).width, px = o.size * TS();
-      c.shadowBlur = 8 * u; c.fillStyle = 'rgba(16,16,22,.82)'; c.beginPath(); c.roundRect(m[0] - tw / 2 - px * .4, m[1] - px * .7, tw + px * .8, px * 1.4, px * .4); c.fill();
-      c.shadowBlur = 0; c.fillStyle = o.color; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(o.text, m[0], m[1] + px * .04);
-      mapObstacle(m[0] - tw / 2 - px * .4, m[1] - px * .7, tw + px * .8, px * 1.4); }
-    c.restore();
-  },
-});
 
-// move a geometry over the sphere so that point a lands on point b (TRUE size: shapes keep their real area)
-const sphereMove = (a, b) => { const ra = d3.geoRotation([-a[0], -a[1]]), rb = d3.geoRotation([-b[0], -b[1]]); return p => rb.invert(ra(p)); };
-const mapGeomMap = (g, f) => ({ type: g.type, coordinates: g.type === 'Polygon' ? g.coordinates.map(r => r.map(f)) : g.coordinates.map(p => p.map(r => r.map(f))) });
-definePreset('mapCompare', {
-  label: 'Map Compare (true size)', about: 'how big is it really: a TRUE-SIZE copy of a territory lifts off and slides over the globe to another place (to: a sourced place), keeping its real area, drawn as a bright outline over a light fill, with an optional label ("≈ ฝรั่งเศส", "x11"); the original stays as a ghost',
-  meta: { version: '1.0.0', category: 'map', tags: ['map', 'compare', 'size', 'area', 'true size', 'how big', 'scale', 'comparison', 'versus'],
-    params: { alpha: { min: 0, max: 1 }, size: { min: 12, max: 140 } }, assets: [{ param: 'units', type: 'geo' }, { param: 'to', type: 'place' }], layers: ['overlay'] },
-  defaults: { name: 'Thailand', units: [], to: [2.5, 46.5], color: '#FFD84D', alpha: .35, text: '', size: 52, ghost: true, out: null, outDur: .4, ease: 'ease', dur: 1.6 },
-  run(t, o) {
-    const gs = mapUnits(o, 'mapCompare'), q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, k = presetK(t, o); if (t < o.at || q <= 0) return;
-    const c = mapCtx(), u = US(), F = { type: 'GeometryCollection', geometries: gs }, c0 = d3.geoCentroid(F), cur = d3.geoInterpolate(c0, o.to)(k), mv = sphereMove(c0, cur);
-    const moved = gs.map(g => mapGeomMap(g, mv)), path = d3.geoPath(MAP.proj, c);
-    if (o.ghost) { c.save(); c.globalAlpha = .5 * q; c.setLineDash([8 * u, 8 * u]); c.strokeStyle = o.color; c.lineWidth = 2 * u; c.beginPath(); gs.forEach(g => path(g)); c.stroke(); c.restore(); }
-    c.save(); c.globalAlpha = q; c.beginPath(); moved.forEach(g => path(g)); c.fillStyle = o.color; c.globalAlpha = o.alpha * q; c.fill();
-    c.globalAlpha = q; c.lineWidth = 3 * u; c.strokeStyle = o.color; c.shadowColor = o.color; c.shadowBlur = 14 * u; c.stroke(); c.restore();
-    if (o.text && k >= 1) { const p = mapPt(o.to); if (p) { const a = clamp((t - o.at - o.dur) / .3) * q;
-      c.save(); c.globalAlpha = a; c.font = fontCss({ font: 'display', weight: 800, size: o.size }); c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
-      c.lineWidth = o.size * TS() * .16; c.strokeStyle = 'rgba(0,0,0,.55)'; c.strokeText(o.text, p[0], p[1]); c.fillStyle = '#FFFFFF'; c.fillText(o.text, p[0], p[1]); c.restore(); } }
-  },
-});
 
 definePreset('mapFlagFill', {
   label: 'Map Flag Fill', about: 'a territory filled with its national flag (flag: a code from the sticker flags), gently waving (soft light and shade bands travel across it), white rim; only a flag the state really flew at that time',

@@ -51,15 +51,20 @@ const TARGETS = [
   { name: 'map_war', story: '_plan_nazi_war_30', byAspect: { '16:9': '_plan_nazi_war_30_16x9' }, times: [2.4, 9.6, 10.2, 13.5, 17, 21.5, 24.5] },   // + figure, mapTroops, mapBomber, type plate (art: --assets=out/mock_assets/_plan_nazi_war_30/nazi_war_30_art/ in the cloud)
   // explainer kit: mapLabel marker/neon, mapGlow, mapSwarm, mapNote, mapPhoto, spyglass, mapBase antique + rivers (mock art in the cloud)
   { name: 'map_explainer', story: '_plan_bangkok_name', byAspect: { '16:9': '_plan_bangkok_name_16x9' }, times: [3.6, 7.4, 12.4, 16.6, 25, 30] },
-  // explainer kit 2: mapFlagFill, mapMeasure, mapInset, mapCompare, mapRiver, mapZone, mapLine, mapSpread, weather clouds
-  { name: 'map_explainer2', story: '_plan_thailand_size', byAspect: { '16:9': '_plan_thailand_size_16x9' }, times: [3.4, 8.4, 14.4, 19.6, 24.6, 30] },
-  // space and scale kit: globe in space (stars, atmosphere), mapObjectRow, mapPin drop, tilted map, depthProfile, galaxy, starfield warp
+  // size explainer: mapMeasure (ruler + measured km), mapTrueSize (true-size overlay + measured area)
+  { name: 'map_size', story: '_plan_thailand_size', byAspect: { '16:9': '_plan_thailand_size_16x9' }, times: [7.5, 14, 21.5, 27.5] },
+  // explainer kit 2: mapFlagFill, mapInset, mapRiver, mapZone, mapLine, mapSpread, weather clouds (+ mapMeasure, mapTrueSize)
+  { name: 'map_explainer2', story: '_plan_thailand_kit2', byAspect: { '16:9': '_plan_thailand_kit2_16x9' }, times: [3.4, 8.4, 14.4, 19.6, 24.6, 30] },
+  // foundation kit on the map: eraTicker, deepTimeline, mapBlast + shake, mapFlow, mapEmpire, mapDogfight (mock art in the cloud), barRace, tilt
+  { name: 'map_epic', story: '_plan_earth_to_ai', byAspect: { '16:9': '_plan_earth_to_ai_16x9' }, times: [3.5, 8.7, 15.5, 21.5, 29.2, 34.5] },
+  // space and scale kit: globe in space, mapObjectRow, mapPin drop, satellite view, zoom punch, depthProfile, galaxy, starfield warp
   { name: 'space_scale', story: '_plan_space_scale', byAspect: { '16:9': '_plan_space_scale_16x9' }, times: [3.5, 9.8, 13.8, 19.5, 24, 25.6] },
   { name: 'map_doc_kit', story: '_plan_siam_colonial', byAspect: { '16:9': '_plan_siam_colonial_16x9' }, times: [3, 9, 15, 23.5, 29.5, 35] },
   ...['cameraMove', 'popBounce', 'shapeMorph', 'brushWipe', 'objectReveal', 'particleBurst'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.4, 1.4, 2.6] })),
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
+  ...['blast', 'eraTicker', 'deepTimeline', 'barRace'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.5, 1.6, 2.6] })),
   ...['sticker', 'dateCard', 'chapterBadge', 'weather', 'yearRuler', 'gauge', 'starfield', 'galaxy', 'depthProfile'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
-  // planet needs the real maps (node tools/get_space_textures.mjs): run it locally, not in the cloud
+  // planet and spacePhoto need the real maps and pictures (node tools/get_space_textures.mjs --photos): run them locally, not in the cloud
   { name: 'preset_planet', loop: 'preset_planet', times: [.9, 2.6] },
   { name: 'preset_spacePhoto', loop: 'preset_spacePhoto', times: [.9, 2.6] },
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
