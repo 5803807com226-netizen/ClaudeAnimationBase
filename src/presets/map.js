@@ -55,10 +55,29 @@ const mapCtx = () => { if (!MAP.proj) throw new Error('map layers must be drawn 
 const MAP_PROJ = {
   naturalEarth: () => d3.geoNaturalEarth1(), mercator: () => d3.geoMercator(), equirectangular: () => d3.geoEquirectangular(),
   orthographic: () => d3.geoOrthographic().clipAngle(90),
+  satellite: () => d3.geoOrthographic().clipAngle(90),   // placeholder for the enum: mapProjection builds the real one (it needs height and tilt)
 };
+// the view from a spacecraft: perspective from `height` Earth radii above the centre of the Earth (1.15 low … 3 high),
+// the camera leaning forward by `tilt` degrees so the curved horizon and the sky show above the subject (d3-geo-projection's
+// satellite, with its inverse, so the raster can be sampled per pixel)
+function mapSatRaw(P, tilt) {
+  const v = (l, f) => { const cf = Math.cos(f), k = (P - 1) / (P - cf * Math.cos(l)); return [k * cf * Math.sin(l), k * Math.sin(f)]; };
+  v.invert = (x, y) => { const r2 = x * x + y * y, r = Math.sqrt(r2), s = (P - Math.sqrt(1 - r2 * (P + 1) / (P - 1))) / ((P - 1) / r + r / (P - 1));
+    return [Math.atan2(x * s, r * Math.sqrt(1 - s * s)), r ? Math.asin(y * s / r) : 0]; };
+  if (!tilt) return v;
+  const co = Math.cos(tilt), so = Math.sin(tilt), f = (l, p) => { const [x, y] = v(l, p), A = y * so / (P - 1) + co; return [x * co / A, y / A]; };
+  f.invert = (x, y) => { const k = (P - 1) / (P - 1 - y * so); return v.invert(k * x, k * y * co); };
+  return f;
+}
 // zoom 1 = the whole world spans the frame's SHORT side, so a plan frames the same core in 9:16 and 16:9 (16:9 shows more
 // to the sides: re-framed, never cropped); orthographic: the globe fills the short side
-function mapProjection(kind, center, zoom, rot = 0) {
+function mapProjection(kind, center, zoom, rot = 0, height = 1.6, tilt = 0) {
+  if (kind === 'satellite') {   // the subject (centre) sits a little below the middle, the horizon curves above it
+    const P = Math.max(1.05, height), w = clamp(tilt, 0, 75) * Math.PI / 180, p = d3.geoProjection(mapSatRaw(P, w)).clipAngle(Math.acos(1 / P) * 180 / Math.PI - .2);
+    p._kind = 'satellite'; p._height = P; p._tilt = w;
+    const sc = Math.min(W, H) / 2.1 * zoom * (W > H ? .78 : 1), h = Math.acos(1 / P), yTop = w ? mapSatRaw(P, w)(0, h)[1] : 0;   // the horizon straight ahead
+    return p.scale(sc).translate([W / 2, clamp(H * .2 + yTop * sc, H * .5, H * .76)]).rotate([-center[0], -center[1], rot]);   // horizon ~20% from the top, subject below
+  }
   const p = (MAP_PROJ[kind] || MAP_PROJ.naturalEarth)(); p._kind = MAP_PROJ[kind] ? kind : 'naturalEarth';
   const S = Math.min(W, H), base = kind === 'orthographic' ? S / 2.1 : kind === 'naturalEarth' ? S / 5.47 : S / (2 * Math.PI);
   p.scale(base * zoom).translate([W / 2, H / 2]);
@@ -80,17 +99,17 @@ mapProjection.fit = (p, center, lim) => {
 // arc > 0 pulls back mid-move (a "fly-over"), so long jumps don't smear across the map
 function mapLerpView(a, b, k, arc = 0) {
   const c = d3.geoInterpolate(a.center, b.center)(k), z = Math.exp(lerp(Math.log(a.zoom), Math.log(b.zoom), k)) * (1 - arc * Math.sin(Math.PI * k));
-  return { center: c, zoom: Math.max(.05, z), rot: lerp(a.rot || 0, b.rot || 0, k) };
+  return { center: c, zoom: Math.max(.05, z), rot: lerp(a.rot || 0, b.rot || 0, k), height: lerp(a.height ?? 1.6, b.height ?? a.height ?? 1.6, k), tilt: lerp(a.tilt || 0, b.tilt ?? a.tilt ?? 0, k) };
 }
 const MAP_IS_MERC = p => p?._kind === 'mercator';
 const mapPt = ll => { const p = MAP.proj(ll); return p && Number.isFinite(p[0]) ? p : null; };
-const mapVisible = ll => !MAP.proj.clipAngle || !MAP.proj.clipAngle() || d3.geoDistance(ll, [-MAP.proj.rotate()[0], -MAP.proj.rotate()[1]]) < Math.PI / 2 - .01;
+const mapVisible = ll => !MAP.proj.clipAngle || !MAP.proj.clipAngle() || d3.geoDistance(ll, [-MAP.proj.rotate()[0], -MAP.proj.rotate()[1]]) < MAP.proj.clipAngle() * Math.PI / 180 - .01;
 
 definePreset('mapView', {
-  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside. tilt / tiltTo (degrees): the whole map leans back like a sheet in 3D over a plain backdrop (tiltBg), spin / spinTo turns it; for a bold "look at this" moment',
+  label: 'Map Camera', about: 'geographic camera: d3-geo projection travelling (great circle) and zooming between views; draws map layers inside. projection "satellite": the view from a spacecraft, keys may set height (Earth radii from the centre: 1.15 low, 3 high) and tilt (degrees, 0–60: the camera leans forward and the curved horizon, its glowing air and the stars show above the subject), the 3D look for a globe or ocean shot; punchAt (shot seconds): a quick zoom punch (punch ×, punchRoll degrees on a globe) that eases back over punchDur, for a "look at this" beat on any map; tilt / tiltTo lean the flat map image back like a sheet (its edges show: avoid)',
   meta: { version: '1.0.0', category: 'camera', tags: ['map', 'camera', 'geography', 'travel', 'zoom', 'pan', 'globe', 'documentary'],
-    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 }, tilt: { min: -70, max: 70 }, spin: { min: -45, max: 45 }, tiltScale: { min: .5, max: 3 } }, camera: 'camera', layers: ['camera'] },
-  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, tilt: 0, tiltTo: null, spin: 0, spinTo: null, tiltScale: 1.25, tiltBg: '#2340C8', dur: 4 },
+    params: { projection: { enum: Object.keys(MAP_PROJ) }, arc: { min: 0, max: .8 }, blur: { min: 0, max: 2 }, tilt: { min: -70, max: 70 }, spin: { min: -45, max: 45 }, tiltScale: { min: .5, max: 3 }, punch: { min: 1, max: 1.6 }, punchRoll: { min: -10, max: 10 }, punchDur: { min: .3, max: 3 } }, camera: 'camera', layers: ['camera'] },
+  defaults: { projection: 'naturalEarth', from: { center: [0, 20], zoom: 1 }, to: { center: [0, 20], zoom: 1.2 }, keys: null, arc: 0, blur: 0, tilt: 0, tiltTo: null, spin: 0, spinTo: null, tiltScale: 1.25, tiltBg: '#2340C8', punchAt: null, punch: 1.18, punchRoll: 3, punchDur: 1.2, dur: 4 },
   run(t, o, inner) {
     const viewAt = tt => {
       if (o.keys) {   // [[t, {center, zoom, rot?}], ...] in shot time, each segment eased
@@ -101,13 +120,15 @@ definePreset('mapView', {
       return mapLerpView(o.from, o.to, presetK(tt, o), o.arc);
     };
     const v = viewAt(t);
-    MAP.proj = mapProjection(o.projection, v.center, v.zoom, v.rot); MAP.view = v;
+    const pk = o.punchAt == null ? 0 : (tp => tp < 0 ? 0 : tp < .22 ? easeOut(tp / .22) : 1 - ease((tp - .22) / o.punchDur))(t - o.punchAt);
+    if (pk) { v.zoom *= 1 + (o.punch - 1) * pk; if (o.projection === 'orthographic' || o.projection === 'satellite') v.rot += o.punchRoll * pk; }   // the zoom punch
+    MAP.proj = mapProjection(o.projection, v.center, v.zoom, v.rot, v.height, v.tilt); MAP.view = v;
     // motion blur: how far the frame's content travels in one frame (pan in px + zoom change at the frame edge)
     let blurPx = 0;
     if (o.blur > 0) {
-      const p0 = mapProjection(o.projection, ...(w => [w.center, w.zoom, w.rot])(viewAt(t - 1 / 24)));
-      const a = p0(v.center), zr = Math.abs(Math.log(MAP.proj.scale() / p0.scale()));
-      blurPx = clamp((Math.hypot(a[0] - W / 2, a[1] - H / 2) + zr * Math.hypot(W, H) / 2 - 8) * .22 * o.blur, 0, 16);
+      const p0 = mapProjection(o.projection, ...(w => [w.center, w.zoom, w.rot, w.height, w.tilt])(viewAt(t - 1 / 24)));
+      const a = p0(v.center), b = MAP.proj(v.center) || [W / 2, H / 2], zr = Math.abs(Math.log(MAP.proj.scale() / p0.scale()));
+      blurPx = clamp((Math.hypot(a[0] - b[0], a[1] - b[1]) + zr * Math.hypot(W, H) / 2 - 8) * .22 * o.blur, 0, 16);
     }
     if (!MAP.g) { MAP.g = createGraphics(W, H); MAP.g.pixelDensity(1); MAP.ctx = MAP.g.drawingContext; }
     MAP.ctx.setTransform(1, 0, 0, 1, 0, 0); MAP.ctx.clearRect(0, 0, W, H); MAP.ctx.globalAlpha = 1;
@@ -139,6 +160,7 @@ function mapBaseDraw(t, o) {
       if (!X) throw new Error(`mapBase ${o.style} needs its raster (python tools/geo_raster_hi.py --style ${o.style})`);
       const filt = o.aged ? `sepia(.85) saturate(${.75 * o.saturate}) brightness(${1.04 * o.brightness}) contrast(${.88 * o.contrast})` : o.saturate !== 1 || o.brightness !== 1 || o.contrast !== 1 ? `saturate(${o.saturate}) brightness(${o.brightness}) contrast(${o.contrast})` : 'none';
       // the raster has its own crisp coastline: a vector coast (1:50m) over it would only blur it
+      if (MAP.proj._kind === 'satellite') { mapSatRaster(c, X, mapLevel(X), filt); return; }
       if (MAP.proj.clipAngle && MAP.proj.clipAngle()) { const L = mapLevel(X); if (L) mapGlobeHi(c, X, L, filt); else mapGlobeRaster(c, X, filt); return; }
       if (!MAP_IS_MERC(MAP.proj)) throw new Error(`mapBase ${o.style} needs mapView projection "mercator" or "orthographic"`);
       c.save(); c.filter = filt;
@@ -220,7 +242,11 @@ definePreset('mapBase', {
     else { mapBaseDraw(t, { ...o, style: 'physical', aged: true }); }   // antique: the physical raster aged (sepia, softer)…
     if (o.rivers) mapRivers(mapCtx(), o);
     if (o.style === 'antique') mapAntique(mapCtx(), o);                   // …then paper, a faint graticule and a vignette over it
-    if (o.atmosphere && MAP.proj.clipAngle && MAP.proj.clipAngle()) {      // a thin glowing atmosphere around the globe
+    if (o.atmosphere && MAP.proj._kind === 'satellite') {   // the horizon glows: a soft blue band along the limb, brightest at its edge
+      const c = mapCtx(), path = d3.geoPath(MAP.proj, c), u = US(); c.save(); c.strokeStyle = 'rgba(120,190,255,.5)'; c.shadowColor = 'rgba(120,190,255,.9)';
+      for (const [w, b] of [[34, 40], [14, 18], [4, 6]]) { c.lineWidth = w * u; c.shadowBlur = b * u; c.beginPath(); path({ type: 'Sphere' }); c.stroke(); }
+      c.restore();
+    } else if (o.atmosphere && MAP.proj.clipAngle && MAP.proj.clipAngle()) {      // a thin glowing atmosphere around the globe
       const c = mapCtx(), [tx, ty] = MAP.proj.translate(), r = MAP.proj.scale(), g = c.createRadialGradient(tx, ty, r * .97, tx, ty, r * 1.12);
       g.addColorStop(0, 'rgba(120,190,255,0)'); g.addColorStop(.25, 'rgba(120,190,255,.55)'); g.addColorStop(1, 'rgba(120,190,255,0)');
       c.save(); c.fillStyle = g; c.beginPath(); c.arc(tx, ty, r * 1.12, 0, TAU); c.arc(tx, ty, r * .97, 0, TAU, true); c.fill(); c.restore();
@@ -305,6 +331,35 @@ function mapGlobeHi(c, X, Hm, filt) {
   }
   gx.putImageData(img, 0, 0);
   c.save(); c.filter = filt; c.drawImage(MAP.globeHi, bx0, by0); c.restore();
+}
+
+// the satellite view: every frame pixel is inverse-projected through the projection (perspective + tilt) and sampled from
+// the tile level (bilinear) or the overview; the sky above the horizon stays empty (stars show through). Without a tile
+// level it renders at half resolution and scales up.
+function mapSatRaster(c, X, Hm, filt) {
+  const P = MAP.proj, [IW, IH] = X.R.size, f = Hm ? 1 : .5, BW = Math.ceil(W * f), BH = Math.ceil(H * f), caps = mapCaps(X), tick = ++MAP_TICK;
+  if (!X.px) { const cv = document.createElement('canvas'); cv.width = IW; cv.height = IH; const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(X.img.canvas || X.img.elt, 0, 0); X.px = x.getImageData(0, 0, IW, IH).data; }
+  if (!MAP.satCv || MAP.satCv.width !== BW || MAP.satCv.height !== BH) { MAP.satCv = document.createElement('canvas'); MAP.satCv.width = BW; MAP.satCv.height = BH; }
+  const gx = MAP.satCv.getContext('2d', { willReadFrequently: true }), img = gx.createImageData(BW, BH), out = img.data, ov = X.px;
+  const ym = Math.log(Math.tan(Math.PI / 4 + X.R.lat * Math.PI / 360)), [rl, rp] = P.rotate(), l0 = -rl * Math.PI / 180, p0 = -rp * Math.PI / 180, sp0 = Math.sin(p0), cp0 = Math.cos(p0);
+  const tp = Hm ? new Array(Hm.rows * Hm.cols) : null, tile = (r, col) => { const i = r * Hm.cols + col; let v = tp[i]; if (v !== undefined) return v;
+    const key = `${Hm.dir}/${r}_${col}.jpg`, t = MAP_TILES.get(key); if (!t) MAP_WANT.add(key); v = tp[i] = t?.im ? mapTilePx(t) : null; if (v) v.used = tick; return v; };
+  for (let j = 0; j < BH; j++) for (let i = 0; i < BW; i++) {
+    const ll = P.invert([(i + .5) / f, (j + .5) / f]); if (!ll || !Number.isFinite(ll[0]) || !Number.isFinite(ll[1])) continue;
+    const lat = ll[1] * Math.PI / 180, lon = ll[0] * Math.PI / 180, co = sp0 * Math.sin(lat) + cp0 * Math.cos(lat) * Math.cos(lon - l0); if (co <= 1 / P._height) continue;   // past the horizon
+    const u = ((ll[0] + 180) / 360 % 1 + 1) % 1, my = Math.log(Math.tan(Math.PI / 4 + clamp(lat, -1.43, 1.43) / 2)), vv = (ym - my) / (2 * ym), di = (j * BW + i) * 4;
+    let R_, G_, B_, t = null, U, V, col, r;
+    if (Hm) { const [HW, HH] = Hm.size, TS = Hm.tile; U = u * HW - .5; V = Math.min(HH - 1, Math.max(0, vv * HH - .5)); col = Math.min(Hm.cols - 1, Math.max(0, Math.floor((U + .5) / TS))); r = Math.min(Hm.rows - 1, Math.floor((V + .5) / TS)); t = tile(r, col);
+      if (t) { const lx = Math.min(t.w - 1, Math.max(0, U - col * TS)), ly = Math.min(t.h - 1, Math.max(0, V - r * TS)), x0 = Math.floor(lx), y0 = Math.floor(ly), x1 = Math.min(t.w - 1, x0 + 1), y1 = Math.min(t.h - 1, y0 + 1), fx = lx - x0, fy = ly - y0, d = t.px;
+        const a = (y0 * t.w + x0) * 4, b = (y0 * t.w + x1) * 4, e = (y1 * t.w + x0) * 4, g = (y1 * t.w + x1) * 4, w0 = (1 - fx) * (1 - fy), w1 = fx * (1 - fy), w2 = (1 - fx) * fy, w3 = fx * fy;
+        R_ = d[a] * w0 + d[b] * w1 + d[e] * w2 + d[g] * w3; G_ = d[a + 1] * w0 + d[b + 1] * w1 + d[e + 1] * w2 + d[g + 1] * w3; B_ = d[a + 2] * w0 + d[b + 2] * w1 + d[e + 2] * w2 + d[g + 2] * w3; } }
+    if (!t) { const si = (Math.min(IH - 1, Math.max(0, Math.floor(vv * IH))) * IW + Math.min(IW - 1, Math.floor(u * IW))) * 4; R_ = ov[si]; G_ = ov[si + 1]; B_ = ov[si + 2]; }
+    const q = MAP_CAP(lat, X.R.lat); if (q > 0) { const cap = caps[lat > 0 ? 0 : 1]; R_ += (cap[0] - R_) * q; G_ += (cap[1] - G_) * q; B_ += (cap[2] - B_) * q; }
+    const sh = .55 + .45 * clamp((co - 1 / P._height) / (1 - 1 / P._height) * 3);   // darker toward the limb
+    out[di] = R_ * sh; out[di + 1] = G_ * sh; out[di + 2] = B_ * sh; out[di + 3] = 255;
+  }
+  gx.putImageData(img, 0, 0);
+  c.save(); c.filter = filt; c.imageSmoothingQuality = 'high'; c.drawImage(MAP.satCv, 0, 0, W, H); c.restore();
 }
 
 // the satellite raster wrapped onto the globe: every pixel of the disc is inverse-projected (orthographic) and sampled

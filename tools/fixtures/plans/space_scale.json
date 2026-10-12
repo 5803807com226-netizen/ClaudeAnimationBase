@@ -189,7 +189,10 @@
         "zoom": 0.88
        }
       ]
-     ]
+     ],
+     "punchAt": 3.4,
+     "punch": 1.15,
+     "punchRoll": 3
     }
    },
    "layers": [
@@ -269,7 +272,7 @@
      "at": 0,
      "dur": 4.5,
      "ease": "ease",
-     "projection": "orthographic",
+     "projection": "satellite",
      "blur": 1,
      "keys": [
       [
@@ -279,17 +282,21 @@
          -160,
          6
         ],
-        "zoom": 0.88
+        "zoom": 0.88,
+        "height": 8,
+        "tilt": 0
        }
       ],
       [
-       1.6,
+       1.9,
        {
         "center": [
          142.2,
-         13
+         11.5
         ],
-        "zoom": 3.6
+        "zoom": 7.5,
+        "height": 1.2,
+        "tilt": 42
        }
       ],
       [
@@ -297,15 +304,14 @@
        {
         "center": [
          142.2,
-         13
+         11.4
         ],
-        "zoom": 3.8
+        "zoom": 8,
+        "height": 1.2,
+        "tilt": 45
        }
       ]
-     ],
-     "tilt": 0,
-     "tiltTo": 32,
-     "tiltBg": "#0E1838"
+     ]
     }
    },
    "layers": [
