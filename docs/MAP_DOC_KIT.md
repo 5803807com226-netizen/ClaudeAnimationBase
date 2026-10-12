@@ -118,7 +118,7 @@ Studied from three shorts: the Pacific and the Mariana Trench, the Sun's orbit a
 | Preset | What it does |
 |---|---|
 | `mapBase` `stars: true` / `atmosphere: true` | On a globe: a starry sky behind it (drifting as it turns) and a glowing rim |
-| `mapView` `projection: "satellite"` | The view from a spacecraft: keys add `height` (Earth radii from the centre; 1.2 is low) and `tilt` (degrees). The curved horizon, its glowing air (`atmosphere`) and the stars (`stars`) show above the subject. For a wide, gentle horizon use height 1.2, tilt 40–45, zoom 7–8; travel in from an orbital key (`height` 8, `tilt` 0) |
+| `mapView` `projection: "satellite"` | The view from a spacecraft: keys add `height` (Earth radii from the centre; 1.2 is low) and `tilt` (degrees). The curved horizon, its glowing air (`atmosphere`) and the stars (`stars`) show above the subject. The camera hangs back behind the subject (the subject sits low, the horizon about 20% from the top); zoom is the lens: the higher, the flatter the horizon (height 1.2, tilt 45, zoom 16–20 is gently curved; 8 is a strong dome); travel in from an orbital key (`height` 8, `tilt` 0) |
 | `mapView` `punchAt` | A zoom punch for a "look at this" beat on any map: a quick zoom-in (`punch` ×1.1–1.2) that eases back over `punchDur`; on a globe it also rolls `punchRoll` degrees |
 | `mapView` `tilt` / `tiltTo` | Leans the flat map image back like a sheet. Its edges show, so don't use it: use `satellite` or `punchAt` |
 | `mapPin` `style: "drop"` | A teardrop map marker (flag, icon, glyph or PNG inside) with a pulse ring at its tip |

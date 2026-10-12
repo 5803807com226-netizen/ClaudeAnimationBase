@@ -72,11 +72,12 @@ function mapSatRaw(P, tilt) {
 // zoom 1 = the whole world spans the frame's SHORT side, so a plan frames the same core in 9:16 and 16:9 (16:9 shows more
 // to the sides: re-framed, never cropped); orthographic: the globe fills the short side
 function mapProjection(kind, center, zoom, rot = 0, height = 1.6, tilt = 0) {
-  if (kind === 'satellite') {   // the subject (centre) sits a little below the middle, the horizon curves above it
-    const P = Math.max(1.05, height), w = clamp(tilt, 0, 75) * Math.PI / 180, p = d3.geoProjection(mapSatRaw(P, w)).clipAngle(Math.acos(1 / P) * 180 / Math.PI - .2);
-    p._kind = 'satellite'; p._height = P; p._tilt = w;
-    const sc = Math.min(W, H) / 2.1 * zoom * (W > H ? .78 : 1), h = Math.acos(1 / P), yTop = w ? mapSatRaw(P, w)(0, h)[1] : 0;   // the horizon straight ahead
-    return p.scale(sc).translate([W / 2, clamp(H * .2 + yTop * sc, H * .5, H * .76)]).rotate([-center[0], -center[1], rot]);   // horizon ~20% from the top, subject below
+  if (kind === 'satellite') {   // the camera hangs back behind the subject: leaning forward, the subject sits low (60%), the horizon ~20% from the top; straight down it is a globe like orthographic
+    const P = Math.max(1.05, height), w = clamp(tilt, 0, 75) * Math.PI / 180, raw = mapSatRaw(P, w), h = Math.acos(1 / P), yT = raw(0, h - 1e-4)[1];
+    const lean = clamp(tilt / 30), sc = lerp(Math.min(W, H) / Math.sqrt((P - 1) / (P + 1)), W, lean) / 2.1 * zoom, ys = H * (.5 + .1 * lean), want = yT - (ys - H * .2) / sc;   // the subject's raw height on screen so the horizon lands at 20%
+    let lo = 0, hi = h - 1e-3; if (raw(0, 0)[1] >= want) hi = 0; else for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (raw(0, m)[1] < want) lo = m; else hi = m; }
+    const back = hi, p = d3.geoProjection(raw).clipAngle(h * 180 / Math.PI - .2); p._kind = 'satellite'; p._height = P; p._tilt = w;
+    return p.scale(sc).translate([W / 2, ys + raw(0, back)[1] * sc]).rotate([-center[0], -(center[1] - back * 180 / Math.PI), rot]);   // zoom is the lens: higher = a flatter horizon
   }
   const p = (MAP_PROJ[kind] || MAP_PROJ.naturalEarth)(); p._kind = MAP_PROJ[kind] ? kind : 'naturalEarth';
   const S = Math.min(W, H), base = kind === 'orthographic' ? S / 2.1 : kind === 'naturalEarth' ? S / 5.47 : S / (2 * Math.PI);
