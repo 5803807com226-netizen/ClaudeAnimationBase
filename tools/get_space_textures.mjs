@@ -25,7 +25,7 @@ const MAPS = {
   'milky_way.jpg': ['stars_milky_way.jpg', true],
 };
 // public-domain NASA fallbacks where one is known
-const MAP_ALT = { 'moon.jpg': ['https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg'] };
+const MAP_ALT = { 'moon.jpg': ['https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg'], 'saturn_ring.png': [COMMONS('8k_saturn_ring_alpha.png'), 'https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_8k_saturn_ring_alpha.png?width=2048'] };
 const only = args.only ? String(args.only).split(',') : null;
 // deep-space pictures: { id: a pinned NASA ID (checked by eye), q: searches (fallback, and what --search lists), must: words
 // the chosen result's title must contain }
