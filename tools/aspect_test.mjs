@@ -64,7 +64,8 @@ const TARGETS = [
   // infographic kit: the final frame of the build (values counted up, labels placed) is the one that must fit
   ...['blast', 'eraTicker', 'deepTimeline', 'barRace'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.5, 1.6, 2.6] })),
   ...['sticker', 'dateCard', 'chapterBadge', 'weather', 'yearRuler', 'gauge', 'starfield', 'galaxy', 'depthProfile'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),
-  // planet and spacePhoto need the real maps and pictures (node tools/get_space_textures.mjs --photos): run them locally, not in the cloud
+  // real space imagery: planet (surface maps) and spacePhoto (NASA / Hubble / EHT pictures) from assets/space/ (tools/get_space_textures.mjs)
+  { name: 'solar_system', story: '_plan_solar_system', byAspect: { '16:9': '_plan_solar_system_16x9' }, times: [3, 8.5, 13, 17.5, 22, 26.5, 31, 35.5] },
   { name: 'preset_planet', loop: 'preset_planet', times: [.9, 2.6] },
   { name: 'preset_spacePhoto', loop: 'preset_spacePhoto', times: [.9, 2.6] },
   ...['barChart', 'lineChart', 'donutChart', 'timeline', 'iconGrid', 'callout'].map(p => ({ name: 'preset_' + p, loop: 'preset_' + p, times: [.9, 2.6] })),

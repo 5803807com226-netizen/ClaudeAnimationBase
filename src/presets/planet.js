@@ -20,6 +20,20 @@ const SPACE_BODIES = {
 };
 const spaceBodyImage = (o, k = 'image') => { if (o[k]) return o[k]; const B = SPACE_BODIES[o.body], f = B && (k === 'image' ? B.image : B.ring?.image); return f ? SPACE_TEX + f : ''; };
 
+// a picture a layer needs but no preload brought (a preset demo, a layer added live): its load starts at once; a render
+// waits for it (window.AFTER_DRAW) and draws the frame again; a file that does not exist stops with an error
+const SPACE_LOADING = new Map(), SPACE_FAILED = new Set();
+function spaceImg(path, who, hint) {
+  if (STICKER_IMG[path]) return STICKER_IMG[path];
+  if (!path || SPACE_FAILED.has(path)) throw new Error(`${who}: ${path || '(no picture)'} could not be loaded: ${hint}`);
+  if (!SPACE_LOADING.has(path)) SPACE_LOADING.set(path, loadImage(path).then(im => { STICKER_IMG[path] = im; }, () => { SPACE_FAILED.add(path); }));
+  return null;
+}
+(window.AFTER_DRAW = window.AFTER_DRAW || []).push(async () => {
+  const wait = [...SPACE_LOADING].filter(([p]) => !STICKER_IMG[p] && !SPACE_FAILED.has(p)).map(([, pr]) => pr); if (!wait.length) return false;
+  await Promise.all(wait); return true;
+});
+
 function planetPixels(im) {   // the texture's pixels, read once
   if (!im._px) { const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; const x = cv.getContext('2d', { willReadFrequently: true });
     x.drawImage(im.canvas || im.elt, 0, 0); im._px = x.getImageData(0, 0, im.width, im.height).data; }
@@ -34,13 +48,12 @@ definePreset('planet', {
   defaults: { body: 'earth', image: '', imageRing: '', size: .38, x: .5, y: .5, toX: null, toY: null, zoom: 1, zoomTo: null, spin: 12, turn: 0, tilt: null, light: -35, night: .12, label: '', labelColor: '#FFFFFF', bg: null, out: null, outDur: .5, ease: 'ease', dur: 1.2 },
   run(t, o) {
     const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(clamp((t - o.at) / .5), q); if (a <= 0) return;
-    const B = SPACE_BODIES[o.body] || {}, path = spaceBodyImage(o), im = STICKER_IMG[path];
-    if (!im) throw new Error(`planet: the texture ${path || '(none)'} is not loaded: run node tools/get_space_textures.mjs (or give image: an equirectangular map)`);
+    const B = SPACE_BODIES[o.body] || {}, path = spaceBodyImage(o), im = spaceImg(path, 'planet', 'run node tools/get_space_textures.mjs (or give image: an equirectangular map)'); if (!im) return;
     const { g, c } = stkCtx(o, 'planet:' + (o.id ?? o.body)), u = US(), k = presetK(t, o), z = o.zoomTo != null ? Math.exp(lerp(Math.log(o.zoom), Math.log(o.zoomTo), k)) : o.zoom;
     const cx = lerp(o.x, o.toX ?? o.x, k) * W, cy = lerp(o.y, o.toY ?? o.y, k) * H, R = o.size * Math.min(W, H) / 2 * z * (.92 + .08 * easeOut(clamp((t - o.at) / .8)));
     c.save(); c.globalAlpha = a;
     if (o.bg === 'sky') spaceSky(c); else if (o.bg) { c.fillStyle = o.bg; c.fillRect(0, 0, W, H); }
-    const tilt = (o.tilt ?? B.tilt ?? 0) * Math.PI / 180, ring = B.ring && { ...B.ring, im: STICKER_IMG[spaceBodyImage(o, 'imageRing')] };
+    const tilt = (o.tilt ?? B.tilt ?? 0) * Math.PI / 180, ring = B.ring && { ...B.ring, im: spaceImg(spaceBodyImage(o, 'imageRing'), 'planet', 'the ring map is missing: run node tools/get_space_textures.mjs') };
     if (ring?.im) planetRing(c, cx, cy, R, ring, tilt, 'back');
     if (B.emissive) {   // the Sun: a corona behind the disc
       const gl = c.createRadialGradient(cx, cy, R * .9, cx, cy, R * 2.2); gl.addColorStop(0, B.glow + 'CC'); gl.addColorStop(.3, B.glow + '44'); gl.addColorStop(1, B.glow + '00');
@@ -55,7 +68,8 @@ definePreset('planet', {
       c.lineWidth = 7 * u; c.strokeStyle = 'rgba(10,12,20,.85)'; c.lineJoin = 'round'; const ry = ring?.im ? Math.hypot(ring.outer * Math.sin(tilt), ring.outer * .22 * Math.cos(tilt)) : 0, ly = cy + R * Math.max(1, ry) + 18 * u; c.strokeText(o.label, cx, ly); c.fillStyle = o.labelColor; c.fillText(o.label, cx, ly); }
     c.restore(); stkBlit(g);
   },
-  demo: { bg: '#0D1736', after: [['planet', { at: 0, body: 'mars', label: 'ดาวอังคาร' }]] },
+  preload: o => [spaceBodyImage(o), spaceBodyImage(o, 'imageRing')].filter(Boolean),
+  demo: { bg: '#0D1736', after: [['planet', { at: 0, body: 'mars', bg: 'sky', label: 'ดาวอังคาร' }]] },
 });
 
 // the disc: every pixel inverse-projected (orthographic) onto the texture, at most 900 px across then scaled up
@@ -111,8 +125,7 @@ definePreset('spacePhoto', {
   defaults: { photo: 'andromeda', image: '', fit: 'cover', focus: [.5, .5], zoom: 1, zoomTo: 1.15, spin: 0, glow: .15, size: .6, x: .5, y: .45, bg: 'sky', label: '', credit: '', out: null, outDur: .6, ease: 'ease', dur: 6 },
   run(t, o) {
     const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(clamp((t - o.at) / .6), q); if (a <= 0) return;
-    const path = spacePhotoPath(o), im = STICKER_IMG[path];
-    if (!im) throw new Error(`spacePhoto: the picture ${path || '(none)'} is not loaded: run node tools/get_space_textures.mjs --photos (or give image:)`);
+    const path = spacePhotoPath(o), im = spaceImg(path, 'spacePhoto', 'run node tools/get_space_textures.mjs --photos (or give image:)'); if (!im) return;
     const { g, c } = stkCtx(o, 'spacePhoto:' + (o.id ?? o.photo)), u = US(), k = presetK(t, o), z = Math.exp(lerp(Math.log(o.zoom), Math.log(o.zoomTo ?? o.zoom), k));
     const rot = (t - o.at) * o.spin * Math.PI / 180, el = im.canvas || im.elt, pulse = 1 + o.glow * .5 * (Math.sin((t - o.at) * 1.3) * .5 + .5);
     c.save(); c.globalAlpha = a;
@@ -138,5 +151,6 @@ definePreset('spacePhoto', {
     if (o.credit) { c.globalAlpha = a * .75; c.font = fontCss({ font: 'body', weight: 400, size: 20 }); c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillStyle = '#FFFFFF'; c.fillText(o.credit, W - 18 * u, H - 14 * u); }
     c.restore(); stkBlit(g);
   },
+  preload: o => [spacePhotoPath(o)].filter(Boolean),
   demo: { bg: '#0D1736', after: [['spacePhoto', { at: 0, photo: 'andromeda', label: 'กาแล็กซีแอนดรอเมดา' }]] },
 });

@@ -1,0 +1,426 @@
+{
+ "schema": "shot_manifest/1",
+ "project_id": "solar_system",
+ "aspect": "9:16",
+ "fps": 24,
+ "mode": "motion_only",
+ "target_seconds": 36.5,
+ "tolerance_seconds": 2,
+ "strategy": {
+  "name": "real space imagery",
+  "look": "documentary",
+  "background": "#0D1736"
+ },
+ "audio": {},
+ "subtitles": true,
+ "polish": true,
+ "_comment": "Demo of planet (real Solar System Scope / NASA-data maps) and spacePhoto (real NASA, ESA/Hubble and EHT images; credits in assets/space/*/CREDITS.md). Facts: planet radii relative to Earth: Mercury .383, Venus .949, Mars .532, Jupiter 11.21; M87* imaged 2019 by the Event Horizon Telescope; Andromeda about 2.5 million light-years away.",
+ "data": {},
+ "shots": [
+  {
+   "id": "S01",
+   "start": 0,
+   "end": 4.5,
+   "narration": "ดวงอาทิตย์ ศูนย์กลางของระบบสุริยะ",
+   "layers": [
+    {
+     "id": "p0",
+     "cap": "planet",
+     "params": {
+      "at": 0.0,
+      "body": "sun",
+      "size": 0.9,
+      "y": 0.5,
+      "spin": 4,
+      "bg": "sky",
+      "label": "ดวงอาทิตย์"
+     }
+    },
+    {
+     "id": "title",
+     "cap": "type.slide",
+     "params": {
+      "text": "[ระบบสุริยะ]ของเรา",
+      "at": 0.4,
+      "x": 0.5,
+      "y": 0.13,
+      "maxWidth": 0.86,
+      "maxLines": 2,
+      "prefer": "up",
+      "style": {
+       "font": "headline",
+       "weight": 800,
+       "size": 80,
+       "color": "#FFFFFF",
+       "stroke": {
+        "width": 7,
+        "color": "#121218"
+       },
+       "shadow": {
+        "color": "rgba(0,0,0,.4)",
+        "blur": 8,
+        "dy": 3
+       }
+      }
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "ดวงอาทิตย์\nศูนย์กลางของระบบสุริยะ",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S01"
+  },
+  {
+   "id": "S02",
+   "start": 4.5,
+   "end": 9.5,
+   "narration": "ดาวเคราะห์หิน สี่ดวงแรก ขนาดตามจริง",
+   "layers": [
+    {
+     "id": "p0",
+     "cap": "planet",
+     "params": {
+      "at": 0.0,
+      "body": "mercury",
+      "size": 0.084,
+      "x": 0.082,
+      "y": 0.48,
+      "label": "ดาวพุธ",
+      "spin": 14,
+      "bg": "sky"
+     }
+    },
+    {
+     "id": "p1",
+     "cap": "planet",
+     "params": {
+      "at": 0.1,
+      "body": "venus",
+      "size": 0.209,
+      "x": 0.325,
+      "y": 0.48,
+      "label": "ดาวศุกร์",
+      "spin": 14
+     }
+    },
+    {
+     "id": "p2",
+     "cap": "planet",
+     "params": {
+      "at": 0.2,
+      "body": "earth",
+      "size": 0.22,
+      "x": 0.636,
+      "y": 0.48,
+      "label": "โลก",
+      "spin": 14
+     }
+    },
+    {
+     "id": "p3",
+     "cap": "planet",
+     "params": {
+      "at": 0.30000000000000004,
+      "body": "mars",
+      "size": 0.117,
+      "x": 0.901,
+      "y": 0.48,
+      "label": "ดาวอังคาร",
+      "spin": 14
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.9,
+      "text": "ดาวเคราะห์หินสี่ดวง\nขนาดเทียบตามจริง",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S02"
+  },
+  {
+   "id": "S03",
+   "start": 9.5,
+   "end": 14,
+   "narration": "ดาวพฤหัส ใหญ่กว่าโลกราว 11 เท่า",
+   "layers": [
+    {
+     "id": "p0",
+     "cap": "planet",
+     "params": {
+      "at": 0.0,
+      "body": "jupiter",
+      "size": 0.86,
+      "x": 0.5,
+      "y": 0.47,
+      "spin": 18,
+      "bg": "sky",
+      "label": "ดาวพฤหัส"
+     }
+    },
+    {
+     "id": "p1",
+     "cap": "planet",
+     "params": {
+      "at": 1.2,
+      "body": "earth",
+      "size": 0.077,
+      "x": 0.9,
+      "y": 0.2,
+      "label": "โลก"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "ดาวพฤหัส\nกว้างกว่าโลกราว 11 เท่า",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S03"
+  },
+  {
+   "id": "S04",
+   "start": 14,
+   "end": 18.5,
+   "narration": "ดาวเสาร์ กับวงแหวน",
+   "layers": [
+    {
+     "id": "p0",
+     "cap": "planet",
+     "params": {
+      "at": 0.0,
+      "body": "saturn",
+      "size": 0.5,
+      "x": 0.5,
+      "y": 0.47,
+      "spin": 16,
+      "bg": "sky",
+      "label": "ดาวเสาร์"
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "ดาวเสาร์\nกับวงแหวนอันโด่งดัง",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S04"
+  },
+  {
+   "id": "S05",
+   "start": 18.5,
+   "end": 23,
+   "narration": "นี่คือภาพถ่ายหลุมดำจริง ภาพแรกของโลก",
+   "layers": [
+    {
+     "id": "bh",
+     "cap": "spacePhoto",
+     "params": {
+      "at": 0,
+      "photo": "blackhole_m87",
+      "fit": "cover",
+      "zoom": 1,
+      "zoomTo": 1.12,
+      "glow": 0.25,
+      "label": "หลุมดำ M87*",
+      "credit": "Image: EHT Collaboration",
+      "dur": 4.5
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "ภาพถ่ายหลุมดำจริง\nภาพแรกของโลก ปี 2019",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S05"
+  },
+  {
+   "id": "S06",
+   "start": 23,
+   "end": 27.5,
+   "narration": "และหลุมดำใจกลางทางช้างเผือก",
+   "layers": [
+    {
+     "id": "bh2",
+     "cap": "spacePhoto",
+     "params": {
+      "at": 0,
+      "photo": "blackhole_sgra",
+      "fit": "circle",
+      "size": 0.75,
+      "spin": 3,
+      "glow": 0.4,
+      "label": "Sgr A*",
+      "credit": "Image: EHT Collaboration",
+      "dur": 4.5
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "หลุมดำใจกลาง\nทางช้างเผือกของเรา",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S06"
+  },
+  {
+   "id": "S07",
+   "start": 27.5,
+   "end": 32,
+   "narration": "กาแล็กซีแอนดรอเมดา เพื่อนบ้านของเรา",
+   "layers": [
+    {
+     "id": "and",
+     "cap": "spacePhoto",
+     "params": {
+      "at": 0,
+      "photo": "andromeda",
+      "fit": "cover",
+      "spin": 2,
+      "zoom": 1,
+      "zoomTo": 1.15,
+      "label": "กาแล็กซีแอนดรอเมดา",
+      "credit": "Image: NASA/JPL-Caltech",
+      "dur": 4.5
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "กาแล็กซีแอนดรอเมดา\nห่างราว 2.5 ล้านปีแสง",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S07"
+  },
+  {
+   "id": "S08",
+   "start": 32,
+   "end": 36.5,
+   "narration": "เสาแห่งการก่อกำเนิด ที่เกิดของดาวดวงใหม่",
+   "layers": [
+    {
+     "id": "pil",
+     "cap": "spacePhoto",
+     "params": {
+      "at": 0,
+      "photo": "pillars",
+      "fit": "cover",
+      "zoom": 1,
+      "zoomTo": 1.2,
+      "focus": [
+       0.5,
+       0.55
+      ],
+      "label": "เสาแห่งการก่อกำเนิด",
+      "credit": "Image: NASA, ESA, Hubble",
+      "dur": 4.5
+     }
+    },
+    {
+     "id": "caption",
+     "cap": "captionBar",
+     "params": {
+      "at": 0.1,
+      "end": 4.4,
+      "text": "เสาแห่งการก่อกำเนิด\nแหล่งกำเนิดดาวดวงใหม่",
+      "y": 0.86,
+      "size": 60,
+      "maxWidth": 0.86,
+      "accent": "#F2C14E",
+      "font": "display",
+      "weight": 700
+     }
+    }
+   ],
+   "treatment": "infographic",
+   "backend": "javascript_motion",
+   "purpose": "S08"
+  }
+ ]
+}

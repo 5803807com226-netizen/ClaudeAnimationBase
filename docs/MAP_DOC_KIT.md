@@ -154,13 +154,13 @@ These are motion graphics (particles and shapes), not story artwork: a real plac
 Before using it, download the maps once, on a machine with internet access:
 
 ```
-node tools/get_space_textures.mjs        # 2k maps into assets/space/textures/ (+ CREDITS.md)
+node tools/get_space_textures.mjs        # 2k maps into assets/space/textures/ (+ CREDITS.md), from Wikimedia Commons' copy of the set
 node tools/get_space_textures.mjs --hi   # 8k where they exist, for close-ups
 ```
 
 The maps come from Solar System Scope (made from NASA data, CC BY 4.0): put the credit line from CREDITS.md in the video description. Without its map the layer stops with an error; it never draws a fake planet.
 
-Not yet in `PRESET_ASPECTS`: it needs the maps, so run `node tools/aspect_test.mjs --only=preset_planet` locally after the download, then register it.
+The maps are in the repo (`assets/space/textures/`, 2k). They were downloaded by the `space-assets` GitHub workflow, because the cloud sessions can't reach these hosts; it runs `tools/get_space_textures.mjs` again whenever that script changes. The demo is `tools/fixtures/plans/solar_system.json` (`node tools/aspect_test.mjs --only=solar_system,preset_planet`).
 
 ## Real deep-space pictures (`spacePhoto`)
 
@@ -187,4 +187,4 @@ node tools/get_space_textures.mjs --photos        # maps + pictures
 node tools/get_space_textures.mjs --photos-only   # pictures only
 ```
 
-It searches the NASA Image and Video Library (images-api.nasa.gov) and prints each picture's title and NASA ID: check each is the picture you expect. Credits go to `assets/space/photos/CREDITS.md`. Some pictures include partners' work (ESA, CSA, STScI, the EHT Collaboration): credit them as the NASA page says. Not in `PRESET_ASPECTS` until `node tools/aspect_test.mjs --only=preset_spacePhoto` passes locally with the pictures.
+It searches the NASA Image and Video Library (images-api.nasa.gov) and prints each picture's title and NASA ID: check each is the picture you expect. Credits go to `assets/space/photos/CREDITS.md`. Some pictures include partners' work (ESA, CSA, STScI, the EHT Collaboration): credit them as the NASA page says. The pictures are in the repo (`assets/space/photos/`), each checked by eye. M87* and Sgr A* are the Event Horizon Telescope images (ESO releases, EHT Collaboration, CC BY 4.0). The others come from NASA's library, each pinned to its NASA ID in the `PHOTOS` table of the script. `blackhole_sim` is an artist's illustration, not a photo: say so when you use it.
