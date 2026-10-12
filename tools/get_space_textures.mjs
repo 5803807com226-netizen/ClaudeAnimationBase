@@ -15,6 +15,8 @@ import { writeFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
 const DIR = 'assets/space/textures/', BASE = 'https://www.solarsystemscope.com/textures/download/';
+// the same Solar System Scope maps (CC BY 4.0) as copied to Wikimedia Commons: the site itself answers scripts with a captcha
+const COMMONS = f => 'https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_' + f;
 // local name ← remote name; hi: an 8k version exists
 const MAPS = {
   'sun.jpg': ['sun.jpg', true], 'mercury.jpg': ['mercury.jpg', true], 'venus_atmosphere.jpg': ['venus_atmosphere.jpg', false], 'venus_surface.jpg': ['venus_surface.jpg', true],
@@ -22,25 +24,29 @@ const MAPS = {
   'saturn.jpg': ['saturn.jpg', true], 'saturn_ring.png': ['saturn_ring_alpha.png', true], 'uranus.jpg': ['uranus.jpg', false], 'neptune.jpg': ['neptune.jpg', false],
   'milky_way.jpg': ['stars_milky_way.jpg', true],
 };
+// public-domain NASA fallbacks where one is known
+const MAP_ALT = { 'moon.jpg': ['https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg'] };
 const only = args.only ? String(args.only).split(',') : null;
 // deep-space pictures: { id: a pinned NASA ID (checked by eye), q: searches (fallback, and what --search lists), must: words
 // the chosen result's title must contain }
 const PHOTOS = {
-  blackhole_m87: { q: ['M87 black hole Event Horizon Telescope', 'first image of a black hole', 'black hole M87 shadow'], must: ['black hole'] },
-  blackhole_sgra: { q: ['Sagittarius A* black hole', 'Sgr A* Event Horizon Telescope', 'black hole Milky Way center image'], must: ['black hole'] },
-  blackhole_sim: { q: ['black hole accretion disk visualization', 'black hole illustration accretion disk', 'simulated black hole'], must: ['black hole'] },
+  // the Event Horizon Telescope images are ESO releases, not in NASA's library: direct, with their credit
+  blackhole_m87: { url: 'https://cdn.eso.org/images/large/eso1907a.jpg', title: 'The first image of a black hole: M87* (Event Horizon Telescope, 2019)', credit: 'EHT Collaboration (CC BY 4.0)', q: [] },
+  blackhole_sgra: { url: 'https://cdn.eso.org/images/large/eso2208-eht-mwa.jpg', title: 'Sagittarius A*, the black hole at the centre of the Milky Way (Event Horizon Telescope, 2022)', credit: 'EHT Collaboration (CC BY 4.0)', q: [] },
+  blackhole_sim: { id: 'GSFC_20171208_Archive_e000984', q: ['black hole illustration'], must: ['black hole'] },   // an artist's illustration: a black hole among dense stars
   andromeda: { id: 'PIA04921', q: ['Andromeda galaxy'], must: ['Andromeda'] },
-  milky_way_center: { q: ['galactic center Chandra Hubble Spitzer', 'Milky Way galactic center infrared', 'center of the Milky Way'], must: ['center'] },
-  whirlpool: { q: ['Whirlpool Galaxy Hubble M51', 'M51 Hubble', 'Whirlpool Galaxy'], must: ['Whirlpool'] },
-  sombrero: { id: 'PIA15426', q: ['Sombrero Galaxy Hubble', 'Sombrero Galaxy'], must: ['Sombrero'] },
-  deep_field: { q: ['Webb First Deep Field SMACS 0723', 'SMACS 0723', 'Hubble Ultra Deep Field'], must: ['Field'] },
-  pillars: { q: ['Pillars of Creation Webb', 'Pillars of Creation Hubble', 'Eagle Nebula pillars'], must: ['Pillars'] },
+  milky_way_center: { id: 'PIA12348', q: ['galactic center Chandra Hubble Spitzer'], must: ['Milky Way'] },
+  whirlpool: { id: 'GSFC_20171208_Archive_e001925', q: ['Whirlpool Galaxy Hubble M51'], must: ['Whirlpool'] },
+  sombrero: { id: 'PIA15426', q: ['Sombrero Galaxy'], must: ['Sombrero'] },
+  deep_field: { id: 'webb_first_deep_field', q: ['SMACS 0723'], must: ['deep_field'] },
+  pillars: { id: 'GSFC_20171208_Archive_e000842', q: ['Pillars of Creation Hubble'], must: ['Pillars'] },
   carina: { id: 'carina_nebula', q: ['Cosmic Cliffs Carina Nebula'], must: ['Carina'] },
-  orion: { q: ['Orion Nebula Hubble mosaic', 'Orion Nebula'], must: ['Orion'] },
+  orion: { id: 'PIA04227', q: ['Orion Nebula'], must: ['Orion'] },
   crab: { id: 'PIA03606', q: ['Crab Nebula'], must: ['Crab'] },
 };
 const nasaSearch = async q => ((await (await fetch('https://images-api.nasa.gov/search?media_type=image&q=' + encodeURIComponent(q))).json()).collection.items || []);
-const HEADERS = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Referer: 'https://www.solarsystemscope.com/textures/', Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*' };
+// an honest, identifying User-Agent (Wikimedia asks for one)
+const HEADERS = { 'User-Agent': 'ClaudeAnimationBase-space-assets/1.0 (https://github.com/5803807com226-netizen/ClaudeAnimationBase; one-time download of CC BY / public-domain space images)', Accept: 'image/png,image/jpeg,*/*' };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // one image, politely: a pause before each request, three tries with a growing pause, and the server's own words when
 // what comes back is not an image (a rate limit or an error page)
@@ -60,9 +66,13 @@ const done = [], failed = [];
 for (const [local, [remote, hi]] of Object.entries(args['photos-only'] ? {} : MAPS)) {
   if (only && !only.some(n => local.startsWith(n))) continue;
   if (existsSync(DIR + local) && !args.force) { console.log(`have   ${local}`); done.push([local, '(kept)']); continue; }
-  const url = BASE + (args.hi && hi ? '8k_' : '2k_') + remote;
-  try { const b = await getImage(url); writeFileSync(DIR + local, b); console.log(`got    ${local}  ${(b.length / 1e6).toFixed(1)} MB  ← ${url}`); done.push([local, url]); }
-  catch (e) { console.log(`FAILED ${local}  ${url}: ${e.message}`); failed.push(local); }
+  const res = args.hi && hi ? '8k_' : '2k_', urls = [COMMONS(res + remote), ...(res === '8k_' ? [COMMONS('2k_' + remote)] : []), BASE + res + remote, ...(MAP_ALT[local] || [])];
+  let ok = false, why = [];
+  for (const url of urls) {
+    try { const b = await getImage(url); writeFileSync(DIR + local, b); console.log(`got    ${local}  ${(b.length / 1e6).toFixed(1)} MB  ← ${url}`); done.push([local, url]); ok = true; break; }
+    catch (e) { why.push(`${url}: ${e.message.slice(0, 120)}`); }
+  }
+  if (!ok) { console.log(`FAILED ${local}\n         ${why.join('\n         ')}`); failed.push(local); }
 }
 if (args.search) {   // list candidates to choose a NASA ID by eye
   for (const [name, P] of Object.entries(PHOTOS)) for (const q of P.q) {
@@ -78,6 +88,10 @@ if (args.photos || args['photos-only']) {
     if (only && !only.includes(name)) continue;
     if (existsSync(PD + name + '.jpg') && !args.force) { console.log(`have   ${name}.jpg`); continue; }
     try {
+      if (P.url) {   // a direct release image
+        const b = await getImage(P.url); writeFileSync(PD + name + '.jpg', b);
+        console.log(`got    ${name}.jpg  ${(b.length / 1e6).toFixed(1)} MB  "${P.title}" ← ${P.url}`); credits.push(`- \`${name}.jpg\`: "${P.title}", ${P.credit} (${P.url})`); continue;
+      }
       let it = null;
       if (P.id) it = (await nasaSearch(P.id)).find(i => i.data?.[0]?.nasa_id === P.id);
       for (const q of P.q) { if (it) break; it = (await nasaSearch(q)).find(i => P.must.every(w => (i.data?.[0]?.title || '').toLowerCase().includes(w.toLowerCase()))); }

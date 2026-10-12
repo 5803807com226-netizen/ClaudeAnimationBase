@@ -17,8 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: list NASA candidates (to pin picture IDs by eye)
-        run: node tools/get_space_textures.mjs --search || true
       - name: download maps and photos
         run: node tools/get_space_textures.mjs --photos || echo "::warning::some downloads failed (see above)"
       - name: list
