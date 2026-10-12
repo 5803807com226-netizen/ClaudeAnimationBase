@@ -96,3 +96,47 @@ function planetRing(c, cx, cy, R, ring, tilt, half) {
   }
   c.restore();
 }
+
+// deep-space pictures: real telescope images and NASA visualisations (tools/get_space_textures.mjs --photos downloads them
+// from the NASA Image and Video Library into assets/space/photos/ with their credits); name → file
+const SPACE_PHOTO_DIR = 'assets/space/photos/';
+const SPACE_PHOTOS = ['blackhole_m87', 'blackhole_sgra', 'blackhole_sim', 'andromeda', 'milky_way_center', 'whirlpool', 'sombrero', 'deep_field', 'pillars', 'carina', 'orion', 'crab'];
+const spacePhotoPath = o => o.image || (o.photo ? SPACE_PHOTO_DIR + o.photo + '.jpg' : '');
+
+definePreset('spacePhoto', {
+  label: 'Space Photo', about: 'a real deep-space picture (photo: blackhole_m87, blackhole_sgra, blackhole_sim, andromeda, milky_way_center, whirlpool, sombrero, deep_field, pillars, carina, orion, crab; or image: your own) filling the frame (fit cover: re-framed on focus, never stretched) with a slow push-in (zoom → zoomTo), an optional slow turn (spin, degrees per second: a galaxy, a black hole) and a gentle glow pulse; or fit circle: the picture as a round object over the sky (a black hole seen from afar); a name and a small credit line',
+  meta: { version: '1.0.0', category: 'fx', tags: ['space', 'black hole', 'galaxy', 'nebula', 'hubble', 'webb', 'telescope', 'photo', 'andromeda', 'universe', 'deep field', 'nasa'], camera: 'screen', layers: ['screen'],
+    params: { photo: { enum: [null, ...SPACE_PHOTOS] }, fit: { enum: ['cover', 'circle'] }, zoom: { min: .5, max: 8 }, spin: { min: -20, max: 20 }, size: { min: .1, max: 1.5 } },
+    assets: [{ param: 'image', type: 'image' }] },
+  defaults: { photo: 'andromeda', image: '', fit: 'cover', focus: [.5, .5], zoom: 1, zoomTo: 1.15, spin: 0, glow: .15, size: .6, x: .5, y: .45, bg: 'sky', label: '', credit: '', out: null, outDur: .6, ease: 'ease', dur: 6 },
+  run(t, o) {
+    const q = o.out != null ? 1 - clamp((t - o.out) / o.outDur) : 1, a = Math.min(clamp((t - o.at) / .6), q); if (a <= 0) return;
+    const path = spacePhotoPath(o), im = STICKER_IMG[path];
+    if (!im) throw new Error(`spacePhoto: the picture ${path || '(none)'} is not loaded: run node tools/get_space_textures.mjs --photos (or give image:)`);
+    const { g, c } = stkCtx(o, 'spacePhoto:' + (o.id ?? o.photo)), u = US(), k = presetK(t, o), z = Math.exp(lerp(Math.log(o.zoom), Math.log(o.zoomTo ?? o.zoom), k));
+    const rot = (t - o.at) * o.spin * Math.PI / 180, el = im.canvas || im.elt, pulse = 1 + o.glow * .5 * (Math.sin((t - o.at) * 1.3) * .5 + .5);
+    c.save(); c.globalAlpha = a;
+    if (o.fit === 'circle') {   // a round object over the sky: the picture's middle, soft-edged, with a glow
+      if (o.bg === 'sky') spaceSky(c); else if (o.bg) { c.fillStyle = o.bg; c.fillRect(0, 0, W, H); }
+      const cx = o.x * W, cy = o.y * H, R = o.size * Math.min(W, H) / 2 * z;
+      const gl = c.createRadialGradient(cx, cy, R * .6, cx, cy, R * 1.5); gl.addColorStop(0, `rgba(255,190,120,${.35 * o.glow * pulse * 3})`); gl.addColorStop(1, 'rgba(255,190,120,0)');
+      c.fillStyle = gl; c.beginPath(); c.arc(cx, cy, R * 1.5, 0, TAU); c.fill();
+      c.save(); c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.clip(); c.translate(cx, cy); c.rotate(rot);
+      const s = 2 * R * 1.05 / Math.min(im.width, im.height); c.drawImage(el, -im.width * s * o.focus[0], -im.height * s * o.focus[1], im.width * s, im.height * s); c.restore();
+      const vg = c.createRadialGradient(cx, cy, R * .7, cx, cy, R); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(5,8,20,.9)'); c.fillStyle = vg; c.beginPath(); c.arc(cx, cy, R + 1, 0, TAU); c.fill();
+    } else {   // cover the frame around the focus point; a turn needs the cover radius of the diagonal
+      const need = rot ? Math.hypot(W, H) : 0, s = Math.max((need || W) / im.width, (need || H) / im.height) * z, w = im.width * s, h = im.height * s;
+      c.save(); c.translate(W / 2, H / 2); c.rotate(rot);
+      const fx = clamp(w * o.focus[0], (need || W) / 2, w - (need || W) / 2), fy = clamp(h * o.focus[1], (need || H) / 2, h - (need || H) / 2);   // the focus, kept so the picture still covers the frame
+      c.drawImage(el, -fx, -fy, w, h);
+      if (o.glow) { c.globalCompositeOperation = 'screen'; c.globalAlpha = a * o.glow * (pulse - 1) * 2; c.drawImage(el, -fx, -fy, w, h); c.globalCompositeOperation = 'source-over'; c.globalAlpha = a; }   // the glow breathes
+      c.restore();
+    }
+    if (o.label) { const ka = clamp((t - o.at - .5) / .5); c.globalAlpha = a * ka; c.font = fontCss({ font: 'display', weight: 800, size: 54 }); c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.lineWidth = 8 * u; c.strokeStyle = 'rgba(10,12,20,.85)'; c.lineJoin = 'round'; const ly = o.fit === 'circle' ? o.y * H + o.size * Math.min(W, H) / 2 * z + 50 * u : H * .2;
+      c.strokeText(o.label, W / 2, ly); c.fillStyle = '#FFFFFF'; c.fillText(o.label, W / 2, ly); }
+    if (o.credit) { c.globalAlpha = a * .75; c.font = fontCss({ font: 'body', weight: 400, size: 20 }); c.textAlign = 'right'; c.textBaseline = 'bottom'; c.fillStyle = '#FFFFFF'; c.fillText(o.credit, W - 18 * u, H - 14 * u); }
+    c.restore(); stkBlit(g);
+  },
+  demo: { bg: '#0D1736', after: [['spacePhoto', { at: 0, photo: 'andromeda', label: 'กาแล็กซีแอนดรอเมดา' }]] },
+});

@@ -150,3 +150,30 @@ node tools/get_space_textures.mjs --hi   # 8k where they exist, for close-ups
 The maps come from Solar System Scope (made from NASA data, CC BY 4.0): put the credit line from CREDITS.md in the video description. Without its map the layer stops with an error; it never draws a fake planet.
 
 Not yet in `PRESET_ASPECTS`: it needs the maps, so run `node tools/aspect_test.mjs --only=preset_planet` locally after the download, then register it.
+
+## Real deep-space pictures (`spacePhoto`)
+
+`spacePhoto` shows a real telescope picture or NASA visualisation. These are pictures, not maps.
+
+`photo`:
+
+- Black holes: blackhole_m87, blackhole_sgra, blackhole_sim (a NASA visualisation).
+- Galaxies: andromeda, milky_way_center, whirlpool, sombrero, deep_field.
+- Nebulae: pillars, carina, orion, crab.
+
+Or give `image`: your own picture.
+
+How it can show the picture:
+
+- `fit: "cover"`: fills the frame around `focus`, never stretched, with a slow push-in (`zoom` → `zoomTo`) and a gentle glow pulse. `spin` turns it slowly (a galaxy, a black hole); the picture still covers the frame while turning.
+- `fit: "circle"`: shows it as a round object over the sky, with a glow.
+- `label`: a name. `credit`: a small credit line.
+
+Download the pictures once, on a machine with internet access:
+
+```
+node tools/get_space_textures.mjs --photos        # maps + pictures
+node tools/get_space_textures.mjs --photos-only   # pictures only
+```
+
+It searches the NASA Image and Video Library (images-api.nasa.gov) and prints each picture's title and NASA ID: check each is the picture you expect. Credits go to `assets/space/photos/CREDITS.md`. Some pictures include partners' work (ESA, CSA, STScI, the EHT Collaboration): credit them as the NASA page says. Not in `PRESET_ASPECTS` until `node tools/aspect_test.mjs --only=preset_spacePhoto` passes locally with the pictures.
