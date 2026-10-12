@@ -15,3 +15,4 @@ Credit in the video description: "Planet textures: Solar System Scope (CC BY 4.0
 - `uranus.jpg`: https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_2k_uranus.jpg
 - `neptune.jpg`: https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_2k_neptune.jpg
 - `milky_way.jpg`: https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_2k_stars_milky_way.jpg
+- `saturn_ring.png`: https://commons.wikimedia.org/wiki/Special:FilePath/Solarsystemscope_texture_8k_saturn_ring_alpha.png
